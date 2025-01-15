@@ -1,0 +1,48 @@
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {  
+    box-sizing: border-box;
+    text-size-adjust: none;;
+    scrollbar-color: var(--color-secondary-darker) var(--color-tertiary-darker);
+    scrollbar-width: thin;
+  }
+
+  *, *::before, *::after {
+    box-sizing: inherit;
+  }
+
+  body {
+    font-size: var(--fs-base);
+    font-family: 'Special Elite', serif;
+    color: light-dark(var(--color-tertiary-darkest), var(--color-tertiary-lightest));
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background: var(--color-tertiary-darkest) no-repeat var(--background-dark) top left/cover fixed;
+
+    }
+  }
+  
+  @media (prefers-color-scheme: light) {
+    body {
+      background: var(--color-tertiary-lighter) no-repeat var(--background-light) top left/cover fixed;
+    }
+  }
+
+  a {
+    color: var(--color-primary-darker);
+    transform: all 0.5s ease-in-out;
+
+    &:hover {
+      color: var(--color-secondary);
+    }
+  }
+
+  article p {
+    text-indent: 2rem;
+  }
+}

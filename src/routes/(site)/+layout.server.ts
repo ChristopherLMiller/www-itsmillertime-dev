@@ -1,0 +1,33 @@
+import { FetchFromStrapi } from '../../utilities/fetch.js';
+
+export async function load() {
+	try {
+		const queryParams = {
+			populate: {
+				navigation: {
+					populate: {
+						children: true,
+						icon: {
+							fields: ['url']
+						}
+					}
+				},
+				siteMeta: {
+					sort: ['path:asc']
+				}
+			}
+		};
+		const globalData = await FetchFromStrapi({ path: 'global', queryParams });
+
+		if (globalData.data) {
+			return {
+				navigation: globalData.data.navigation,
+				siteMeta: globalData.data.siteMeta
+			};
+		}
+	} catch (error) {
+		return {
+			error: "Couldn't fetch global data"
+		};
+	}
+}

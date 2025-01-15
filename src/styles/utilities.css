@@ -1,0 +1,58 @@
+@layer utilities {
+  .text-small {
+    font-size: var(--fs-s);
+  }
+
+  .text-base {
+    font-size: var(--fs-base);
+  }
+  
+  .text-medium {
+    font-size: var(--fs-m);
+  }
+  
+  .text-large {
+    font-size: var(--fs-l);
+  }
+  
+  .text-xl {
+    font-size: var(--fs-xl);
+  }
+  
+  .text-xxl {
+    font-size: var(--fs-xxl);
+  }
+  
+  .text-xxxl {
+    font-size: var(--fs-xxxl);
+  }
+
+  .text-weight-100 {
+    font-weight: 100;
+  }
+
+  .text-left {
+		text-align: left;
+	}
+
+	.text-center {
+		text-align: center;
+	}
+
+	.text-right {
+		text-align: right;
+	}
+
+	.text-justify {
+		text-align: justify;
+	}
+
+	.text-start {
+		text-align: start;
+	}
+
+	.text-end {
+		text-align: end;
+	}
+  
+}
