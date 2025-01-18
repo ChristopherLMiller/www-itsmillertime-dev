@@ -8,7 +8,12 @@ export async function load() {
 			}
 		},
 		populate: {
-			seo: true
+			seo: {
+				populate: {
+					metaImage: true,
+					metaSocial: true
+				}
+			}
 		}
 	};
 
