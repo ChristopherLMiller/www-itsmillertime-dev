@@ -38,6 +38,7 @@
   <!-- OG -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content={generateTitle(meta?.metaTitle)} />
+  <meta property="og:image" content={meta?.metaImage?.url || getImage()} />
   <meta property="og:description" content={generateDescription(meta?.metaDescription)} />
   {#if meta?.canonicalURL}
     <meta property="og:url" content={meta?.canonicalURL} />
