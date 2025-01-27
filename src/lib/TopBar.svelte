@@ -2,6 +2,7 @@
   <a class="text-small" href="/"><strong>I</strong>ts<strong>M</strong>iller<strong>T</strong>ime</a>
 </div>
 
+
 <style lang="postcss">
   .top-bar-element {
     background: var(--color-tertiary-darker);
