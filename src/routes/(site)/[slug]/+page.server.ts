@@ -14,7 +14,6 @@ export async function load({ params }) {
 		}
 	};
 	const response = await cacheManager.fetch('pages', queryParams, params.slug);
-	console.log(response);
 
 	// If data length is 0, that means we have a 404
 	if (response.data.length === 0) {
