@@ -1,4 +1,4 @@
-import { FetchFromStrapi } from '../../../utilities/fetch.js';
+import { cacheManager } from '$lib/cache/cache.js';
 
 // src/routes/+page.js
 export async function load({ url }) {
@@ -29,7 +29,11 @@ export async function load({ url }) {
 		sort: ['publicationDate:desc']
 	};
 
-	const response = await FetchFromStrapi({ path: 'posts', queryParams });
+	const response = await cacheManager.fetch(
+		'posts',
+		queryParams,
+		`posts:${page}:${pageSize}:${category}`
+	);
 
 	return {
 		posts: response

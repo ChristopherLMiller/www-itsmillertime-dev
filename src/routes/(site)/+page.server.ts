@@ -1,4 +1,4 @@
-import { FetchFromStrapi } from '../../utilities/fetch';
+import { cacheManager } from '$lib/cache/cache';
 
 export async function load() {
 	const queryParams = {
@@ -17,7 +17,7 @@ export async function load() {
 		}
 	};
 
-	const response = await FetchFromStrapi({ path: 'pages', queryParams });
+	const response = await cacheManager.fetch('pages', queryParams, 'home');
 	const page = response.data[0];
 	return { page: page, meta: page.seo };
 }

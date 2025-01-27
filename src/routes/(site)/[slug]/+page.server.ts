@@ -1,4 +1,5 @@
-import { FetchFromStrapi } from '../../../utilities/fetch';
+import { cacheManager } from '$lib/cache/cache';
+import { error } from '@sveltejs/kit';
 
 // src/routes/+page.js
 export async function load({ params }) {
@@ -12,8 +13,15 @@ export async function load({ params }) {
 			seo: true
 		}
 	};
+	const response = await cacheManager.fetch('pages', queryParams, params.slug);
+	console.log(response);
 
-	const response = await FetchFromStrapi({ path: 'pages', queryParams });
+	// If data length is 0, that means we have a 404
+	if (response.data.length === 0) {
+		throw error(404, 'Page not found');
+	}
+
+	// Extract the page data from the response and return it
 	const page = response.data[0];
 	return { page: page, meta: page.seo };
 }

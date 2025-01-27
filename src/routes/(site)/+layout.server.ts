@@ -1,4 +1,4 @@
-import { FetchFromStrapi } from '../../utilities/fetch.js';
+import { cacheManager } from '$lib/cache/cache.js';
 
 export async function load() {
 	try {
@@ -17,7 +17,7 @@ export async function load() {
 				}
 			}
 		};
-		const globalData = await FetchFromStrapi({ path: 'global', queryParams });
+		const globalData = await cacheManager.fetch('global', queryParams);
 
 		if (globalData.data) {
 			return {

@@ -1,5 +1,5 @@
+import { cacheManager } from '$lib/cache/cache.js';
 import { error } from '@sveltejs/kit';
-import { FetchFromStrapi } from '../../../../utilities/fetch.js';
 
 // src/routes/+page.js
 export async function load({ params }) {
@@ -19,7 +19,7 @@ export async function load({ params }) {
 		}
 	};
 
-	const response = await FetchFromStrapi({ path: 'posts', queryParams });
+	const response = await cacheManager.fetch('posts', queryParams, params.slug);
 
 	if (response.data.length > 0) {
 		const post = response.data[0];
