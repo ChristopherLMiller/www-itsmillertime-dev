@@ -1,13 +1,9 @@
-import type { SEO } from './SEO';
-
-export interface Page {
+export interface PostCategory {
 	id: number;
 	documentId: string;
 	title: string;
 	slug: string;
-	content: string;
 	createdAt: Date;
 	updatedAt: Date;
 	publishedAt: Date;
-	seo: SEO;
 }

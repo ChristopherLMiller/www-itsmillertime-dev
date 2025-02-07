@@ -29,11 +29,8 @@ export async function load({ url }) {
 		sort: ['publicationDate:desc']
 	};
 
-	const response = await cacheManager.fetch(
-		'posts',
-		queryParams,
-		`posts:${page}:${pageSize}:${category}`
-	);
+	const cacheKey = [page, pageSize, category].filter(Boolean).join(':');
+	const response = await cacheManager.fetch('posts', queryParams, `posts:${cacheKey}`);
 
 	return {
 		posts: response

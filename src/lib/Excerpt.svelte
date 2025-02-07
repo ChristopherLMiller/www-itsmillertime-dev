@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getMarkdownExcerpt } from "../utilities/getMarkdownExcerpt";
   let {item} = $props();
 </script>
 
@@ -21,7 +22,7 @@
     </div>
   <div class="category" style:view-transition-name={`article-category-${item.slug}`}>Filed under: <a href="/articles?category={item?.postCategory?.slug}">{item?.postCategory?.title}</div>
   </div>
-  <div class="excerpt" style:view-transition-name={`article-content-${item.slug}`}>{item?.seo?.metaDescription}</div>
+  <p class="excerpt" style:view-transition-name={`article-content-${item.slug}`}>{getMarkdownExcerpt(item?.content, {unit: 'paragraphs', count: 1})}</p>
   <a class="read-more" href="/articles/{item.slug}">Read more &gt;</a>
 </article>
 
@@ -44,8 +45,7 @@
   }
 
   .excerpt {
-    text-align: justify;
-
+    text-indent: 1.5ch;
     &::first-letter {
       text-transform: uppercase;
       color: var(--color-tertiary);

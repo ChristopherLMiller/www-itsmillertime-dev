@@ -8,14 +8,6 @@
 @import '../../styles/fonts.css';
 @import '../../styles/utilities.css';
 
-html::view-transition-old() {
-  animation-name: -ua-view-transition-fade-out;
-}
-
-html::view-transition-new() {
-  animation-name: -ua-view-transition-fade-in;
-}
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 0.2s;

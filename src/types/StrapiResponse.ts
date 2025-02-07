@@ -1,6 +1,6 @@
-import { Meta } from './Meta';
+import type { Meta } from './Meta';
 
 export interface StrapiResponse<T> {
-	data: T[];
+	data: T;
 	meta: Meta;
 }

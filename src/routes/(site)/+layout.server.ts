@@ -1,4 +1,5 @@
 import { cacheManager } from '$lib/cache/cache.js';
+import type { Global } from '../../types/Global';
 
 export async function load() {
 	try {
@@ -17,7 +18,7 @@ export async function load() {
 				}
 			}
 		};
-		const globalData = await cacheManager.fetch('global', queryParams);
+		const globalData = await cacheManager.fetch<Global>('global', queryParams);
 
 		if (globalData.data) {
 			return {

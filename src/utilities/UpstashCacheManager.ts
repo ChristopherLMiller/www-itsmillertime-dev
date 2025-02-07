@@ -1,4 +1,6 @@
+import { error } from '@sveltejs/kit';
 import { Redis } from '@upstash/redis';
+import type { StrapiResponse } from '../types/StrapiResponse';
 import { FetchFromStrapi } from './fetch';
 
 interface CacheConfig {
@@ -88,12 +90,12 @@ export class UpstashCacheManager {
 		queryParams?: unknown,
 		key: string = url,
 		options?: FetchOptions
-	): Promise<T> {
+	): Promise<StrapiResponse<T>> {
 		const cacheKey = this.formatKey(`${url}:${key}`);
 
 		try {
 			if (!options?.skipCache) {
-				const cached = await this.redis.get<T>(cacheKey);
+				const cached = await this.redis.get<StrapiResponse<T>>(cacheKey);
 
 				if (cached) {
 					this.stats.hits++;
@@ -106,6 +108,14 @@ export class UpstashCacheManager {
 			console.log(`Cache miss: ${cacheKey}`);
 
 			const data = await FetchFromStrapi({ path: url, queryParams });
+
+			// if its empty data, that means we have a 404 condition
+			if (data.data.length === 0) {
+				throw error(404, 'Data not found');
+			}
+
+			// Append the current epoch timestamp to the cache key for invalidation techniques later
+			data.meta.time = Date.now();
 
 			// Insert into the redis cache
 			const pipeline = this.redis.pipeline();

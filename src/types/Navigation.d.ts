@@ -1,13 +1,11 @@
-import type { SEO } from './SEO';
-
-export interface Page {
+export interface Navigation {
 	id: number;
 	documentId: string;
 	title: string;
-	slug: string;
-	content: string;
+	path: string;
 	createdAt: Date;
 	updatedAt: Date;
 	publishedAt: Date;
-	seo: SEO;
+	authState: string;
+	order: number;
 }

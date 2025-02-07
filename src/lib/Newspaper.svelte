@@ -1,13 +1,25 @@
-<script>
+<script lang="ts">
 	import Panel from "$lib/Panel.svelte";
+	import type { Snippet } from "svelte";
 
-  let {children, heading, image = null, columns = null, footerContent = null, headingTransitionName = null} = $props();
+  let {children, heading, image = null, columns = null, footerContent = null, headingTransitionName = null, featuredImage = null}:{
+    children: Snippet,
+    heading: string,
+    image?: {url: string, alt: string} | null,
+    columns?: number | null,
+    footerContent?: Snippet | null,
+    headingTransitionName?: string | null,
+    featuredImage?: {url: string, alt: string} | null
+  } = $props();
 </script>
 
 <Panel hasBorder={true} hasPadding={true}>
-  <div class="heading" style:view-transition-name={headingTransitionName || 'newspaper-heading'}>
+  {#if featuredImage}
+    <img src={featuredImage.url} alt={featuredImage.alt} />
+  {/if}
+  <h1 class="heading" style:view-transition-name={headingTransitionName || 'newspaper-heading'}>
     {heading}
-  </div>
+  </h1>
   <div class="contents">
     <div class="columns" style:columns={columns || ''}>
       {#if image}
@@ -23,8 +35,8 @@
 
 <style lang="postcss">
   .heading {
-    font-size: var(--fs-xl);
-    font-family: var(--font-oswald);
+    font-size: var(--fs-l);
+    font-family: var(--font-libre-baskerville);
     font-weight: 300;
     text-align: center;
     color: var(--color-primary);
@@ -38,6 +50,7 @@
     border-bottom: 4px double var(--color-primary);
     text-align: justify;
     line-height: 1.5em;
+    font-family: var(--font-libre-baskerville);
   }
 
   .columns {

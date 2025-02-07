@@ -1,10 +1,12 @@
 import { env } from '$env/dynamic/public';
 import { cacheManager } from '$lib/cache/cache';
 import type { RequestHandler } from '@sveltejs/kit';
+import type { Page } from '../../types/Page';
+import type { Post } from '../../types/Post';
 
 export const GET: RequestHandler = async function GET({ setHeaders }) {
-	const posts = await cacheManager.fetch('posts');
-	const pages = await cacheManager.fetch('pages');
+	const posts = await cacheManager.fetch<Post[]>('posts');
+	const pages = await cacheManager.fetch<Page[]>('pages');
 	const xml = `
   <?xml version="1.0" encoding="UTF-8" ?>
     <urlset

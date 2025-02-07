@@ -3,7 +3,24 @@
 
   const siteMeta = $derived(page.data.siteMeta);
   const path = $derived(page.url.pathname);
-  const currentPage = $derived(siteMeta.find((pageMeta: {path: string}) => pageMeta.path.includes(path)))
+  const currentPage = $derived(findMatchingPath(path, siteMeta));
+
+  function findMatchingPath(url: string, siteMeta: []): unknown | undefined {
+    // First try for exact match
+    const exactMatch = siteMeta.find(item => item.path === url);
+    if (exactMatch) return exactMatch;
+
+    // If no exact match, find the base path
+    const urlParts = url.split('/').filter(Boolean); // Remove empty strings
+    if (urlParts.length === 0) return undefined;
+
+    // Find the matching base path
+    return siteMeta.find(item => {
+      const itemPath = item.path.split('/').filter(Boolean);
+      return itemPath.length > 0 && urlParts[0] === itemPath[0];
+    });
+  }
+  
 </script>
 
 <header>

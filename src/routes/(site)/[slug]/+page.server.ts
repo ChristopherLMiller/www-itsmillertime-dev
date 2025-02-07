@@ -1,5 +1,6 @@
 import { cacheManager } from '$lib/cache/cache';
 import { error } from '@sveltejs/kit';
+import type { Page } from '../../../types/Page.js';
 
 // src/routes/+page.js
 export async function load({ params }) {
@@ -13,7 +14,7 @@ export async function load({ params }) {
 			seo: true
 		}
 	};
-	const response = await cacheManager.fetch('pages', queryParams, params.slug);
+	const response = await cacheManager.fetch<Page[]>('pages', queryParams, params.slug);
 
 	// If data length is 0, that means we have a 404
 	if (response.data.length === 0) {
