@@ -2,20 +2,21 @@
 	import Panel from "$lib/Panel.svelte";
 	import type { Snippet } from "svelte";
 
-  let {children, heading, image = null, columns = null, footerContent = null, headingTransitionName = null, featuredImage = null}:{
+  let {children, heading, image = null, columns = null, footerContent = null, headingTransitionName = null, featuredImage = null, featuredImageTransitionName = null}:{
     children: Snippet,
     heading: string,
-    image?: {url: string, alt: string} | null,
+    image?: {url: string, alt: string, width?: number, height?: number} | null,
     columns?: number | null,
     footerContent?: Snippet | null,
     headingTransitionName?: string | null,
-    featuredImage?: {url: string, alt: string} | null
+    featuredImage?: {url: string, alt: string, width?: number, height?: number} | null,
+    featuredImageTransitionName?: string | null
   } = $props();
 </script>
 
 <Panel hasBorder={true} hasPadding={true}>
   {#if featuredImage}
-    <img src={featuredImage.url} alt={featuredImage.alt} />
+    <img src={featuredImage.url} alt={featuredImage.alt} style:width={featuredImage.width} style:height={featuredImage.height} style:view-transition-name={featuredImageTransitionName || 'newspaper-featured-image'}/>
   {/if}
   <h1 class="heading" style:view-transition-name={headingTransitionName || 'newspaper-heading'}>
     {heading}
@@ -23,7 +24,7 @@
   <div class="contents">
     <div class="columns" style:columns={columns || ''}>
       {#if image}
-        <img src={image.url} alt={image.alt} />
+        <img src={image.url} alt={image.alt} style:width={image.width} style:height={image.height} />
       {/if}
       {@render children?.()}
     </div>

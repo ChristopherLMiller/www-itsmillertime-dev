@@ -17,6 +17,6 @@
     }
 
     .padding {
-      padding: 2rem;
+      padding: clamp(1rem, 1rem + 1vw, 2rem);
     }
 </style>

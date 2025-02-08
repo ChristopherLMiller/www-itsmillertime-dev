@@ -5,7 +5,7 @@
 
 <article style:view-transition-name={`article-${item.slug}`}>
   {#if item?.seo?.metaImage}
-    <img style:view-transition-name={`article-image-${item.slug}`} src={item.seo.metaImage.url} alt={item.title} />
+    <img style:view-transition-name={`article-featured-image-${item.slug}`} src={item.seo.metaImage.url} alt={item.title} />
   {/if}
   <a class="headline" href="/articles/{item.slug}" style:view-transition-name={`article-headline-${item.slug}`}>{item.title}</a>
   <div class="meta">

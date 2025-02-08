@@ -14,7 +14,7 @@ const renderers = {
   
 </script>
 
-<Newspaper heading={post.title} headingTransitionName={`article-headline-${post.slug}`} columns={3} featuredImage={post.seo.metaImage}>
+<Newspaper heading={post.title} headingTransitionName={`article-headline-${post.slug}`} columns={3} featuredImage={post.seo.metaImage} featuredImageTransitionName={`article-featured-image-${post.slug}`}>
   <div class="meta">
     <hr />
     <h3 style:view-transition-name={`article-pub-date-${post.slug}`}>
