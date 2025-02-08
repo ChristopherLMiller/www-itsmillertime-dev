@@ -1,4 +1,5 @@
 <script>
+	import { onNavigate } from "$app/navigation";
 	import { page } from "$app/state";
 	import { fly } from "svelte/transition";
 	import NavLink from "./navigation/NavLink.svelte";
@@ -8,6 +9,10 @@
   function toggleDropdown() {
     isDropdownOpen = !isDropdownOpen;
   }
+
+  onNavigate(() => {
+    isDropdownOpen = false;
+  }) ; 
 
 </script>
 <div class="top-bar-element">
@@ -61,6 +66,7 @@
 
   .mobile-nav {
     display: block;
+    font-size: var(--fs-s);
     @media (min-width: 415px) {
       display: none;
     }
