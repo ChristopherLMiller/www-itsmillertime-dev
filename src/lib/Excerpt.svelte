@@ -1,28 +1,31 @@
 <script lang="ts">
   import { getMarkdownExcerpt } from "../utilities/getMarkdownExcerpt";
   let {item} = $props();
+
 </script>
 
 <article style:view-transition-name={`article-${item.slug}`}>
-  {#if item?.seo?.metaImage}
-    <img style:view-transition-name={`article-featured-image-${item.slug}`} src={item.seo.metaImage.url} alt={item.title} />
+  {#if item?.featuredImage}
+    <img style:view-transition-name={`article-featured-image-${item.slug}`} src={item?.featuredImage?.url} alt={item?.featuredImage?.alt} />
   {/if}
   <a class="headline" href="/articles/{item.slug}" style:view-transition-name={`article-headline-${item.slug}`}>{item.title}</a>
   <div class="meta">
   <div class="pub-date" style:view-transition-name={`article-pub-date-${item.slug}`}>
-    {#if item.publicationDate}
-      {new Date(item.publicationDate).toLocaleDateString('en-US', {
+    {#if item.publishedAt}
+      {new Date(item.publishedAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })}
     {:else}
       Draft
-    {/if} | {Math.round(item?.wordCount / 183)} minute read
+    {/if} | {Math.round(item?.word_count / 183)} minute read
     </div>
-  <div class="category" style:view-transition-name={`article-category-${item.slug}`}>Filed under: <a href="/articles?category={item?.postCategory?.slug}">{item?.postCategory?.title}</div>
+  {#if item.category}
+  <div class="category" style:view-transition-name={`article-category-${item.slug}`}>Filed under: <a href="/articles?category={item?.category?.slug}">{item?.category?.title}</div>
+  {/if}
   </div>
-  <p class="excerpt" style:view-transition-name={`article-content-${item.slug}`}>{getMarkdownExcerpt(item?.content, {unit: 'paragraphs', count: 1})}</p>
+  <p class="excerpt" style:view-transition-name={`article-content-${item.slug}`}>{getMarkdownExcerpt(item?.markdown, {unit: 'paragraphs', count: 1})}</p>
   <a class="read-more" href="/articles/{item.slug}">Read more &gt;</a>
 </article>
 

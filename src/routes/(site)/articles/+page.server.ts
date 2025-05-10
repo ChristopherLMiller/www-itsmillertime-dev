@@ -1,4 +1,6 @@
-import { cacheManager } from '$lib/cache/cache.js';
+import * as qs from 'qs-esm';
+/*import { cacheManager } from '$lib/cache/cache.js';
+
 
 // src/routes/+page.js
 export async function load({ url }) {
@@ -34,5 +36,54 @@ export async function load({ url }) {
 
 	return {
 		posts: response
+	};
+}*/
+
+export async function load({ url }) {
+	const { page = 1, limit = 10, category } = Object.fromEntries(url.searchParams);
+	const queryParams = {
+		sort: '-publishedAt',
+		where: {
+			and: [
+				{
+					'category.slug': {
+						equals: category
+					}
+				},
+				{
+					_status: {
+						equals: 'published'
+					}
+				},
+				{
+					publishedAt: {
+						not_equal: null
+					}
+				}
+			]
+		},
+		depth: 1,
+		limit: limit,
+		page: page
+	};
+
+	console.log(`https://cms.itsmillertime.dev/api/posts?${qs.stringify(queryParams)}`);
+
+	const response = await fetch(
+		`https://cms.itsmillertime.dev/api/posts?${qs.stringify(queryParams)}`
+	);
+	const data = await response.json();
+	return {
+		posts: data.docs,
+		meta: {
+			hasNextPage: data.hasNextPage,
+			hasPrevPage: data.hasPrevPage,
+			limit: data.limit,
+			nextPage: data.nextPage,
+			pagingCounter: data.pagingCounter,
+			prevPage: data.prevPage,
+			totalDocs: data.totalDocs,
+			totalPages: data.totalPages
+		}
 	};
 }

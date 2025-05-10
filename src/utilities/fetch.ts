@@ -1,7 +1,7 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/public';
 import { error } from '@sveltejs/kit';
-import qs from 'qs';
+import * as qs from 'qs-esm';
 import type { StrapiResponse } from '../types/StrapiResponse';
 
 interface iFetchFromStrapi {

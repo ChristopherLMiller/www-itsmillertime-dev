@@ -10,12 +10,12 @@
 
 <Newspaper heading="From My Desk">
   <div class="contents">
-    {#each data.posts.data as post (post.documentId)}
+    {#each data.posts as post (post.id)}
       <Excerpt item={post}/>
     {/each}
   </div>
   {#snippet footerContent()}
-    <span>Page {data.posts.meta.pagination.page} of {data.posts.meta.pagination.pageCount} ({data.posts.meta.pagination.total} total)</span>
+    <span>Page {data.meta.pagingCounter} of {data.meta.totalPages} ({data.meta.totalDocs} total)</span>
   {/snippet}
 </Newspaper>
-<Paginator meta={data.posts.meta}/>
+<Paginator meta={data.meta}/>

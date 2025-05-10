@@ -12,6 +12,7 @@
     featuredImage?: {url: string, alt: string, width?: number, height?: number} | null,
     featuredImageTransitionName?: string | null
   } = $props();
+
 </script>
 
 <Panel hasBorder={true} hasPadding={true}>
