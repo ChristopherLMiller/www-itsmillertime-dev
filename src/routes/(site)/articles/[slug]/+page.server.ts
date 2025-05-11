@@ -56,11 +56,14 @@ export async function load({ params }) {
 		`https://cms.itsmillertime.dev/api/posts?${qs.stringify(queryParams)}`
 	);
 	const data = await response.json();
-	console.log(data.docs[0]);
 	return {
 		post: data.docs[0],
 		meta: {
-			metaTitle: data.docs[0].title,
+			metaTitle: data.docs[0].meta.title,
+			metaDescription: data.docs[0].meta.description,
+			metaImage: {
+				url: data.docs[0].meta.image.url
+			},
 			hasNextPage: data.hasNextPage,
 			hasPrevPage: data.hasPrevPage,
 			limit: data.limit,
