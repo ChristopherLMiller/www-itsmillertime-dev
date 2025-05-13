@@ -62,7 +62,7 @@ export async function load({ params }) {
 			metaTitle: data.docs[0].meta.title,
 			metaDescription: data.docs[0].meta.description,
 			metaImage: {
-				url: data.docs[0].meta.image.url
+				url: data.docs[0]?.meta?.image?.url
 			},
 			hasNextPage: data.hasNextPage,
 			hasPrevPage: data.hasPrevPage,
