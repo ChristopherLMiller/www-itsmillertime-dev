@@ -28,12 +28,12 @@
           <NavLink navItem={{title: "Sign Up", path: "/sign-up"}} />
           <NavLink navItem={{title: "Sign Out", path: "/logout"}} />
           <NavLink navItem={{title: "Profile", path: "/profile"}} />
-          <NavLink navItem={{title: "Admin", path: "https://strapi.itsmillertime.dev/admin"}} />
+          <NavLink navItem={{title: "Admin", path: "https://cms.itsmillertime.dev/admin"}} />
         </div>
         <div class="dropdown-section">
-          {#each page.data.navigation.sort((a, b) => a.order - b.order) as navItem }
-            {#if navItem.children.length > 0}
-              {#each navItem.children as childNavItem}
+          {#each page.data.navigation.navItems as navItem }
+            {#if navItem.childNodes.length > 0}
+              {#each navItem.childNodes as childNavItem}
                 <NavLink navItem={childNavItem}/>
               {/each}
               <hr/>

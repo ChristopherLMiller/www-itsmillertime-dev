@@ -10,7 +10,7 @@
   {/if}
   <span>{navItem.title}</span>
   <div class={`sub-menu`}>
-    {#each navItem.children as child}
+    {#each navItem.childNodes as child}
       <NavLink navItem={child} />
     {/each}
   </div>

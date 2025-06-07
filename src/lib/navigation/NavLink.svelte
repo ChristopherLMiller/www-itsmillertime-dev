@@ -3,7 +3,7 @@
   import { page } from '$app/state';
 </script>
 
-<a href={navItem.path} class={`${navItem.path === page.url.pathname ? 'active' : ''}`}>
+<a href={navItem.link} class={`${navItem.link === page.url.pathname ? 'active' : ''}`}>
   {#if navItem.icon}
     <img src={navItem.icon.url} alt={navItem.title} />
   {/if}

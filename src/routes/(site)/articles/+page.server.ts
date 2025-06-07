@@ -1,3 +1,6 @@
+import { payloadClient } from '$lib/api/payload-client.js';
+import { PostSchema } from '$lib/schemas/zod/generated.js';
+import { PayloadResponseSchema } from '$lib/schemas/zod/payload-response.js';
 import * as qs from 'qs-esm';
 /*import { cacheManager } from '$lib/cache/cache.js';
 
@@ -40,9 +43,24 @@ export async function load({ url }) {
 }*/
 
 export async function load({ url }) {
-	const { page = 1, limit = 10, category } = Object.fromEntries(url.searchParams);
+	const { page = 1, limit = 15, category } = Object.fromEntries(url.searchParams);
 	const queryParams = {
 		sort: '-publishedAt',
+		select: {
+			publishedAt: true,
+			slug: true,
+			word_count: true,
+			content: true,
+			title: true,
+			featuredImage: true,
+			createdAt: true,
+			updatedAt: true,
+			originalPublicationDate: true,
+			category: true
+		},
+		populate: {
+			category: true
+		},
 		where: {
 			and: [
 				{
@@ -62,28 +80,25 @@ export async function load({ url }) {
 				}
 			]
 		},
-		depth: 1,
 		limit: limit,
 		page: page
 	};
 
-	console.log(`https://cms.itsmillertime.dev/api/posts?${qs.stringify(queryParams)}`);
-
-	const response = await fetch(
-		`https://cms.itsmillertime.dev/api/posts?${qs.stringify(queryParams)}`
+	const articlesData = await payloadClient.fetchWithValidation(
+		`/posts?${qs.stringify(queryParams)}`,
+		PayloadResponseSchema(PostSchema)
 	);
-	const data = await response.json();
 	return {
-		posts: data.docs,
+		posts: articlesData.docs,
 		meta: {
-			hasNextPage: data.hasNextPage,
-			hasPrevPage: data.hasPrevPage,
-			limit: data.limit,
-			nextPage: data.nextPage,
-			pagingCounter: data.pagingCounter,
-			prevPage: data.prevPage,
-			totalDocs: data.totalDocs,
-			totalPages: data.totalPages
+			hasNextPage: articlesData.hasNextPage,
+			hasPrevPage: articlesData.hasPrevPage,
+			limit: articlesData.limit,
+			nextPage: articlesData.nextPage,
+			pagingCounter: articlesData.pagingCounter,
+			prevPage: articlesData.prevPage,
+			totalDocs: articlesData.totalDocs,
+			totalPages: articlesData.totalPages
 		}
 	};
 }

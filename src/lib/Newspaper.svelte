@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Image from "$lib/Image.svelte";
 	import Panel from "$lib/Panel.svelte";
 	import type { Snippet } from "svelte";
 
@@ -17,7 +18,7 @@
 
 <Panel hasBorder={true} hasPadding={true}>
   {#if featuredImage}
-    <img src={featuredImage.url} alt={featuredImage.alt} style:width={featuredImage.width} style:height={featuredImage.height} style:view-transition-name={featuredImageTransitionName || 'newspaper-featured-image'}/>
+    <Image transitionName={featuredImageTransitionName || 'newspaper-featured-image'} image={featuredImage} />
   {/if}
   <h1 class="heading" style:view-transition-name={headingTransitionName || 'newspaper-heading'}>
     {heading}
@@ -44,7 +45,9 @@
     color: var(--color-primary);
     letter-spacing: 5px;
     line-height: 1em;
-    padding-block-end: 2rem;
+    padding-block: 1rem;
+    margin-block-start: 1rem;
+    border-top: 4px double var(--color-primary);
   }
   .contents {
     padding-block: 2rem;

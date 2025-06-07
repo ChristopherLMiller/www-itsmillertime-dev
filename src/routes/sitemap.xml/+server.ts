@@ -1,12 +1,18 @@
 import { env } from '$env/dynamic/public';
-import { cacheManager } from '$lib/cache/cache';
+import { payloadClient } from '$lib/api/payload-client';
+import { PageSchema, PostSchema } from '$lib/schemas/zod/generated';
+import { PayloadResponseSchema } from '$lib/schemas/zod/payload-response';
 import type { RequestHandler } from '@sveltejs/kit';
-import type { Page } from '../../types/Page';
-import type { Post } from '../../types/Post';
 
 export const GET: RequestHandler = async function GET({ setHeaders }) {
-	const posts = await cacheManager.fetch<Post[]>('posts');
-	const pages = await cacheManager.fetch<Page[]>('pages');
+	const posts = await payloadClient.fetchWithValidation(
+		'/posts',
+		PayloadResponseSchema(PostSchema)
+	);
+	const pages = await payloadClient.fetchWithValidation(
+		'/pages',
+		PayloadResponseSchema(PageSchema)
+	);
 	const xml = `
   <?xml version="1.0" encoding="UTF-8" ?>
     <urlset
@@ -17,7 +23,7 @@ export const GET: RequestHandler = async function GET({ setHeaders }) {
       xmlns:image="https://www.google.com/schemas/sitemap-image/1.1"
       xmlns:video="https://www.google.com/schemas/sitemap-video/1.1"
     >
-            ${pages.data
+            ${pages.docs
 							.map(
 								(page) => `
         <url>
@@ -28,7 +34,7 @@ export const GET: RequestHandler = async function GET({ setHeaders }) {
       `
 							)
 							.join('')} 
-      ${posts.data
+      ${posts.docs
 				.map(
 					(post) => `
         <url>

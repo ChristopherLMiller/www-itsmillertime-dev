@@ -2,13 +2,12 @@
   import { page } from '$app/state';
   import NavButton from './NavButton.svelte';
   import NavLink from './NavLink.svelte';
-
 </script>
 
   <nav>
     <ul>
-      {#each page.data.navigation.sort((a, b) => a.order - b.order) as navItem }
-        {#if navItem.children.length > 0}
+      {#each page.data.navigation.navItems as navItem }
+        {#if navItem.childNodes.length > 0}
           <NavButton {navItem} />
         {:else}
           <NavLink {navItem} />

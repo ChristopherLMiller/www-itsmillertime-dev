@@ -1,7 +1,7 @@
 <script lang="ts">
+	import Lexical from "$lib/Lexical.svelte";
 	import Lightbox from "$lib/Lightbox.svelte";
 	import Newspaper from "$lib/Newspaper.svelte";
-	import SvelteMarkdown from "svelte-markdown";
   
 const { data } = $props();
 const post = data.post;
@@ -15,7 +15,7 @@ const renderers = {
   <div class="meta">
     <hr />
     <h3 style:view-transition-name={`article-pub-date-${post.slug}`}>
-      Published on {new Date(post.publishedAt).toLocaleDateString('en-US', {
+      Published on {new Date(post.originalPublicationDate).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -33,7 +33,7 @@ const renderers = {
     <hr />
   </div>
   <article class="post contents" style:view-transition-name={`article-content-${post.slug}`}>
-    <SvelteMarkdown source={post.markdown} {renderers}/>
+    <Lexical data={post.content} />
   </article>
 </Newspaper>
 
