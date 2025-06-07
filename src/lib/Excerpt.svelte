@@ -1,18 +1,19 @@
 <script lang="ts">
-  import { getMarkdownExcerpt } from "../utilities/getMarkdownExcerpt";
+	import { getFirstParagraph } from "../utilities/getFirstParagraph";
+	import Image from "./Image.svelte";
   let {item} = $props();
-
+  const featuredImage = $derived(item?.featuredImage);
 </script>
 
 <article style:view-transition-name={`article-${item.slug}`}>
-  {#if item?.featuredImage}
-    <img style:view-transition-name={`article-featured-image-${item.slug}`} src={item?.featuredImage?.url} alt={item?.featuredImage?.alt} />
+  {#if featuredImage}
+    <Image transitionName={`article-featured-image-${item.slug}`} image={featuredImage} hasBorder={true}/>  
   {/if}
   <a class="headline" href="/articles/{item.slug}" style:view-transition-name={`article-headline-${item.slug}`}>{item.title}</a>
   <div class="meta">
   <div class="pub-date" style:view-transition-name={`article-pub-date-${item.slug}`}>
-    {#if item.publishedAt}
-      {new Date(item.publishedAt).toLocaleDateString('en-US', {
+    {#if item.originalPublicationDate}
+      {new Date(item.originalPublicationDate).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -22,10 +23,10 @@
     {/if} | {Math.round(item?.word_count / 183)} minute read
     </div>
   {#if item.category}
-  <div class="category" style:view-transition-name={`article-category-${item.slug}`}>Filed under: <a href="/articles?category={item?.category?.slug}">{item?.category?.title}</div>
+  <div class="category" style:view-transition-name={`article-category-${item.slug}`}>Filed under: <a href="/articles?category={item?.category?.slug}">{item?.category?.title}</a></div>
   {/if}
   </div>
-  <p class="excerpt" style:view-transition-name={`article-content-${item.slug}`}>{getMarkdownExcerpt(item?.markdown, {unit: 'paragraphs', count: 1})}</p>
+  <p class="excerpt" style:view-transition-name={`article-content-${item.slug}`}>{getFirstParagraph(item?.content)}</p>
   <a class="read-more" href="/articles/{item.slug}">Read more &gt;</a>
 </article>
 
@@ -69,19 +70,5 @@
   .read-more {
     text-align: right;
     display: block;
-  }
-
-  img {
-    width: 100%;
-    height: auto;
-    border: 5px solid var(--color-primary-darker);
-    filter: sepia(80%) contrast(70%) brightness(90%);
-    mix-blend-mode: multiply;
-    transition: all 0.15s ease-in-out;
-
-    &:hover {
-      filter: none;
-      mix-blend-mode: normal;
-    }
   }
 </style>

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import type { SiteMeta } from './types/payload-types';
 
-  const siteMeta = $derived(page.data.siteMeta);
+  const siteMeta: SiteMeta = $derived(page.data.siteMeta);
   const path = $derived(page.url.pathname);
-  const currentPage = $derived(findMatchingPath(path, siteMeta));
+  const currentPage = $derived(findMatchingPath(path, siteMeta.siteMeta));
 
-  function findMatchingPath(url: string, siteMeta: []): unknown | undefined {
+  function findMatchingPath(url: string, siteMeta: SiteMeta["siteMeta"]) {
     // First try for exact match
-    const exactMatch = siteMeta.find(item => item.path === url);
+    const exactMatch = siteMeta?.find(item => item.path === url);
     if (exactMatch) return exactMatch;
 
     // If no exact match, find the base path
@@ -15,7 +16,7 @@
     if (urlParts.length === 0) return undefined;
 
     // Find the matching base path
-    return siteMeta.find(item => {
+    return siteMeta?.find(item => {
       const itemPath = item.path.split('/').filter(Boolean);
       return itemPath.length > 0 && urlParts[0] === itemPath[0];
     });

@@ -1,6 +1,6 @@
 <script lang="ts">
+	import Lexical from "$lib/Lexical.svelte";
 	import Panel from "$lib/Panel.svelte";
-	import SvelteMarkdown from "svelte-markdown";
 
 
   const {data} = $props();
@@ -8,6 +8,8 @@
 
 </script>
 
-<Panel hasBorder hasPadding>
-  <SvelteMarkdown source={pageData.content} />
-</Panel>
+{#each pageData.blocks as block}
+  <Panel hasBorder hasPadding>
+    <Lexical data={block.block} />
+  </Panel>
+{/each}
