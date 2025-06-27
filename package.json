@@ -4,21 +4,23 @@
 	"version": "0.3.2",
 	"type": "module",
 	"scripts": {
-		"dev": "pnpm run types:fetch && vite dev",
+		"dev": "pnpm run fetch-payload-types && vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
-		"types:fetch": "tsx scripts/sync-payload-types.ts",
-		"generate:schemas": "ts-to-zod src/lib/types/payload-types.ts src/lib/schemas/zod.ts"
+		"fetch-payload-types": "tsx scripts/sync-payload-types.ts",
+		"generate-zod-schema": "tsx scripts/generate-zod-schema.ts ./src/lib/types/payload-types.ts ./src/lib/schemas/zod/generated.ts"
 	},
 	"devDependencies": {
+		"@anthropic-ai/sdk": "^0.53.0",
 		"@eslint/compat": "^1.2.9",
 		"@sveltejs/adapter-node": "^5.2.12",
 		"@sveltejs/kit": "^2.21.1",
 		"@sveltejs/vite-plugin-svelte": "^5.0.3",
+		"dotenv": "^16.5.0",
 		"eslint": "^9.27.0",
 		"eslint-config-prettier": "^10.1.5",
 		"eslint-plugin-svelte": "^3.9.0",

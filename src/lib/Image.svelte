@@ -1,14 +1,15 @@
 <script lang="ts">
-  const {image, transitionName, hasBorder = false} = $props();
-  
+  const {image, transitionName, hasBorder = false} = $props();  
 </script>
 
 <picture style:view-transition-name={transitionName} class={`${hasBorder ? 'border' : ''}`}>
+  {#if image?.sizes}
   {#each Object.entries(image?.sizes) as [key, value]}
     {#if value?.url !== null}
     <source srcset={value?.url} media={`(max-width: ${value?.width}px)"`} width={value?.width} height={value?.height} type={value?.mimeType}/>
     {/if}
   {/each}
+  {/if}
   <img style:view-transition-name={transitionName} src={image?.sizes?.small?.url} width={image?.sizes?.small?.width} height={image?.sizes?.small?.height} alt={image?.alt} />
 </picture>
 
