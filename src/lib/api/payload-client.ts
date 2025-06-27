@@ -1,4 +1,6 @@
 import { error } from '@sveltejs/kit';
+import { mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { z } from 'zod';
 
 export class ValidationError extends Error {
@@ -7,7 +9,32 @@ export class ValidationError extends Error {
 		this.name = 'ValidationError';
 	}
 }
+function logToFile(message: unknown, data?: any) {
+	if (process.env.NODE_ENV !== 'development') return;
 
+	try {
+		// Create the logs directory if it doesn't exist
+		const logsDir = join(process.cwd(), 'logs');
+		mkdirSync(logsDir, { recursive: true });
+
+		// create timestamp for filename
+		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+		const filename = 'validation-errors-' + timestamp + '.log';
+		const filepath = join(logsDir, filename);
+
+		const logEntry = {
+			timestamp: new Date().toISOString(),
+			message,
+			data
+		};
+
+		const logContent = JSON.stringify(logEntry, null, 2);
+		writeFileSync(filepath, logContent, 'utf8');
+	} catch (err) {
+		console.error('Failed to log validation error:', err);
+		console.error(message, data);
+	}
+}
 export function validateServerData<T>(
 	schema: z.ZodSchema<T>,
 	data: unknown,
@@ -17,6 +44,7 @@ export function validateServerData<T>(
 		return schema.parse(data);
 	} catch (err) {
 		if (err instanceof z.ZodError) {
+			logToFile({ errors: err.errors, data });
 			console.error('Server validation failed:', {
 				errors: err.errors,
 				data: JSON.stringify(data, null, 2)
