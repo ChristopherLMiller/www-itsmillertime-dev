@@ -58,6 +58,9 @@
 
   .headline {
     font-size:calc(var(--fs-base) * 1.3);
+    padding-block-start: 0.5rem;
+    display: block;
+    margin-block: 0.5rem;
   }
 
   .meta {
