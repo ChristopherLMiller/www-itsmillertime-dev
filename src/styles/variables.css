@@ -71,4 +71,7 @@
 
   /* widths */
   --width-small: 320px;
+
+  /* borders */
+  --border-width: 5px;
 }

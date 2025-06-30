@@ -359,4 +359,9 @@
     padding-left:0;
     margin-left:0;
   }
+
+  :global(p) {
+    line-height: 1.6;
+    margin-block-end: 1rem;
+  }
 </style>

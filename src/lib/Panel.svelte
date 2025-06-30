@@ -13,7 +13,7 @@
   }
 
     .border {
-      border: 5px solid var(--color-primary-darker);
+      border: var(--border-width) solid var(--color-primary-darker);
     }
 
     .padding {

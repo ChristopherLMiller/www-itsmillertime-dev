@@ -5,6 +5,7 @@ import * as qs from 'qs-esm';
 
 export async function load() {
 	const queryParams = {
+		sort: '-model_meta.completionDate',
 		limit: 100,
 		select: {
 			id: true,
@@ -12,7 +13,8 @@ export async function load() {
 			createdAt: true,
 			updatedAt: true,
 			slug: true,
-			model_meta: true
+			model_meta: true,
+			clockify_project: true
 		}
 	};
 
