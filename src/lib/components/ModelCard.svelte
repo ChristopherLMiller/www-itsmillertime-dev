@@ -2,13 +2,28 @@
 	import Image from '$lib/Image.svelte';
 	import type { Media, Model } from '$lib/types/payload-types';
 	import { convertDate } from '../../utilities/convertDate';
+	import { makeClockifyDurationFriendly } from '../../utilities/makeClockifyDurationFriendly';
 
 	let { model }: { model: Model } = $props();
 	let completionDate = $derived(convertDate(model.model_meta.completionDate));
+	let clockifyProject = $state(null);
+
+	$effect(() => {
+		async function getClockifyProjects() {
+			if (!model.clockify_project) return;
+			const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
+
+			if (response.ok) {
+				clockifyProject = await response.json();
+			}
+		}
+
+		getClockifyProjects();
+	});
 </script>
 
 <div class={`model-card ${model.model_meta.status.toLowerCase()}`}>
-	<div class="card-front">
+	<div class="contents">
 		<p class="head">
 			{model.model_meta.kit.manufacturer.title} • {model.model_meta.kit.kit_number}
 		</p>
@@ -28,7 +43,10 @@
 				{#if model.clockify_project}
 					<div class="stat-row">
 						<div class="stat-label">Build Time:</div>
-						<div class="vlaue">2 hours</div>
+						<div class="vlaue">
+							{clockifyProject &&
+								makeClockifyDurationFriendly(clockifyProject.duration, false, true)}
+						</div>
 					</div>
 				{/if}
 				{#if model.model_meta.completionDate}
@@ -39,10 +57,16 @@
 						</div>
 					</div>
 				{/if}
+				{#if model.model_meta.tags?.length}
+					<div class="tags">
+						{#each model.model_meta.tags as tag}
+							<a href="#">{tag.title}</a>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
-	<div class="card-back"></div>
 </div>
 
 <style lang="postcss">
@@ -57,24 +81,18 @@
 		&.in_progress {
 			background: linear-gradient(45deg, var(--color-secondary-lighter), white);
 		}
+		&.not_started {
+			background: linear-gradient(45deg, var(--color-tertiary), white);
+		}
 	}
-	.model-card::before {
-		content: '';
-		position: absolute;
-		border: 2px solid var(--color-primary-darker);
-		border-radius: 10px;
-		top: 12px;
-		left: 12px;
-		bottom: 12px;
-		right: 12px;
-	}
-
-	.card-front {
+	.contents {
 		display: grid;
 		grid-template-columns: 1fr;
-		grid-template-rows: 32px auto 1fr;
+		grid-template-rows: 32px repeat(2, auto);
 		height: 100%;
 		background: var(--color-white-lighter);
+		border: 2px solid var(--color-primary-darker);
+		border-radius: 10px;
 	}
 	.head {
 		text-align: center;
@@ -100,11 +118,14 @@
 			&.in_progress {
 				background: var(--color-secondary);
 			}
+			&.not_started {
+				background: var(--color-tertiary);
+			}
 		}
 
 		p {
 			text-align: center;
-			font-size: calc(var(--fs-base) * 0.9);
+			font-size: calc(var(--fs-base) * 0.8);
 		}
 	}
 
@@ -116,10 +137,11 @@
 		display: flex;
 		flex-direction: column;
 		flex: 1;
-		gap: 0.5rem;
-		font-size: calc(var(--fs-base) * 0.8);
+		gap: 0.25rem;
+		font-size: calc(var(--fs-base) * 0.7);
+		font-family: var(--font-oswald);
 		padding-inline: 0.5rem;
-		padding-block-end: 1rem;
+		padding-block-end: 0.5rem;
 	}
 	.stat-row {
 		display: flex;
@@ -130,5 +152,21 @@
 	.stat-label {
 		color: var(--color-tertiary);
 		font-weight: bold;
+	}
+
+	.tags {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: center;
+		font-size: var(--fs-xs);
+		flex-wrap: wrap;
+
+		a {
+			background: var(--color-tertiary-lighter);
+			color: var(--color-white-lighter);
+			text-decoration: none;
+			padding: 0.25rem 0.5rem;
+			transform: skew(-10deg);
+		}
 	}
 </style>
