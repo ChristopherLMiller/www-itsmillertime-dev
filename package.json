@@ -25,7 +25,6 @@
 		"eslint-config-prettier": "^10.1.5",
 		"eslint-plugin-svelte": "^3.10.1",
 		"globals": "^16.3.0",
-		"mdsvex": "^0.12.6",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"stylelint": "^16.21.1",
@@ -36,10 +35,11 @@
 		"tsx": "^4.20.3",
 		"typescript": "^5.8.3",
 		"typescript-eslint": "^8.35.1",
-		"vite": "npm:rolldown-vite@latest"
+		"vite": "^7.0.2"
 	},
 	"dependencies": {
 		"@js-temporal/polyfill": "^0.5.1",
+		"@sveltejs/adapter-static": "^3.0.8",
 		"@upstash/redis": "^1.35.1",
 		"nodejs": "link:@upstash/redis/nodejs",
 		"qs-esm": "^7.0.2",
