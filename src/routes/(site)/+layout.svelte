@@ -21,7 +21,6 @@
 	});
 </script>
 
-export const prerender = true;
 <Meta />
 <TopBar />
 <Header />
