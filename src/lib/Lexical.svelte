@@ -1,367 +1,218 @@
+<!-- LexicalRenderer.svelte -->
 <script>
-  // Component props
-  let { data } = $props();
+	import NodeRenderer from '$lib/NodeRenderer.svelte';
+	// We'll create this component
 
-  // Text format constants
-  const TEXT_TYPE_TO_FORMAT = {
-    bold: 1,
-    italic: 2,
-    strikethrough: 4,
-    underline: 8,
-    code: 16,
-    subscript: 32,
-    superscript: 64,
-    highlight: 128
-  };
+	/**
+	 * @typedef {Object} TextNode
+	 * @property {'text'} type
+	 * @property {string} text
+	 * @property {number} [format]
+	 */
 
-  // Check if text has specific formatting
-  function hasFormat(format, type) {
-    return (format & TEXT_TYPE_TO_FORMAT[type]) !== 0;
-  }
+	/**
+	 * @typedef {Object} ImageNode
+	 * @property {'image'} type
+	 * @property {string} [src]
+	 * @property {string} [alt]
+	 * @property {string} [altText]
+	 * @property {number} [width]
+	 * @property {number} [height]
+	 * @property {string} [caption]
+	 */
 
-  // Render individual text node with formatting
-  function renderTextNode(node) {
-    let text = node.text || '';
-    let element = text;
-    
-    if (!node.format) return element;
+	/**
+	 * @typedef {Object} UploadNode
+	 * @property {'upload'} type
+	 * @property {Object} value
+	 * @property {string} [value.url]
+	 * @property {string} [value.alt]
+	 * @property {number} [value.width]
+	 */
 
-    // Apply formatting based on format bitmask
-    if (hasFormat(node.format, 'bold')) {
-      element = `<strong>${element}</strong>`;
-    }
-    if (hasFormat(node.format, 'italic')) {
-      element = `<em>${element}</em>`;
-    }
-    if (hasFormat(node.format, 'strikethrough')) {
-      element = `<s>${element}</s>`;
-    }
-    if (hasFormat(node.format, 'underline')) {
-      element = `<u>${element}</u>`;
-    }
-    if (hasFormat(node.format, 'code')) {
-      element = `<code>${element}</code>`;
-    }
-    if (hasFormat(node.format, 'subscript')) {
-      element = `<sub>${element}</sub>`;
-    }
-    if (hasFormat(node.format, 'superscript')) {
-      element = `<sup>${element}</sup>`;
-    }
-    if (hasFormat(node.format, 'highlight')) {
-      element = `<mark>${element}</mark>`;
-    }
+	/**
+	 * @typedef {Object} LinkNode
+	 * @property {'link'|'autolink'} type
+	 * @property {string} [url]
+	 * @property {string} [target]
+	 * @property {string} [rel]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-    return element;
-  }
+	/**
+	 * @typedef {Object} ParagraphNode
+	 * @property {'paragraph'} type
+	 * @property {string} [format]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-  // Render link node
-  function renderLinkNode(node) {
-    const href = node.url || '';
-    const target = node.target || '_blank';
-    const rel = node.rel || 'noopener noreferrer';
-    
-    let innerHTML = '';
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    
-    return `<a href="${href}" target="${target}" rel="${rel}">${innerHTML}</a>`;
-  }
+	/**
+	 * @typedef {Object} HeadingNode
+	 * @property {'heading'} type
+	 * @property {string} [tag]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-  // Render list node
-  function renderListNode(node) {
-    const tag = node.listType === 'number' ? 'ol' : 'ul';
-    let innerHTML = '';
-    
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    
-    return `<${tag} class="${node.listType}-list">${innerHTML}</${tag}>`;
-  }
+	/**
+	 * @typedef {Object} ListNode
+	 * @property {'list'} type
+	 * @property {string} [listType]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-  // Render list item node
-  function renderListItemNode(node) {
-    let innerHTML = '';
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    
-    // Handle checkbox list items
-    if (node.hasOwnProperty('checked')) {
-      const checked = node.checked ? 'checked' : '';
-      const checkboxId = `checkbox-${Math.random().toString(36).substr(2, 9)}`;
-      return `<li class="checklist-item">
-        <input type="checkbox" id="${checkboxId}" ${checked} disabled />
-        <label for="${checkboxId}">${innerHTML}</label>
-      </li>`;
-    }
-    
-    return `<li>${innerHTML}</li>`;
-  }
+	/**
+	 * @typedef {Object} ListItemNode
+	 * @property {'listitem'} type
+	 * @property {boolean} [checked]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-  // Render heading node
-  function renderHeadingNode(node) {
-    const tag = node.tag || 'h1';
-    let innerHTML = '';
-    
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    
-    return `<${tag}>${innerHTML}</${tag}>`;
-  }
+	/**
+	 * @typedef {Object} QuoteNode
+	 * @property {'quote'} type
+	 * @property {LexicalNode[]} [children]
+	 */
 
-  function parseMarkdownImages(text) {
-    const imagePattern = /!\[([^\]]*)\]\(([^']+)\s+'([^']+)'\)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
+	/**
+	 * @typedef {Object} CodeNode
+	 * @property {'code'} type
+	 * @property {string} [language]
+	 * @property {string} [text]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-    while ((match = imagePattern.exec(text)) !== null) {
-      // Add text before the image
-      if (match.index > lastIndex) {
-        const textBefore = text.slice(lastIndex, match.index).trim();
-        if (textBefore) {
-          parts.push({ type: 'text', content: textBefore });
-        }
-      }
+	/**
+	 * @typedef {Object} TableNode
+	 * @property {'table'} type
+	 * @property {LexicalNode[]} [children]
+	 */
 
-      // Add the image
-      parts.push({
-        type: 'image',
-        src: match[2].trim(),
-        alt: match[1].trim(),
-        caption: match[3].trim()
-      });
+	/**
+	 * @typedef {Object} TableRowNode
+	 * @property {'tablerow'} type
+	 * @property {LexicalNode[]} [children]
+	 */
 
-      lastIndex = match.index + match[0].length;
-    }
+	/**
+	 * @typedef {Object} TableCellNode
+	 * @property {'tablecell'} type
+	 * @property {boolean} [headerState]
+	 * @property {number} [colspan]
+	 * @property {number} [rowspan]
+	 * @property {LexicalNode[]} [children]
+	 */
 
-    // Add remaining text
-    if (lastIndex < text.length) {
-      const remainingText = text.slice(lastIndex).trim();
-      if (remainingText) {
-        parts.push({ type: 'text', content: remainingText });
-      }
-    }
+	/**
+	 * @typedef {Object} HorizontalRuleNode
+	 * @property {'horizontalrule'} type
+	 */
 
-    return parts;
-  }
+	/**
+	 * @typedef {Object} LineBreakNode
+	 * @property {'linebreak'} type
+	 */
 
-  // Render paragraph node
-  function renderParagraphNode(node) {
-    let innerHTML = '';
-    
-    if (node.children) {
-      // Check if any child contains markdown images
-      const processedChildren = [];
-      
-      node.children.forEach(child => {
-        if (child.type === 'text' && child.text) {
-          const parts = parseMarkdownImages(child.text);
-          
-          if (parts.length > 1 || (parts.length === 1 && parts[0].type === 'image')) {
-            // Found markdown images, process them
-            parts.forEach(part => {
-              if (part.type === 'image') {
-                processedChildren.push({
-                  type: 'image',
-                  src: part.src,
-                  alt: part.alt,
-                  caption: part.caption
-                });
-              } else {
-                processedChildren.push({
-                  type: 'text',
-                  text: part.content,
-                  format: child.format || 0
-                });
-              }
-            });
-          } else {
-            // No markdown images, keep original
-            processedChildren.push(child);
-          }
-        } else {
-          processedChildren.push(child);
-        }
-      });
-      
-      innerHTML = processedChildren.map(child => renderNode(child)).join('');
-    }
-    
-    return `<p style="${node.format ? 'text-align: ' + node.format + ';' : ''}">${innerHTML}</p>`;
-  }
+	/**
+	 * @typedef {TextNode|ImageNode|UploadNode|LinkNode|ParagraphNode|HeadingNode|ListNode|ListItemNode|QuoteNode|CodeNode|TableNode|TableRowNode|TableCellNode|HorizontalRuleNode|LineBreakNode} LexicalNode
+	 */
 
-  // Render quote node
-  function renderQuoteNode(node) {
-    let innerHTML = '';
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    return `<blockquote>${innerHTML}</blockquote>`;
-  }
+	/**
+	 * @typedef {Object} EditorState
+	 * @property {Object} root
+	 * @property {LexicalNode[]} root.children
+	 */
 
-  // Render code block node
-  function renderCodeNode(node) {
-    const language = node.language || '';
-    const code = node.children ? 
-      node.children.map(child => child.text || '').join('') : 
-      (node.text || '');
-    
-    return `<pre><code class="language-${language}">${code}</code></pre>`;
-  }
+	/** @type {{ data: EditorState }} */
+	let { data } = $props();
 
-  // Render image node
-  function renderImageNode(node) {
-    const src = node.src || '';
-    const alt = node.altText || node.alt || '';
-    const width = node.width ? `width="${node.width}"` : '';
-    const height = node.height ? `height="${node.height}"` : '';
-    const caption = node.caption || '';
-    
-    let imageHtml = `<img src="${src}" alt="${alt}" ${width} ${height} />`;
-    
-    if (caption) {
-      imageHtml = `<figure>${imageHtml}<figcaption>${caption}</figcaption></figure>`;
-    }
-    
-    return imageHtml;
-  }
+	// Text format constants
+	const TEXT_TYPE_TO_FORMAT = {
+		bold: 1,
+		italic: 2,
+		strikethrough: 4,
+		underline: 8,
+		code: 16,
+		subscript: 32,
+		superscript: 64,
+		highlight: 128
+	};
 
-  // Render upload node
-  function renderUploadNode(node) {
-    const src = node.value.url || '';
-    const alt = node?.value?.alt;
-    const width = node?.value?.width ? `width="${node?.value?.width}"` : '';
-    const caption = node.value.alt || '';
+	/**
+	 * Check if text has specific formatting
+	 * @param {number} format - Format bitmask
+	 * @param {keyof typeof TEXT_TYPE_TO_FORMAT} type - Format type
+	 * @returns {boolean}
+	 */
+	function hasFormat(format, type) {
+		return (format & TEXT_TYPE_TO_FORMAT[type]) !== 0;
+	}
 
-    let imageHtml = `<img src="${src}" alt="${alt}" ${width} />`;
+	/**
+	 * Get text formatting information
+	 * @param {TextNode} node - Text node
+	 * @returns {{ text: string, formats: Record<string, boolean> }}
+	 */
+	function getTextFormatting(node) {
+		const text = node.text || '';
 
-    if (caption) {
-      imageHtml = `<figure>${imageHtml}<figcaption>${caption}</figcaption></figure>`;
-    }
+		if (!node.format) {
+			return { text, formats: {} };
+		}
 
-    return imageHtml
-  }
+		return {
+			text,
+			formats: {
+				bold: hasFormat(node.format, 'bold'),
+				italic: hasFormat(node.format, 'italic'),
+				strikethrough: hasFormat(node.format, 'strikethrough'),
+				underline: hasFormat(node.format, 'underline'),
+				code: hasFormat(node.format, 'code'),
+				subscript: hasFormat(node.format, 'subscript'),
+				superscript: hasFormat(node.format, 'superscript'),
+				highlight: hasFormat(node.format, 'highlight')
+			}
+		};
+	}
 
-  // Render table node
-  function renderTableNode(node) {
-    let innerHTML = '';
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    return `<table>${innerHTML}</table>`;
-  }
+	/**
+	 * Process node and its children recursively
+	 * @param {LexicalNode} node - Node to process
+	 * @returns {LexicalNode & { processedChildren: LexicalNode[] } | null}
+	 */
+	function processNode(node) {
+		if (!node || !node.type) return null;
 
-  // Render table row node
-  function renderTableRowNode(node) {
-    let innerHTML = '';
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    return `<tr>${innerHTML}</tr>`;
-  }
+		return {
+			...node,
+			processedChildren: node.children
+				? node.children.map((child) => processNode(child)).filter(Boolean)
+				: []
+		};
+	}
 
-  // Render table cell node
-  function renderTableCellNode(node) {
-    const tag = node.headerState ? 'th' : 'td';
-    const colspan = node.colspan > 1 ? `colspan="${node.colspan}"` : '';
-    const rowspan = node.rowspan > 1 ? `rowspan="${node.rowspan}"` : '';
-    
-    let innerHTML = '';
-    if (node.children) {
-      innerHTML = node.children.map(child => renderNode(child)).join('');
-    }
-    
-    return `<${tag} ${colspan} ${rowspan}>${innerHTML}</${tag}>`;
-  }
-
-  // Render horizontal rule
-  function renderHorizontalRuleNode() {
-    return '<hr />';
-  }
-
-  // Render line break
-  function renderLineBreakNode() {
-    return '<br />';
-  }
-
-  // Main render function for any node type
-  function renderNode(node) {
-    if (!node || !node.type) return '';
-
-    switch (node.type) {
-      case 'text':
-        return renderTextNode(node);
-      case 'link':
-      case 'autolink':
-        return renderLinkNode(node);
-      case 'paragraph':
-        return renderParagraphNode(node);
-      case 'heading':
-        return renderHeadingNode(node);
-      case 'quote':
-        return renderQuoteNode(node);
-      case 'code':
-        return renderCodeNode(node);
-      case 'image':
-        return renderImageNode(node);
-      case 'upload':
-        return renderUploadNode(node);
-      case 'list':
-        return renderListNode(node);
-      case 'listitem':
-        return renderListItemNode(node);
-      case 'table':
-        return renderTableNode(node);
-      case 'tablerow':
-        return renderTableRowNode(node);
-      case 'tablecell':
-        return renderTableCellNode(node);
-      case 'horizontalrule':
-        return renderHorizontalRuleNode();
-      case 'linebreak':
-        return renderLineBreakNode();
-      default:
-        // Handle unknown node types by rendering children if they exist
-        if (node.children) {
-          return node.children.map(child => renderNode(child)).join('');
-        }
-        return '';
-    }
-  }
-
-  // Render the entire editor state
-  function renderEditorState(state) {
-    if (!state || !state.root || !state.root.children) {
-      return '';
-    }
-    
-    return state.root.children.map(child => renderNode(child)).join('');
-  }
-
-  // Computed HTML content
-  let htmlContent = $derived(renderEditorState(data
-
-  ));
+	// Process the entire editor state
+	let processedData = $derived(
+		data && data.root && data.root.children
+			? data.root.children.map((child) => processNode(child)).filter(Boolean)
+			: []
+	);
 </script>
 
 <div>
-  {@html htmlContent}
+	{#each processedData as node}
+		<NodeRenderer {node} />
+	{/each}
 </div>
 
 <style lang="postcss">
-  div :global(ul.check-list) {
-    list-style: none;
-    padding-left:0;
-    margin-left:0;
-  }
+	div :global(ul.check-list) {
+		list-style: none;
+		padding-left: 0;
+		margin-left: 0;
+	}
 
-  :global(p) {
-    line-height: 1.6;
-    margin-block-end: 1rem;
-  }
+	:global(p) {
+		line-height: 1.6;
+		margin-block-end: 1rem;
+	}
 </style>

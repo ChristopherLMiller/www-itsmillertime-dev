@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { config } from 'dotenv';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
@@ -119,4 +120,8 @@ export class PayloadApiClient {
 		throw error(500, `Failed to fetch data from ${endpoint}`);
 	}
 }
-export const payloadClient = new PayloadApiClient('https://cms.itsmillertime.dev/api');
+
+config();
+
+export const payloadClient = new PayloadApiClient(process.env.PUBLIC_PAYLOAD_API_ENDPOINT);
+//export const payloadClient = new PayloadApiClient('http://localhost:3000/api');

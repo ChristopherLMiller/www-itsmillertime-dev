@@ -1,77 +1,76 @@
 :root {
-  color-scheme: light dark;
+	color-scheme: light dark;
 
-  /* Define our color pallete */
-  --color-red: oklch(0.48 0.16 30);
-  --color-gold: oklch(0.65 0.12 97.46);
-  --color-grey: oklch(0.51 0 0);
-  --color-white: oklch(0.92 0 0);
+	/* Define our color pallete */
+	--color-red: oklch(0.48 0.16 30);
+	--color-gold: oklch(0.65 0.12 97.46);
+	--color-grey: oklch(0.51 0 0);
+	--color-white: oklch(0.92 0 0);
 
-  /* Shades of white */
-  --color-white-lightest: hsl(from var(--color-white) h s calc(l + 25) / 1);
-  --color-white-lighter: hsl(from var(--color-white) h s calc(l + 15) / 1);
-  --color-white-darker: hsl(from var(--color-white) h s calc(l - 5) / 1);
-  --color-white-darkest: hsl(from var(--color-white) h s calc(l - 25) / 1);
+	/* Shades of white */
+	--color-white-lightest: hsl(from var(--color-white) h s calc(l + 25) / 1);
+	--color-white-lighter: hsl(from var(--color-white) h s calc(l + 15) / 1);
+	--color-white-darker: hsl(from var(--color-white) h s calc(l - 5) / 1);
+	--color-white-darkest: hsl(from var(--color-white) h s calc(l - 25) / 1);
 
-  /* Theme default */
-  --color-primary: var(--color-red);
-  --color-primary-lightest: hsl(from var(--color-primary) h s calc(l + 25) / 1);
-  --color-primary-lighter: hsl(from var(--color-primary) h s calc(l + 15) / 1);
-  --color-primary-darker: hsl(from var(--color-primary) h s calc(l - 15) / 1);
-  --color-primary-darkest: hsl(from var(--color-primary) h s calc(l - 25) / 1);
-  --color-secondary: var(--color-gold);
-  --color-secondary-lightest: hsl(from var(--color-secondary) h s calc(l + 25) / 1);
-  --color-secondary-lighter: hsl(from var(--color-secondary) h s calc(l + 15) / 1);
-  --color-secondary-darker: hsl(from var(--color-secondary) h s calc(l - 15) / 1);
-  --color-secondary-darkest: hsl(from var(--color-gold) h s calc(l - 25) / 1);
-  --color-tertiary: var(--color-grey);
-  --color-tertiary-lightest: hsl(from var(--color-tertiary) h s calc(l + 35) / 1);
-  --color-tertiary-lighter: hsl(from var(--color-tertiary) h s calc(l + 25) / 1);
-  --color-tertiary-darker: hsl(from var(--color-tertiary) h s calc(l - 25) / 1);
-  --color-tertiary-darkest: hsl(from var(--color-tertiary) h s calc(l - 35) / 1);
+	/* Theme default */
+	--color-primary: var(--color-red);
+	--color-primary-lightest: hsl(from var(--color-primary) h s calc(l + 25) / 1);
+	--color-primary-lighter: hsl(from var(--color-primary) h s calc(l + 15) / 1);
+	--color-primary-darker: hsl(from var(--color-primary) h s calc(l - 15) / 1);
+	--color-primary-darkest: hsl(from var(--color-primary) h s calc(l - 25) / 1);
+	--color-secondary: var(--color-gold);
+	--color-secondary-lightest: hsl(from var(--color-secondary) h s calc(l + 25) / 1);
+	--color-secondary-lighter: hsl(from var(--color-secondary) h s calc(l + 15) / 1);
+	--color-secondary-darker: hsl(from var(--color-secondary) h s calc(l - 15) / 1);
+	--color-secondary-darkest: hsl(from var(--color-gold) h s calc(l - 25) / 1);
+	--color-tertiary: var(--color-grey);
+	--color-tertiary-lightest: hsl(from var(--color-tertiary) h s calc(l + 35) / 1);
+	--color-tertiary-lighter: hsl(from var(--color-tertiary) h s calc(l + 25) / 1);
+	--color-tertiary-darker: hsl(from var(--color-tertiary) h s calc(l - 25) / 1);
+	--color-tertiary-darkest: hsl(from var(--color-tertiary) h s calc(l - 35) / 1);
 
-  /* Font sizes */
-  --fs-xs: clamp(0.75rem, 0.894118vi + 0.53rem, 1.13rem);
-  --fs-base: clamp(1rem, 1.176471vi + 0.71rem, 1.5rem);
-  --fs-s: clamp(1.33rem, 1.576471vi + 0.94rem, 2rem);
-  --fs-m: clamp(1.78rem, 2.094118vi + 1.26rem, 2.67rem);
-  --fs-l: clamp(2.37rem, 2.8vi + 1.67rem, 3.56rem);
-  --fs-xl: clamp(3.16rem, 3.717647vi + 2.23rem, 4.74rem);
-  --fs-xxl: clamp(4.21rem, 4.964706vi + 2.97rem, 6.32rem);
-  --fs-xxxl: clamp(5.62rem, 6.611765vi + 3.97rem, 8.43rem);
-  
-  /* Line heights */
-  --line-height: calc(2px + 2ex + 2px);
+	/* Font sizes */
+	--fs-xs: clamp(0.75rem, 0.894118vi + 0.53rem, 1.13rem);
+	--fs-base: clamp(1rem, 1.176471vi + 0.71rem, 1.5rem);
+	--fs-s: clamp(1.33rem, 1.576471vi + 0.94rem, 2rem);
+	--fs-m: clamp(1.78rem, 2.094118vi + 1.26rem, 2.67rem);
+	--fs-l: clamp(2.37rem, 2.8vi + 1.67rem, 3.56rem);
+	--fs-xl: clamp(3.16rem, 3.717647vi + 2.23rem, 4.74rem);
+	--fs-xxl: clamp(4.21rem, 4.964706vi + 2.97rem, 6.32rem);
+	--fs-xxxl: clamp(5.62rem, 6.611765vi + 3.97rem, 8.43rem);
 
-  /* Backgrounds */
-  --background-dark: url('https://cdn.itsmillertime.dev/6/background_4f790846f8.jpg');
-  --background-light: url('https://cdn.itsmillertime.dev/6/background_light_ca60781db4.jpg');
-  --linen-paper: url('https://cdn.itsmillertime.dev/6/linen_d4bb0d3b29.png');
+	/* Line heights */
+	--line-height: calc(2px + 2ex + 2px);
 
-  /* Box Shadows */
-  --box-shadow-elev-0: 0px 0px 0px rgba(0,0,0,0), 0px 0px 0px rgba(0,0,0,0);
-  --box-shadow-elev-1: 0px 0px 22px rgba(0,0,0,0.4), 0px 0px 4px rgba(0,0,0,0.25);
-  --box-shadow-inset: inset 0 0 0 var(--color-white-lightest);
-  --box-shadow-inset-0: inset 0 0px 0 var(--color-primary-darker);
-  --box-shadow-inset-1: inset 0 -2px 0 var(--color-primary-darker);
-  --box-shadow-inset-2: inset 0 -6px 0 var(--color-primary-darker);
-  --box-shadow-inset-3: inset 0 -10px 0 var(--color-primary-darker);
+	/* Backgrounds */
+	--background-dark: url('https://cms.itsmillertime.dev/api/media/file/background.avif');
+	--background-light: url('https://cms.itsmillertime.dev/api/media/file/background_light.avif');
+	--linen-paper: url('https://cms.itsmillertime.dev/api/media/file/linen.avif');
 
-  /* Fonts */
-  --font-special-elite: "Special Elite", serif;
-  --font-permanent-marker: "Permanent Marker", serif;
-  --font-oswald: "Oswald", serif;
-  --font-source-code-pro: "Source Code Pro", serif;
-  --font-roboto: "Roboto", serif;
-  --font-libre-baskerville: "Libre Baskerville", serif;
+	/* Box Shadows */
+	--box-shadow-elev-0: 0px 0px 0px rgba(0, 0, 0, 0), 0px 0px 0px rgba(0, 0, 0, 0);
+	--box-shadow-elev-1: 0px 0px 22px rgba(0, 0, 0, 0.4), 0px 0px 4px rgba(0, 0, 0, 0.25);
+	--box-shadow-inset: inset 0 0 0 var(--color-white-lightest);
+	--box-shadow-inset-0: inset 0 0px 0 var(--color-primary-darker);
+	--box-shadow-inset-1: inset 0 -2px 0 var(--color-primary-darker);
+	--box-shadow-inset-2: inset 0 -6px 0 var(--color-primary-darker);
+	--box-shadow-inset-3: inset 0 -10px 0 var(--color-primary-darker);
 
-  /* App Constraints */
-  --top-bar-height: 3rem;
-  --side-margins: 2rem;
+	/* Fonts */
+	--font-special-elite: 'Special Elite', serif;
+	--font-permanent-marker: 'Permanent Marker', serif;
+	--font-oswald: 'Oswald', serif;
+	--font-source-code-pro: 'Source Code Pro', serif;
+	--font-roboto: 'Roboto', serif;
 
-  /* widths */
-  --width-small: 320px;
+	/* App Constraints */
+	--top-bar-height: 3rem;
+	--side-margins: 2rem;
 
-  /* borders */
-  --border-width: 5px;
+	/* widths */
+	--width-small: 320px;
+
+	/* borders */
+	--border-width: 5px;
 }
