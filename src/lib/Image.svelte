@@ -42,6 +42,9 @@
 			const heightDiff = img.height && Math.abs(img.height - targetHeight);
 			const score = widthDiff && heightDiff ? widthDiff + heightDiff : 9999;
 
+			// Update the image URL TODO: fix this
+			const filename = img.url?.split('/').pop();
+			img.url = `https://pub-19ff55b8f4194790aa694b0fc00770a9.r2.dev/${filename}`;
 			return { ...img, score };
 		});
 
@@ -50,7 +53,9 @@
 	}
 
 	// Function to load the selected image
-	async function loadImage(imageSrc) {
+	async function loadImage(imageSrc: string) {
+		const filename = imageSrc.split('/').pop();
+
 		return new Promise((resolve, reject) => {
 			const img = new Image();
 			img.onload = () => resolve(img);
