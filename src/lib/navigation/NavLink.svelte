@@ -5,10 +5,7 @@
 
 <a href={navItem.link} class={`${navItem.link === page.url.pathname ? 'active' : ''}`}>
 	{#if navItem.icon}
-		<img
-			src={`https://pub-19ff55b8f4194790aa694b0fc00770a9.r2.dev/${navItem.icon.url.split('/').pop()}`}
-			alt={navItem.title}
-		/>
+		<img src={navItem.icon.url} alt={navItem.title} />
 	{/if}
 	{navItem.title}
 </a>
