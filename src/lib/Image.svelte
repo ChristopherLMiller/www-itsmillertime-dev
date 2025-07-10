@@ -44,7 +44,7 @@
 
 			// Update the image URL TODO: fix this
 			const filename = img.url?.split('/').pop();
-			img.url = `https://pub-19ff55b8f4194790aa694b0fc00770a9.r2.dev/${filename}`;
+			//img.url = `https://pub-19ff55b8f4194790aa694b0fc00770a9.r2.dev/${filename}`;
 			return { ...img, score };
 		});
 
@@ -159,7 +159,6 @@
 <style>
 	.image-container {
 		display: block;
-		min-height: 200px;
 		background-color: #f0f0f0;
 
 		&.border {
