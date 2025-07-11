@@ -44,6 +44,8 @@
 			<Image
 				transitionName={featuredImageTransitionName || 'newspaper-featured-image'}
 				image={featuredImage}
+				hasLightbox
+				hasBorder
 			/>
 		</div>
 	{/if}
@@ -68,7 +70,7 @@
 <style lang="postcss">
 	.heading {
 		font-size: var(--fs-l);
-		font-family: var(--font-libre-baskerville);
+		font-family: Garamond, serif;
 		font-weight: 300;
 		text-align: center;
 		color: var(--color-primary);

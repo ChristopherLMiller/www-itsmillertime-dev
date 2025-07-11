@@ -1,5 +1,6 @@
 <!-- ImageWithBlurhash.svelte -->
 <script lang="ts">
+	import { fade } from 'svelte/transition';
 	import type { Media } from './types/payload-types';
 
 	// Props
@@ -7,6 +8,7 @@
 		image,
 		transitionName,
 		hasBorder = false,
+		hasLightbox = false,
 		containerWidth = 0,
 		containerHeight = 0,
 		className = '',
@@ -15,6 +17,7 @@
 		image: Media;
 		transitionName?: string;
 		hasBorder?: boolean;
+		hasLightbox?: boolean;
 		containerWidth?: number;
 		containerHeight?: number;
 		className?: string;
@@ -25,9 +28,9 @@
 	let isLoaded = $state(false);
 	let selectedImage: unknown = $state(undefined);
 	let imgElement: HTMLImageElement | undefined | null = $state(null);
+	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
 	let containerElement: HTMLDivElement | undefined = $state(undefined);
 	let currentImageSrc: string | undefined | null = $state('');
-
 	const aspectRatio = $derived((image.width && image.height && image?.width / image.height) || 1);
 
 	// Function to select the best image based on container size
@@ -38,7 +41,6 @@
 			const widthDiff = img.width && Math.abs(img.width - targetWidth);
 			const heightDiff = img.height && Math.abs(img.height - targetHeight);
 			const score = widthDiff && heightDiff ? widthDiff + heightDiff : 9999;
-
 			return { ...img, score };
 		});
 
@@ -47,7 +49,9 @@
 	}
 
 	// Function to load the selected image
-	async function loadImage(imageSrc) {
+	async function loadImage(imageSrc: string) {
+		const filename = imageSrc.split('/').pop();
+
 		return new Promise((resolve, reject) => {
 			const img = new Image();
 			img.onload = () => resolve(img);
@@ -65,7 +69,6 @@
 
 		// Select appropriate image
 		const bestImage = selectBestImage(width, height);
-		console.log(bestImage);
 
 		// Only update if we have a new image source
 		if (bestImage && bestImage.url !== currentImageSrc) {
@@ -117,6 +120,8 @@
 
 	<!-- Actual image (shown when loaded) -->
 	{#if selectedImage}
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<img
 			bind:this={imgElement}
 			src={selectedImage.url}
@@ -135,18 +140,46 @@
 			onload={() => {
 				isLoaded = true;
 			}}
+			onclick={() => hasLightbox && lightboxDialog && lightboxDialog.showModal()}
 		/>
 	{/if}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 </div>
+<dialog bind:this={lightboxDialog} class="lightbox" transition:fade>
+	<div class="contents">
+		<img src={image.url} alt={image.alt} class="lightbox-image" />
+	</div>
+</dialog>
 
 <style>
 	.image-container {
 		display: block;
-		min-height: 200px;
 		background-color: #f0f0f0;
 
 		&.border {
 			border: 5px solid var(--color-primary-darker);
+		}
+	}
+
+	dialog {
+		&.lightbox {
+			border: 0;
+			width: 100%;
+			height: 100%;
+			padding: 5rem;
+			margin: 0;
+			max-width: 100vw;
+			max-height: 100vh;
+			background: rgba(0, 0, 0, 0.8);
+		}
+
+		.contents {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			width: 100%;
+			height: 100%;
 		}
 	}
 </style>
