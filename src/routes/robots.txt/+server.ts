@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/public';
+import { PUBLIC_URL } from '$env/static/public';
 import type { RequestHandler } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async function GET({ setHeaders }) {
@@ -7,7 +7,7 @@ export const GET: RequestHandler = async function GET({ setHeaders }) {
   Disallow: /admin
   Disallow: /api
 
-  Sitemap: https://${env.PUBLIC_URL}/sitemap.xml
+  Sitemap: ${PUBLIC_URL}/sitemap.xml
 `;
 
 	setHeaders({

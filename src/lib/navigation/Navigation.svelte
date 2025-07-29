@@ -21,7 +21,7 @@
 		grid-area: nav;
 		position: sticky;
 		top: var(--top-bar-height);
-		z-index: 1;
+		z-index: 999;
 	}
 
 	.nav-contents {

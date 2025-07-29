@@ -1,9 +1,9 @@
 import { env } from '$env/dynamic/private';
-import { UpstashCacheManager } from '../../utilities/UpstashCacheManager';
+import { UpstashCache } from './upstashCache';
 
-export const cacheManager = new UpstashCacheManager({
+export const cacheManager = new UpstashCache({
 	url: env.UPSTASH_REDIS_REST_URL!,
 	token: env.UPSTASH_REDIS_REST_TOKEN!,
-	prefix: 'strapi:',
+	prefix: 'payload:',
 	ttl: 3600
 });
