@@ -22,7 +22,7 @@
 	});
 </script>
 
-<div class={`model-card ${model.model_meta.status.toLowerCase()}`}>
+<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
 	<div class="contents">
 		<p class="head">
 			{model.model_meta.kit.manufacturer.title} • {model.model_meta.kit.kit_number}
@@ -32,7 +32,7 @@
 			<span class={`status ${model.model_meta.status.toLowerCase()}`}
 				>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
 			>
-			<p class="name">{model.model_meta.kit.title}</p>
+			<a href={`/models/${model.slug}`} class="name">{model.model_meta.kit.title}</a>
 		</div>
 		<div class="details">
 			<div class="stats">
@@ -60,14 +60,16 @@
 				{#if model.model_meta.tags?.length}
 					<div class="tags">
 						{#each model.model_meta.tags as tag}
-							<a href="#">{tag.title}</a>
+							{#if typeof tag === 'object' && tag !== null && 'title' in tag}
+								<a href={`/models?tags=${tag.slug}`}>{tag.title}</a>
+							{/if}
 						{/each}
 					</div>
 				{/if}
 			</div>
 		</div>
 	</div>
-</div>
+</article>
 
 <style lang="postcss">
 	.model-card {
@@ -77,12 +79,19 @@
 		border-radius: 10px;
 		color: var(--color-primary);
 		height: 490px;
+		transition: all 0.2s ease-in-out;
 
 		&.in_progress {
 			background: linear-gradient(45deg, var(--color-secondary-lighter), white);
 		}
 		&.not_started {
 			background: linear-gradient(45deg, var(--color-tertiary), white);
+		}
+
+		&:hover {
+			transform: translateZ(20px) scale(1.05);
+			z-index: 1;
+			box-shadow: var(--box-shadow-elev-2);
 		}
 	}
 	.contents {
@@ -97,7 +106,7 @@
 	.head {
 		text-align: center;
 		padding-block-start: 5px;
-		font-size: var(--fs-xs);
+		font-size: 18px;
 	}
 
 	.card-image {
@@ -122,11 +131,18 @@
 				background: var(--color-tertiary);
 			}
 		}
+	}
 
-		p {
-			text-align: center;
-			font-size: calc(var(--fs-base) * 0.8);
-		}
+	.name {
+		display: block;
+		text-align: center;
+		font-size: 20px;
+		margin-block-end: 0;
+		margin-block-end: 0;
+		line-height: 1.25em;
+		padding-block-start: 0.25em;
+		text-decoration: none;
+		color: var(--color-primary);
 	}
 
 	.details {

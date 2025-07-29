@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Zod schema for supported timezones in IANA format
+ * Zod schema for SupportedTimezones
+ * Represents all supported timezones in IANA format
  */
 export const SupportedTimezonesSchema = z.enum([
 	'Pacific/Midway',
@@ -54,7 +55,8 @@ export const SupportedTimezonesSchema = z.enum([
 ]);
 
 /**
- * Zod schema for user authentication operations
+ * Zod schema for UserAuthOperations
+ * Defines authentication operations for users
  */
 export const UserAuthOperationsSchema = z.object({
 	forgotPassword: z.object({
@@ -76,7 +78,8 @@ export const UserAuthOperationsSchema = z.object({
 });
 
 /**
- * Zod schema for gallery tags
+ * Zod schema for GalleryTag
+ * Represents tags used for more focused classification of gallery images
  */
 export const GalleryTagSchema = z.object({
 	id: z.number(),
@@ -88,7 +91,8 @@ export const GalleryTagSchema = z.object({
 });
 
 /**
- * Zod schema for gallery categories
+ * Zod schema for GalleryCategory
+ * Represents categories used as primary method of filtering galleries
  */
 export const GalleryCategorySchema = z.object({
 	id: z.number(),
@@ -100,7 +104,8 @@ export const GalleryCategorySchema = z.object({
 });
 
 /**
- * Zod schema for roles
+ * Zod schema for Role
+ * Represents user roles and permissions
  */
 export const RoleSchema = z.object({
 	id: z.number(),
@@ -116,7 +121,8 @@ export const RoleSchema = z.object({
 });
 
 /**
- * Zod schema for users
+ * Zod schema for User
+ * Represents user accounts
  */
 export const UserSchema = z.object({
 	id: z.number(),
@@ -146,111 +152,33 @@ export const UserSchema = z.object({
 });
 
 /**
- * Zod schema for rich text content
- */
-export const RichTextContentSchema = z
-	.object({
-		root: z.object({
-			type: z.string(),
-			children: z.array(
-				z
-					.object({
-						type: z.string(),
-						version: z.number()
-					})
-					.catchall(z.unknown())
-			),
-			direction: z.enum(['ltr', 'rtl']).nullable(),
-			format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
-			indent: z.number(),
-			version: z.number()
-		})
-	})
-	.catchall(z.unknown());
-
-/**
- * Zod schema for media sizes
- */
-export const MediaSizesSchema = z.object({
-	thumbnail: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional(),
-	square: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional(),
-	small: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional(),
-	medium: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional(),
-	large: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional(),
-	xlarge: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional(),
-	og: z
-		.object({
-			url: z.string().nullable().optional(),
-			width: z.number().nullable().optional(),
-			height: z.number().nullable().optional(),
-			mimeType: z.string().nullable().optional(),
-			filesize: z.number().nullable().optional(),
-			filename: z.string().nullable().optional()
-		})
-		.optional()
-});
-
-/**
- * Zod schema for media items
+ * Zod schema for Media
+ * Represents media items, images and otherwise
  */
 export const MediaSchema = z.object({
 	id: z.number(),
 	alt: z.string(),
-	caption: RichTextContentSchema.nullable().optional(),
+	caption: z
+		.object({
+			root: z.object({
+				type: z.string(),
+				children: z.array(
+					z
+						.object({
+							type: z.string(),
+							version: z.number()
+						})
+						.catchall(z.unknown())
+				),
+				direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+				format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+				indent: z.number(),
+				version: z.number()
+			})
+		})
+		.catchall(z.unknown())
+		.nullable()
+		.optional(),
 	'gallery-images': z
 		.object({
 			docs: z
@@ -285,7 +213,7 @@ export const MediaSchema = z.object({
 		.optional(),
 	blurhash: z.string().nullable().optional(),
 	folder: z
-		.union([z.number().nullable(), z.lazy(() => FolderInterfaceSchema).nullable()])
+		.union([z.union([z.number(), z.null()]), z.lazy(() => FolderInterfaceSchema)])
 		.optional(),
 	updatedAt: z.string(),
 	createdAt: z.string(),
@@ -298,23 +226,85 @@ export const MediaSchema = z.object({
 	height: z.number().nullable().optional(),
 	focalX: z.number().nullable().optional(),
 	focalY: z.number().nullable().optional(),
-	sizes: MediaSizesSchema.optional()
+	sizes: z
+		.object({
+			thumbnail: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional(),
+			square: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional(),
+			small: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional(),
+			medium: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional(),
+			large: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional(),
+			xlarge: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional(),
+			og: z
+				.object({
+					url: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					height: z.number().nullable().optional(),
+					mimeType: z.string().nullable().optional(),
+					filesize: z.number().nullable().optional(),
+					filename: z.string().nullable().optional()
+				})
+				.optional()
+		})
+		.optional()
 });
 
 /**
- * Zod schema for posts categories
- */
-export const PostsCategorySchema = z.object({
-	id: z.number(),
-	title: z.string(),
-	slug: z.string().nullable().optional(),
-	slugLock: z.boolean().nullable().optional(),
-	updatedAt: z.string(),
-	createdAt: z.string()
-});
-
-/**
- * Zod schema for posts tags
+ * Zod schema for PostsTag
+ * Represents blog tags used for more focused classification of blog posts
  */
 export const PostsTagSchema = z.object({
 	id: z.number(),
@@ -326,7 +316,21 @@ export const PostsTagSchema = z.object({
 });
 
 /**
- * Zod schema for blog posts
+ * Zod schema for PostsCategory
+ * Represents blog categories used for general classification of blog posts
+ */
+export const PostsCategorySchema = z.object({
+	id: z.number(),
+	title: z.string(),
+	slug: z.string().nullable().optional(),
+	slugLock: z.boolean().nullable().optional(),
+	updatedAt: z.string(),
+	createdAt: z.string()
+});
+
+/**
+ * Zod schema for Post
+ * Represents blog posts
  */
 export const PostSchema = z.object({
 	id: z.number(),
@@ -334,23 +338,39 @@ export const PostSchema = z.object({
 	slug: z.string().nullable().optional(),
 	slugLock: z.boolean().nullable().optional(),
 	word_count: z.number().nullable().optional(),
-	category: z.union([z.number().nullable(), PostsCategorySchema.nullable()]).optional(),
-	tags: z
-		.array(z.union([z.number(), PostsTagSchema]))
-		.nullable()
+	category: z
+		.union([z.union([z.number(), z.null()]), z.lazy(() => PostsCategorySchema)])
 		.optional(),
-	relatedPosts: z
-		.array(z.union([z.number(), z.lazy(() => PostSchema)]))
-		.nullable()
-		.optional(),
+	tags: z.array(z.union([z.number(), z.lazy(() => PostsTagSchema)])).optional(),
+	relatedPosts: z.array(z.union([z.number(), z.lazy(() => PostSchema)])).optional(),
 	title: z.string(),
-	featuredImage: z.union([z.number().nullable(), MediaSchema.nullable()]).optional(),
-	content: RichTextContentSchema.nullable().optional(),
+	featuredImage: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional(),
+	content: z
+		.object({
+			root: z.object({
+				type: z.string(),
+				children: z.array(
+					z
+						.object({
+							type: z.string(),
+							version: z.number()
+						})
+						.catchall(z.unknown())
+				),
+				direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+				format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+				indent: z.number(),
+				version: z.number()
+			})
+		})
+		.catchall(z.unknown())
+		.nullable()
+		.optional(),
 	meta: z
 		.object({
 			title: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
-			image: z.union([z.number().nullable(), MediaSchema.nullable()]).optional()
+			image: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional()
 		})
 		.optional(),
 	updatedAt: z.string(),
@@ -359,33 +379,29 @@ export const PostSchema = z.object({
 });
 
 /**
- * Zod schema for gallery image settings
- */
-export const GalleryImageSettingsSchema = z.object({
-	slug: z.string().nullable().optional(),
-	slugLock: z.boolean().nullable().optional(),
-	isNsfw: z.boolean().nullable().optional(),
-	'gallery-tags': z
-		.array(z.union([z.number(), GalleryTagSchema]))
-		.nullable()
-		.optional(),
-	visibility: z.enum(['ALL', 'AUTHENTICATED', 'PRIVILEGED']),
-	allowedRoles: z
-		.array(z.union([z.number(), RoleSchema]))
-		.nullable()
-		.optional(),
-	allowedUsers: z
-		.array(z.union([z.number(), UserSchema]))
-		.nullable()
-		.optional()
-});
-
-/**
- * Zod schema for gallery images
+ * Zod schema for GalleryImage
+ * Represents gallery images
  */
 export const GalleryImageSchema = z.object({
 	id: z.number(),
-	settings: GalleryImageSettingsSchema,
+	settings: z.object({
+		slug: z.string().nullable().optional(),
+		slugLock: z.boolean().nullable().optional(),
+		isNsfw: z.boolean().nullable().optional(),
+		'gallery-tags': z
+			.array(z.union([z.number(), z.lazy(() => GalleryTagSchema)]))
+			.nullable()
+			.optional(),
+		visibility: z.enum(['ALL', 'AUTHENTICATED', 'PRIVILEGED']),
+		allowedRoles: z
+			.array(z.union([z.number(), z.lazy(() => RoleSchema)]))
+			.nullable()
+			.optional(),
+		allowedUsers: z
+			.array(z.union([z.number(), z.lazy(() => UserSchema)]))
+			.nullable()
+			.optional()
+	}),
 	selling: z
 		.object({
 			isSellable: z.boolean().nullable().optional()
@@ -402,8 +418,28 @@ export const GalleryImageSchema = z.object({
 		})
 		.optional(),
 	title: z.string(),
-	image: z.union([z.number(), MediaSchema]),
-	content: RichTextContentSchema.nullable().optional(),
+	image: z.union([z.number(), z.lazy(() => MediaSchema)]),
+	content: z
+		.object({
+			root: z.object({
+				type: z.string(),
+				children: z.array(
+					z
+						.object({
+							type: z.string(),
+							version: z.number()
+						})
+						.catchall(z.unknown())
+				),
+				direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+				format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+				indent: z.number(),
+				version: z.number()
+			})
+		})
+		.catchall(z.unknown())
+		.nullable()
+		.optional(),
 	albums: z
 		.array(z.union([z.number(), z.lazy(() => GalleryAlbumSchema)]))
 		.nullable()
@@ -412,7 +448,7 @@ export const GalleryImageSchema = z.object({
 		.object({
 			title: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
-			image: z.union([z.number().nullable(), MediaSchema.nullable()]).optional()
+			image: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional()
 		})
 		.optional(),
 	updatedAt: z.string(),
@@ -420,7 +456,8 @@ export const GalleryImageSchema = z.object({
 });
 
 /**
- * Zod schema for gallery albums
+ * Zod schema for GalleryAlbum
+ * Represents listing of all photo albums
  */
 export const GalleryAlbumSchema = z.object({
 	id: z.number(),
@@ -428,18 +465,20 @@ export const GalleryAlbumSchema = z.object({
 	slugLock: z.boolean().nullable().optional(),
 	settings: z.object({
 		isNsfw: z.boolean().nullable().optional(),
-		category: z.union([z.number().nullable(), GalleryCategorySchema]).optional(),
+		category: z
+			.union([z.union([z.number(), z.null()]), z.lazy(() => GalleryCategorySchema)])
+			.optional(),
 		tags: z
-			.array(z.union([z.number(), GalleryTagSchema]))
+			.array(z.union([z.number(), z.lazy(() => GalleryTagSchema)]))
 			.nullable()
 			.optional(),
 		visibility: z.enum(['ALL', 'AUTHENTICATED', 'PRIVILEGED']),
 		allowedRoles: z
-			.array(z.union([z.number(), RoleSchema]))
+			.array(z.union([z.number(), z.lazy(() => RoleSchema)]))
 			.nullable()
 			.optional(),
 		allowedUsers: z
-			.array(z.union([z.number(), UserSchema]))
+			.array(z.union([z.number(), z.lazy(() => UserSchema)]))
 			.nullable()
 			.optional()
 	}),
@@ -455,10 +494,30 @@ export const GalleryAlbumSchema = z.object({
 		})
 		.optional(),
 	title: z.string(),
-	content: RichTextContentSchema.nullable().optional(),
+	content: z
+		.object({
+			root: z.object({
+				type: z.string(),
+				children: z.array(
+					z
+						.object({
+							type: z.string(),
+							version: z.number()
+						})
+						.catchall(z.unknown())
+				),
+				direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+				format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+				indent: z.number(),
+				version: z.number()
+			})
+		})
+		.catchall(z.unknown())
+		.nullable()
+		.optional(),
 	images: z
 		.object({
-			docs: z.array(z.union([z.number(), GalleryImageSchema])).optional(),
+			docs: z.array(z.union([z.number(), z.lazy(() => GalleryImageSchema)])).optional(),
 			hasNextPage: z.boolean().optional(),
 			totalDocs: z.number().optional()
 		})
@@ -467,7 +526,7 @@ export const GalleryAlbumSchema = z.object({
 		.object({
 			title: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
-			image: z.union([z.number().nullable(), MediaSchema.nullable()]).optional()
+			image: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional()
 		})
 		.optional(),
 	updatedAt: z.string(),
@@ -475,7 +534,8 @@ export const GalleryAlbumSchema = z.object({
 });
 
 /**
- * Zod schema for map markers
+ * Zod schema for MapMarker
+ * Represents map markers used for plotting points of interest
  */
 export const MapMarkerSchema = z.object({
 	id: z.number(),
@@ -490,7 +550,7 @@ export const MapMarkerSchema = z.object({
 				album: z
 					.object({
 						relationTo: z.literal('gallery-albums'),
-						value: z.union([z.number(), GalleryAlbumSchema])
+						value: z.union([z.number(), z.lazy(() => GalleryAlbumSchema)])
 					})
 					.nullable()
 					.optional(),
@@ -505,7 +565,43 @@ export const MapMarkerSchema = z.object({
 });
 
 /**
- * Zod schema for pages
+ * Zod schema for FolderInterface
+ * Represents folder structure
+ */
+export const FolderInterfaceSchema = z.object({
+	id: z.number(),
+	name: z.string(),
+	folder: z
+		.union([z.union([z.number(), z.null()]), z.lazy(() => FolderInterfaceSchema)])
+		.optional(),
+	documentsAndFolders: z
+		.object({
+			docs: z
+				.array(
+					z.union([
+						z.object({
+							relationTo: z.literal('payload-folders').optional(),
+							value: z.union([z.number(), z.lazy(() => FolderInterfaceSchema)])
+						}),
+						z.object({
+							relationTo: z.literal('media').optional(),
+							value: z.union([z.number(), z.lazy(() => MediaSchema)])
+						})
+					])
+				)
+				.optional(),
+			hasNextPage: z.boolean().optional(),
+			totalDocs: z.number().optional()
+		})
+		.optional(),
+	folderType: z.array(z.literal('media')).nullable().optional(),
+	updatedAt: z.string(),
+	createdAt: z.string()
+});
+
+/**
+ * Zod schema for Page
+ * Represents singular dynamic pages of the front end
  */
 export const PageSchema = z.object({
 	id: z.number(),
@@ -514,13 +610,33 @@ export const PageSchema = z.object({
 	slugLock: z.boolean().nullable().optional(),
 	visibility: z.enum(['ALL', 'AUTHENTICATED', 'ANONYMOUS', 'PRIVILEGED']).nullable().optional(),
 	allowedRoles: z
-		.array(z.union([z.number(), RoleSchema]))
+		.array(z.union([z.number(), z.lazy(() => RoleSchema)]))
 		.nullable()
 		.optional(),
 	blocks: z
 		.array(
 			z.object({
-				block: RichTextContentSchema.nullable().optional(),
+				block: z
+					.object({
+						root: z.object({
+							type: z.string(),
+							children: z.array(
+								z
+									.object({
+										type: z.string(),
+										version: z.number()
+									})
+									.catchall(z.unknown())
+							),
+							direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+							format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+							indent: z.number(),
+							version: z.number()
+						})
+					})
+					.catchall(z.unknown())
+					.nullable()
+					.optional(),
 				id: z.string().nullable().optional()
 			})
 		)
@@ -530,7 +646,7 @@ export const PageSchema = z.object({
 		.object({
 			title: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
-			image: z.union([z.number().nullable(), MediaSchema.nullable()]).optional()
+			image: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional()
 		})
 		.optional(),
 	updatedAt: z.string(),
@@ -539,20 +655,41 @@ export const PageSchema = z.object({
 });
 
 /**
- * Zod schema for gardens
+ * Zod schema for Garden
+ * Represents other things that don't have a specific home
  */
 export const GardenSchema = z.object({
 	id: z.number(),
 	slug: z.string().nullable().optional(),
 	slugLock: z.boolean().nullable().optional(),
 	name: z.string(),
-	featuredImage: z.union([z.number().nullable(), MediaSchema.nullable()]).optional(),
-	content: RichTextContentSchema.nullable().optional(),
+	featuredImage: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional(),
+	content: z
+		.object({
+			root: z.object({
+				type: z.string(),
+				children: z.array(
+					z
+						.object({
+							type: z.string(),
+							version: z.number()
+						})
+						.catchall(z.unknown())
+				),
+				direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+				format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+				indent: z.number(),
+				version: z.number()
+			})
+		})
+		.catchall(z.unknown())
+		.nullable()
+		.optional(),
 	meta: z
 		.object({
 			title: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
-			image: z.union([z.number().nullable(), MediaSchema.nullable()]).optional()
+			image: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional()
 		})
 		.optional(),
 	updatedAt: z.string(),
@@ -560,7 +697,8 @@ export const GardenSchema = z.object({
 });
 
 /**
- * Zod schema for scales
+ * Zod schema for Scale
+ * Represents model kit scales
  */
 export const ScaleSchema = z.object({
 	id: z.number(),
@@ -572,7 +710,8 @@ export const ScaleSchema = z.object({
 });
 
 /**
- * Zod schema for manufacturers
+ * Zod schema for Manufacturer
+ * Represents model kit manufacturers
  */
 export const ManufacturerSchema = z.object({
 	id: z.number(),
@@ -584,7 +723,8 @@ export const ManufacturerSchema = z.object({
 });
 
 /**
- * Zod schema for models tags
+ * Zod schema for ModelsTag
+ * Represents tags used for more focused classification of models
  */
 export const ModelsTagSchema = z.object({
 	id: z.number(),
@@ -596,7 +736,8 @@ export const ModelsTagSchema = z.object({
 });
 
 /**
- * Zod schema for models
+ * Zod schema for Model
+ * Represents a built model, not to be confused with a kit
  */
 export const ModelSchema = z.object({
 	id: z.number(),
@@ -605,12 +746,12 @@ export const ModelSchema = z.object({
 	slugLock: z.boolean().nullable().optional(),
 	clockify_project: z.string().nullable().optional(),
 	model_meta: z.object({
-		featuredImage: z.union([z.number(), MediaSchema]),
+		featuredImage: z.union([z.number(), z.lazy(() => MediaSchema)]),
 		status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']),
 		completionDate: z.string().nullable().optional(),
 		kit: z.union([z.number(), z.lazy(() => KitSchema)]),
 		tags: z
-			.array(z.union([z.number(), ModelsTagSchema]))
+			.array(z.union([z.number(), z.lazy(() => ModelsTagSchema)]))
 			.nullable()
 			.optional(),
 		videos: z
@@ -627,7 +768,7 @@ export const ModelSchema = z.object({
 	relatedResources: z
 		.object({
 			relatedPosts: z
-				.array(z.union([z.number(), PostSchema]))
+				.array(z.union([z.number(), z.lazy(() => PostSchema)]))
 				.nullable()
 				.optional(),
 			relatedModels: z
@@ -640,21 +781,41 @@ export const ModelSchema = z.object({
 		.array(
 			z.object({
 				title: z.string(),
-				content: RichTextContentSchema.nullable().optional(),
+				content: z
+					.object({
+						root: z.object({
+							type: z.string(),
+							children: z.array(
+								z
+									.object({
+										type: z.string(),
+										version: z.number()
+									})
+									.catchall(z.unknown())
+							),
+							direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+							format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+							indent: z.number(),
+							version: z.number()
+						})
+					})
+					.catchall(z.unknown())
+					.nullable()
+					.optional(),
 				id: z.string().nullable().optional()
 			})
 		)
 		.nullable()
 		.optional(),
 	image: z
-		.array(z.union([z.number(), MediaSchema]))
+		.array(z.union([z.number(), z.lazy(() => MediaSchema)]))
 		.nullable()
 		.optional(),
 	meta: z
 		.object({
 			title: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
-			image: z.union([z.number().nullable(), MediaSchema.nullable()]).optional()
+			image: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional()
 		})
 		.optional(),
 	updatedAt: z.string(),
@@ -662,7 +823,8 @@ export const ModelSchema = z.object({
 });
 
 /**
- * Zod schema for kits
+ * Zod schema for Kit
+ * Represents model kits
  */
 export const KitSchema = z.object({
 	id: z.number(),
@@ -673,128 +835,169 @@ export const KitSchema = z.object({
 	scalemates: z.string().nullable().optional(),
 	models: z
 		.object({
-			docs: z.array(z.union([z.number(), ModelSchema])).optional(),
+			docs: z.array(z.union([z.number(), z.lazy(() => ModelSchema)])).optional(),
 			hasNextPage: z.boolean().optional(),
 			totalDocs: z.number().optional()
 		})
 		.optional(),
-	manufacturer: z.union([z.number(), ManufacturerSchema]),
-	scale: z.union([z.number(), ScaleSchema]),
-	boxart: z.union([z.number().nullable(), MediaSchema.nullable()]).optional(),
+	manufacturer: z.union([z.number(), z.lazy(() => ManufacturerSchema)]),
+	scale: z.union([z.number(), z.lazy(() => ScaleSchema)]),
+	boxart: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional(),
 	updatedAt: z.string(),
 	createdAt: z.string()
 });
 
 /**
- * Zod schema for form fields
- */
-export const FormFieldSchema = z.discriminatedUnion('blockType', [
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		defaultValue: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('checkbox')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('country')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('email')
-	}),
-	z.object({
-		message: RichTextContentSchema.nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('message')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		defaultValue: z.number().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('number')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		defaultValue: z.string().nullable().optional(),
-		placeholder: z.string().nullable().optional(),
-		options: z
-			.array(
-				z.object({
-					label: z.string(),
-					value: z.string(),
-					id: z.string().nullable().optional()
-				})
-			)
-			.nullable()
-			.optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('select')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('state')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		defaultValue: z.string().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('text')
-	}),
-	z.object({
-		name: z.string(),
-		label: z.string().nullable().optional(),
-		width: z.number().nullable().optional(),
-		defaultValue: z.string().nullable().optional(),
-		required: z.boolean().nullable().optional(),
-		id: z.string().nullable().optional(),
-		blockName: z.string().nullable().optional(),
-		blockType: z.literal('textarea')
-	})
-]);
-
-/**
- * Zod schema for forms
+ * Zod schema for Form
+ * Represents form configuration
  */
 export const FormSchema = z.object({
 	id: z.number(),
 	title: z.string(),
-	fields: z.array(FormFieldSchema).nullable().optional(),
+	fields: z
+		.array(
+			z.union([
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					defaultValue: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('checkbox')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('country')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('email')
+				}),
+				z.object({
+					message: z
+						.object({
+							root: z.object({
+								type: z.string(),
+								children: z.array(
+									z
+										.object({
+											type: z.string(),
+											version: z.number()
+										})
+										.catchall(z.unknown())
+								),
+								direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+								format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+								indent: z.number(),
+								version: z.number()
+							})
+						})
+						.catchall(z.unknown())
+						.nullable()
+						.optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('message')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					defaultValue: z.number().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('number')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					defaultValue: z.string().nullable().optional(),
+					placeholder: z.string().nullable().optional(),
+					options: z
+						.array(
+							z.object({
+								label: z.string(),
+								value: z.string(),
+								id: z.string().nullable().optional()
+							})
+						)
+						.nullable()
+						.optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('select')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('state')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					defaultValue: z.string().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('text')
+				}),
+				z.object({
+					name: z.string(),
+					label: z.string().nullable().optional(),
+					width: z.number().nullable().optional(),
+					defaultValue: z.string().nullable().optional(),
+					required: z.boolean().nullable().optional(),
+					id: z.string().nullable().optional(),
+					blockName: z.string().nullable().optional(),
+					blockType: z.literal('textarea')
+				})
+			])
+		)
+		.nullable()
+		.optional(),
 	submitButtonLabel: z.string().nullable().optional(),
 	confirmationType: z.enum(['message', 'redirect']).nullable().optional(),
-	confirmationMessage: RichTextContentSchema.nullable().optional(),
+	confirmationMessage: z
+		.object({
+			root: z.object({
+				type: z.string(),
+				children: z.array(
+					z
+						.object({
+							type: z.string(),
+							version: z.number()
+						})
+						.catchall(z.unknown())
+				),
+				direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+				format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+				indent: z.number(),
+				version: z.number()
+			})
+		})
+		.catchall(z.unknown())
+		.nullable()
+		.optional(),
 	redirect: z
 		.object({
 			url: z.string()
@@ -809,7 +1012,27 @@ export const FormSchema = z.object({
 				replyTo: z.string().nullable().optional(),
 				emailFrom: z.string().nullable().optional(),
 				subject: z.string(),
-				message: RichTextContentSchema.nullable().optional(),
+				message: z
+					.object({
+						root: z.object({
+							type: z.string(),
+							children: z.array(
+								z
+									.object({
+										type: z.string(),
+										version: z.number()
+									})
+									.catchall(z.unknown())
+							),
+							direction: z.union([z.enum(['ltr', 'rtl']), z.null()]),
+							format: z.enum(['left', 'start', 'center', 'right', 'end', 'justify', '']),
+							indent: z.number(),
+							version: z.number()
+						})
+					})
+					.catchall(z.unknown())
+					.nullable()
+					.optional(),
 				id: z.string().nullable().optional()
 			})
 		)
@@ -820,11 +1043,12 @@ export const FormSchema = z.object({
 });
 
 /**
- * Zod schema for form submissions
+ * Zod schema for FormSubmission
+ * Represents form submission data
  */
 export const FormSubmissionSchema = z.object({
 	id: z.number(),
-	form: z.union([z.number(), FormSchema]),
+	form: z.union([z.number(), z.lazy(() => FormSchema)]),
 	submissionData: z
 		.array(
 			z.object({
@@ -840,28 +1064,29 @@ export const FormSubmissionSchema = z.object({
 });
 
 /**
- * Zod schema for search results
+ * Zod schema for Search
+ * Represents automatically created search results
  */
 export const SearchSchema = z.object({
 	id: z.number(),
 	title: z.string().nullable().optional(),
 	priority: z.number().nullable().optional(),
-	doc: z.discriminatedUnion('relationTo', [
+	doc: z.union([
 		z.object({
 			relationTo: z.literal('posts'),
-			value: z.union([z.number(), PostSchema])
+			value: z.union([z.number(), z.lazy(() => PostSchema)])
 		}),
 		z.object({
 			relationTo: z.literal('pages'),
-			value: z.union([z.number(), PageSchema])
+			value: z.union([z.number(), z.lazy(() => PageSchema)])
 		}),
 		z.object({
 			relationTo: z.literal('models'),
-			value: z.union([z.number(), ModelSchema])
+			value: z.union([z.number(), z.lazy(() => ModelSchema)])
 		}),
 		z.object({
 			relationTo: z.literal('gardens'),
-			value: z.union([z.number(), GardenSchema])
+			value: z.union([z.number(), z.lazy(() => GardenSchema)])
 		})
 	]),
 	updatedAt: z.string(),
@@ -869,12 +1094,8 @@ export const SearchSchema = z.object({
 });
 
 /**
- * Zod schema for folders
- */
-export const FolderInterfaceSchema = z.object();
-
-/**
- * Zod schema for payload jobs
+ * Zod schema for PayloadJob
+ * Represents background job configuration
  */
 export const PayloadJobSchema = z.object({
 	id: z.number(),
@@ -927,7 +1148,8 @@ export const PayloadJobSchema = z.object({
 });
 
 /**
- * Zod schema for payload locked documents
+ * Zod schema for PayloadLockedDocument
+ * Represents document lock information
  */
 export const PayloadLockedDocumentSchema = z.object({
 	id: z.number(),
@@ -936,139 +1158,139 @@ export const PayloadLockedDocumentSchema = z.object({
 			z
 				.object({
 					relationTo: z.literal('map-markers'),
-					value: z.union([z.number(), MapMarkerSchema])
+					value: z.union([z.number(), z.lazy(() => MapMarkerSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('users'),
-					value: z.union([z.number(), UserSchema])
+					value: z.union([z.number(), z.lazy(() => UserSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('media'),
-					value: z.union([z.number(), MediaSchema])
+					value: z.union([z.number(), z.lazy(() => MediaSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('posts'),
-					value: z.union([z.number(), PostSchema])
+					value: z.union([z.number(), z.lazy(() => PostSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('posts-categories'),
-					value: z.union([z.number(), PostsCategorySchema])
+					value: z.union([z.number(), z.lazy(() => PostsCategorySchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('posts-tags'),
-					value: z.union([z.number(), PostsTagSchema])
+					value: z.union([z.number(), z.lazy(() => PostsTagSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('pages'),
-					value: z.union([z.number(), PageSchema])
+					value: z.union([z.number(), z.lazy(() => PageSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('roles'),
-					value: z.union([z.number(), RoleSchema])
+					value: z.union([z.number(), z.lazy(() => RoleSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('gallery-albums'),
-					value: z.union([z.number(), GalleryAlbumSchema])
+					value: z.union([z.number(), z.lazy(() => GalleryAlbumSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('gallery-images'),
-					value: z.union([z.number(), GalleryImageSchema])
+					value: z.union([z.number(), z.lazy(() => GalleryImageSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('gallery-tags'),
-					value: z.union([z.number(), GalleryTagSchema])
+					value: z.union([z.number(), z.lazy(() => GalleryTagSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('gallery-categories'),
-					value: z.union([z.number(), GalleryCategorySchema])
+					value: z.union([z.number(), z.lazy(() => GalleryCategorySchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('gardens'),
-					value: z.union([z.number(), GardenSchema])
+					value: z.union([z.number(), z.lazy(() => GardenSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('kits'),
-					value: z.union([z.number(), KitSchema])
+					value: z.union([z.number(), z.lazy(() => KitSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('scales'),
-					value: z.union([z.number(), ScaleSchema])
+					value: z.union([z.number(), z.lazy(() => ScaleSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('manufacturers'),
-					value: z.union([z.number(), ManufacturerSchema])
+					value: z.union([z.number(), z.lazy(() => ManufacturerSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('models-tags'),
-					value: z.union([z.number(), ModelsTagSchema])
+					value: z.union([z.number(), z.lazy(() => ModelsTagSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('models'),
-					value: z.union([z.number(), ModelSchema])
+					value: z.union([z.number(), z.lazy(() => ModelSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('forms'),
-					value: z.union([z.number(), FormSchema])
+					value: z.union([z.number(), z.lazy(() => FormSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('form-submissions'),
-					value: z.union([z.number(), FormSubmissionSchema])
+					value: z.union([z.number(), z.lazy(() => FormSubmissionSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('search'),
-					value: z.union([z.number(), SearchSchema])
-				})
-				.nullable(),
-			z
-				.object({
-					relationTo: z.literal('payload-folders'),
-					value: z.union([z.number(), FolderInterfaceSchema])
+					value: z.union([z.number(), z.lazy(() => SearchSchema)])
 				})
 				.nullable(),
 			z
 				.object({
 					relationTo: z.literal('payload-jobs'),
-					value: z.union([z.number(), PayloadJobSchema])
+					value: z.union([z.number(), z.lazy(() => PayloadJobSchema)])
+				})
+				.nullable(),
+			z
+				.object({
+					relationTo: z.literal('payload-folders'),
+					value: z.union([z.number(), z.lazy(() => FolderInterfaceSchema)])
 				})
 				.nullable()
 		])
@@ -1076,20 +1298,21 @@ export const PayloadLockedDocumentSchema = z.object({
 	globalSlug: z.string().nullable().optional(),
 	user: z.object({
 		relationTo: z.literal('users'),
-		value: z.union([z.number(), UserSchema])
+		value: z.union([z.number(), z.lazy(() => UserSchema)])
 	}),
 	updatedAt: z.string(),
 	createdAt: z.string()
 });
 
 /**
- * Zod schema for payload preferences
+ * Zod schema for PayloadPreference
+ * Represents user preferences
  */
 export const PayloadPreferenceSchema = z.object({
 	id: z.number(),
 	user: z.object({
 		relationTo: z.literal('users'),
-		value: z.union([z.number(), UserSchema])
+		value: z.union([z.number(), z.lazy(() => UserSchema)])
 	}),
 	key: z.string().nullable().optional(),
 	value: z
@@ -1101,7 +1324,8 @@ export const PayloadPreferenceSchema = z.object({
 });
 
 /**
- * Zod schema for payload migrations
+ * Zod schema for PayloadMigration
+ * Represents database migration records
  */
 export const PayloadMigrationSchema = z.object({
 	id: z.number(),
@@ -1112,7 +1336,8 @@ export const PayloadMigrationSchema = z.object({
 });
 
 /**
- * Zod schema for site meta
+ * Zod schema for SiteMeta
+ * Represents site metadata
  */
 export const SiteMetaSchema = z.object({
 	id: z.number(),
@@ -1132,7 +1357,8 @@ export const SiteMetaSchema = z.object({
 });
 
 /**
- * Zod schema for site navigation
+ * Zod schema for SiteNavigation
+ * Represents site navigation structure
  */
 export const SiteNavigationSchema = z.object({
 	id: z.number(),
@@ -1147,14 +1373,16 @@ export const SiteNavigationSchema = z.object({
 							title: z.string(),
 							link: z.string(),
 							order: z.number(),
-							icon: z.union([z.number().nullable(), MediaSchema.nullable()]).optional(),
+							icon: z
+								.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)])
+								.optional(),
 							visibility: z.enum(['ALL', 'AUTHENTICATED', 'ANONYMOUS', 'PRIVILEGED']),
 							allowedRoles: z
-								.array(z.union([z.number(), RoleSchema]))
+								.array(z.union([z.number(), z.lazy(() => RoleSchema)]))
 								.nullable()
 								.optional(),
 							allowedUsers: z
-								.array(z.union([z.number(), UserSchema]))
+								.array(z.union([z.number(), z.lazy(() => UserSchema)]))
 								.nullable()
 								.optional(),
 							id: z.string().nullable().optional()
@@ -1163,14 +1391,14 @@ export const SiteNavigationSchema = z.object({
 					.nullable()
 					.optional(),
 				order: z.number(),
-				icon: z.union([z.number().nullable(), MediaSchema.nullable()]).optional(),
+				icon: z.union([z.union([z.number(), z.null()]), z.lazy(() => MediaSchema)]).optional(),
 				visibility: z.enum(['ALL', 'AUTHENTICATED', 'ANONYMOUS', 'PRIVILEGED']),
 				allowedRoles: z
-					.array(z.union([z.number(), RoleSchema]))
+					.array(z.union([z.number(), z.lazy(() => RoleSchema)]))
 					.nullable()
 					.optional(),
 				allowedUsers: z
-					.array(z.union([z.number(), UserSchema]))
+					.array(z.union([z.number(), z.lazy(() => UserSchema)]))
 					.nullable()
 					.optional(),
 				id: z.string().nullable().optional()
@@ -1183,7 +1411,8 @@ export const SiteNavigationSchema = z.object({
 });
 
 /**
- * Zod schema for task schedule publish
+ * Zod schema for TaskSchedulePublish
+ * Represents schedule publish task configuration
  */
 export const TaskSchedulePublishSchema = z.object({
 	input: z.object({
@@ -1194,58 +1423,65 @@ export const TaskSchedulePublishSchema = z.object({
 				z
 					.object({
 						relationTo: z.literal('posts'),
-						value: z.union([z.number(), PostSchema])
+						value: z.union([z.number(), z.lazy(() => PostSchema)])
 					})
 					.nullable(),
 				z
 					.object({
 						relationTo: z.literal('pages'),
-						value: z.union([z.number(), PageSchema])
+						value: z.union([z.number(), z.lazy(() => PageSchema)])
 					})
 					.nullable()
 			])
 			.optional(),
 		global: z.string().nullable().optional(),
-		user: z.union([z.number().nullable(), UserSchema.nullable()]).optional()
+		user: z.union([z.union([z.number(), z.null()]), z.lazy(() => UserSchema)]).optional()
 	}),
 	output: z.unknown().optional()
 });
 
 /**
- * Zod schema for config
+ * Zod schema for Auth
+ * Represents authentication configuration
+ */
+export const AuthSchema = z.record(z.unknown());
+
+/**
+ * Zod schema for Config
+ * Represents the main configuration
  */
 export const ConfigSchema = z.object({
 	auth: z.object({
-		users: UserAuthOperationsSchema
+		users: z.lazy(() => UserAuthOperationsSchema)
 	}),
 	blocks: z.object({}),
 	collections: z.object({
-		'map-markers': MapMarkerSchema,
-		users: UserSchema,
-		media: MediaSchema,
-		posts: PostSchema,
-		'posts-categories': PostsCategorySchema,
-		'posts-tags': PostsTagSchema,
-		pages: PageSchema,
-		roles: RoleSchema,
-		'gallery-albums': GalleryAlbumSchema,
-		'gallery-images': GalleryImageSchema,
-		'gallery-tags': GalleryTagSchema,
-		'gallery-categories': GalleryCategorySchema,
-		gardens: GardenSchema,
-		kits: KitSchema,
-		scales: ScaleSchema,
-		manufacturers: ManufacturerSchema,
-		'models-tags': ModelsTagSchema,
-		models: ModelSchema,
-		forms: FormSchema,
-		'form-submissions': FormSubmissionSchema,
-		search: SearchSchema,
-		'payload-folders': FolderInterfaceSchema,
-		'payload-jobs': PayloadJobSchema,
-		'payload-locked-documents': PayloadLockedDocumentSchema,
-		'payload-preferences': PayloadPreferenceSchema,
-		'payload-migrations': PayloadMigrationSchema
+		'map-markers': z.lazy(() => MapMarkerSchema),
+		users: z.lazy(() => UserSchema),
+		media: z.lazy(() => MediaSchema),
+		posts: z.lazy(() => PostSchema),
+		'posts-categories': z.lazy(() => PostsCategorySchema),
+		'posts-tags': z.lazy(() => PostsTagSchema),
+		pages: z.lazy(() => PageSchema),
+		roles: z.lazy(() => RoleSchema),
+		'gallery-albums': z.lazy(() => GalleryAlbumSchema),
+		'gallery-images': z.lazy(() => GalleryImageSchema),
+		'gallery-tags': z.lazy(() => GalleryTagSchema),
+		'gallery-categories': z.lazy(() => GalleryCategorySchema),
+		gardens: z.lazy(() => GardenSchema),
+		kits: z.lazy(() => KitSchema),
+		scales: z.lazy(() => ScaleSchema),
+		manufacturers: z.lazy(() => ManufacturerSchema),
+		'models-tags': z.lazy(() => ModelsTagSchema),
+		models: z.lazy(() => ModelSchema),
+		forms: z.lazy(() => FormSchema),
+		'form-submissions': z.lazy(() => FormSubmissionSchema),
+		search: z.lazy(() => SearchSchema),
+		'payload-jobs': z.lazy(() => PayloadJobSchema),
+		'payload-folders': z.lazy(() => FolderInterfaceSchema),
+		'payload-locked-documents': z.lazy(() => PayloadLockedDocumentSchema),
+		'payload-preferences': z.lazy(() => PayloadPreferenceSchema),
+		'payload-migrations': z.lazy(() => PayloadMigrationSchema)
 	}),
 	collectionsJoins: z.object({
 		media: z.object({
@@ -1262,20 +1498,53 @@ export const ConfigSchema = z.object({
 			documentsAndFolders: z.union([z.literal('payload-folders'), z.literal('media')])
 		})
 	}),
+	collectionsSelect: z.object({
+		'map-markers': z.any(),
+		users: z.any(),
+		media: z.any(),
+		posts: z.any(),
+		'posts-categories': z.any(),
+		'posts-tags': z.any(),
+		pages: z.any(),
+		roles: z.any(),
+		'gallery-albums': z.any(),
+		'gallery-images': z.any(),
+		'gallery-tags': z.any(),
+		'gallery-categories': z.any(),
+		gardens: z.any(),
+		kits: z.any(),
+		scales: z.any(),
+		manufacturers: z.any(),
+		'models-tags': z.any(),
+		models: z.any(),
+		forms: z.any(),
+		'form-submissions': z.any(),
+		search: z.any(),
+		'payload-jobs': z.any(),
+		'payload-folders': z.any(),
+		'payload-locked-documents': z.any(),
+		'payload-preferences': z.any(),
+		'payload-migrations': z.any()
+	}),
 	db: z.object({
 		defaultIDType: z.number()
 	}),
 	globals: z.object({
-		'site-meta': SiteMetaSchema,
-		'site-navigation': SiteNavigationSchema
+		'site-meta': z.lazy(() => SiteMetaSchema),
+		'site-navigation': z.lazy(() => SiteNavigationSchema)
+	}),
+	globalsSelect: z.object({
+		'site-meta': z.any(),
+		'site-navigation': z.any()
 	}),
 	locale: z.null(),
-	user: UserSchema.extend({
+	user: z.object({
+		...UserSchema.shape,
 		collection: z.literal('users')
 	}),
 	jobs: z.object({
 		tasks: z.object({
-			schedulePublish: TaskSchedulePublishSchema,
+			schedulePublish: z.lazy(() => TaskSchedulePublishSchema),
 			inline: z.object({
 				input: z.unknown(),
 				output: z.unknown()

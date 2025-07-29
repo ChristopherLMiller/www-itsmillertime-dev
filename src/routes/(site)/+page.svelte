@@ -7,7 +7,9 @@
 </script>
 
 <Panel hasPadding={true} hasBorder={true}>
-	{#each pageData.blocks as block}
-		<Lexical data={block.block} />
-	{/each}
+	{#if pageData.blocks}
+		{#each pageData.blocks as block}
+			<Lexical data={block.block} />
+		{/each}
+	{/if}
 </Panel>

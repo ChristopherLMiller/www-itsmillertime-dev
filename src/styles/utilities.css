@@ -1,37 +1,37 @@
 @layer utilities {
-  .text-small {
-    font-size: var(--fs-s);
-  }
+	.text-small {
+		font-size: var(--fs-s);
+	}
 
-  .text-base {
-    font-size: var(--fs-base);
-  }
-  
-  .text-medium {
-    font-size: var(--fs-m);
-  }
-  
-  .text-large {
-    font-size: var(--fs-l);
-  }
-  
-  .text-xl {
-    font-size: var(--fs-xl);
-  }
-  
-  .text-xxl {
-    font-size: var(--fs-xxl);
-  }
-  
-  .text-xxxl {
-    font-size: var(--fs-xxxl);
-  }
+	.text-base {
+		font-size: var(--fs-base);
+	}
 
-  .text-weight-100 {
-    font-weight: 100;
-  }
+	.text-medium {
+		font-size: var(--fs-m);
+	}
 
-  .text-left {
+	.text-large {
+		font-size: var(--fs-l);
+	}
+
+	.text-xl {
+		font-size: var(--fs-xl);
+	}
+
+	.text-xxl {
+		font-size: var(--fs-xxl);
+	}
+
+	.text-xxxl {
+		font-size: var(--fs-xxxl);
+	}
+
+	.text-weight-100 {
+		font-weight: 100;
+	}
+
+	.text-left {
 		text-align: left;
 	}
 
@@ -54,5 +54,84 @@
 	.text-end {
 		text-align: end;
 	}
-  
+
+	.color-primary-lightest {
+		color: var(--color-primary-lightest);
+	}
+
+	.color-primary-lighter {
+		color: var(--color-primary-lighter);
+	}
+
+	.color-primary {
+		color: var(--color-primary);
+	}
+
+	.color-primary-darker {
+		color: var(--color-primary-darker);
+	}
+
+	.color-primary-darkest {
+		color: var(--color-primary-darkest);
+	}
+
+	.color-secondary-lightest {
+		color: var(--color-secondary-lightest);
+	}
+
+	.color-secondary-lighter {
+		color: var(--color-secondary-lighter);
+	}
+
+	.color-secondary {
+		color: var(--color-secondary);
+	}
+
+	.color-secondary-darker {
+		color: var(--color-secondary-darker);
+	}
+
+	.color-secondary-darkest {
+		color: var(--color-secondary-darkest);
+	}
+
+	.color-tertiary-lightest {
+		color: var(--color-tertiary-lightest);
+	}
+
+	.color-tertiary-lighter {
+		color: var(--color-tertiary-lighter);
+	}
+
+	.color-tertiary {
+		color: var(--color-tertiary);
+	}
+
+	.color-tertiary-darker {
+		color: var(--color-tertiary-darker);
+	}
+
+	.color-tertiary-darkest {
+		color: var(--color-tertiary-darkest);
+	}
+
+	.color-white-lightest {
+		color: var(--color-white-lightest);
+	}
+
+	.color-white-lighter {
+		color: var(--color-white-lighter);
+	}
+
+	.color-white {
+		color: var(--color-white);
+	}
+
+	.color-white-darker {
+		color: var(--color-white-darker);
+	}
+
+	.color-white-darkest {
+		color: var(--color-white-darkest);
+	}
 }

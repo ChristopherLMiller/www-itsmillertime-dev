@@ -1,6 +1,6 @@
 <!-- ImageWithBlurhash.svelte -->
 <script lang="ts">
-	import { fade } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import type { Media } from './types/payload-types';
 
 	// Props
@@ -31,13 +31,22 @@
 	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
 	let containerElement: HTMLDivElement | undefined = $state(undefined);
 	let currentImageSrc: string | undefined | null = $state('');
-	const aspectRatio = $derived((image.width && image.height && image?.width / image.height) || 1);
+	const aspectRatio = $derived((image?.width && image?.height && image?.width / image.height) || 1);
 
 	// Function to select the best image based on container size
 	function selectBestImage(targetWidth: number, targetHeight: number) {
 		if (!image.sizes) return;
+
+		const desiredSizesToUse = ['small', 'medium', 'large', 'xlarge', 'thumbnail'];
+		const filteredSizes = desiredSizesToUse.reduce((acc, size) => {
+			if (image.sizes[size]) {
+				acc[size] = image.sizes[size];
+			}
+			return acc;
+		}, {});
+
 		// Sort images by how well they match the target dimensions
-		const scored = Object.values(image?.sizes).map((img) => {
+		const scored = Object.values(filteredSizes).map((img) => {
 			const widthDiff = img.width && Math.abs(img.width - targetWidth);
 			const heightDiff = img.height && Math.abs(img.height - targetHeight);
 			const score = widthDiff && heightDiff ? widthDiff + heightDiff : 9999;
@@ -58,6 +67,17 @@
 			img.onerror = reject;
 			img.src = imageSrc;
 		});
+	}
+
+	// Custom transition to combine fade and scale
+	function fadeScale(node, params) {
+		return {
+			css: (t, u) => {
+				const fadeStyle = fade(node, params).css(t, u);
+				const scaleStyle = scale(node, { ...params, start: 0.95 }).css(t, u);
+				return fadeStyle + scaleStyle;
+			}
+		};
 	}
 
 	// Effect to handle image selection and loading
@@ -97,7 +117,7 @@
 	style:view-transition-name={transitionName}
 >
 	<!-- Base64 placeholder image (shown while loading) -->
-	{#if image.blurhash}
+	{#if image?.blurhash}
 		<img
 			src={image.blurhash}
 			alt="Loading placeholder"
@@ -146,11 +166,23 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 </div>
-<dialog bind:this={lightboxDialog} class="lightbox" transition:fade>
-	<div class="contents">
-		<img src={image.url} alt={image.alt} class="lightbox-image" />
-	</div>
-</dialog>
+{#if hasLightbox}
+	<dialog
+		bind:this={lightboxDialog}
+		class="lightbox"
+		transition:fadeScale={{ duration: 500 }}
+		onclick={(e) => {
+			// Close if the user clicked anything except the image
+			if (!(e.target instanceof HTMLImageElement)) {
+				lightboxDialog.close();
+			}
+		}}
+	>
+		<div class="contents">
+			<img src={image.url} alt={image.alt} class="lightbox-image" />
+		</div>
+	</dialog>
+{/if}
 
 <style>
 	.image-container {

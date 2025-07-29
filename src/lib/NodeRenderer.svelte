@@ -1,7 +1,8 @@
 <!-- NodeRenderer.svelte -->
-<script>
+<script lang="ts">
 	import Image from '$lib/Image.svelte';
 	import NodeRenderer from '$lib/NodeRenderer.svelte';
+	import type { Media } from './types/payload-types';
 
 	/**
 	 * @typedef {Object} TextNode
@@ -190,22 +191,17 @@
 		{textData.text}
 	</span>
 {:else if node.type === 'image'}
-	{console.log(node)}
 	<Image
 		src={node.src || ''}
 		alt={node.altText || node.alt || ''}
 		width={node.width}
 		height={node.height}
 		caption={node.caption || ''}
+		hasLightbox
+		hasBorder
 	/>
 {:else if node.type === 'upload'}
-	{console.log(node)}
-	<Image
-		src={node.value?.url || ''}
-		alt={node.value?.alt || ''}
-		width={node.value?.width}
-		caption={node.value?.alt || ''}
-	/>
+	<Image image={node.value as Media} hasBorder hasLightbox />
 {:else if node.type === 'heading'}
 	{#if node.tag === 'h1'}
 		<h1>

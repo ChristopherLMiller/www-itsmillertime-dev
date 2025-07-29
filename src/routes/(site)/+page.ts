@@ -1,7 +1,7 @@
 import { getPage } from '$lib/queries/getPage';
 
-export async function load({ params, fetch }) {
-	const page = await getPage(fetch, params.slug);
+export async function load({ fetch }) {
+	const page = await getPage(fetch, 'home');
 
 	return {
 		page: page,

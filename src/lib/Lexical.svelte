@@ -125,55 +125,6 @@
 	/** @type {{ data: EditorState }} */
 	let { data } = $props();
 
-	// Text format constants
-	const TEXT_TYPE_TO_FORMAT = {
-		bold: 1,
-		italic: 2,
-		strikethrough: 4,
-		underline: 8,
-		code: 16,
-		subscript: 32,
-		superscript: 64,
-		highlight: 128
-	};
-
-	/**
-	 * Check if text has specific formatting
-	 * @param {number} format - Format bitmask
-	 * @param {keyof typeof TEXT_TYPE_TO_FORMAT} type - Format type
-	 * @returns {boolean}
-	 */
-	function hasFormat(format, type) {
-		return (format & TEXT_TYPE_TO_FORMAT[type]) !== 0;
-	}
-
-	/**
-	 * Get text formatting information
-	 * @param {TextNode} node - Text node
-	 * @returns {{ text: string, formats: Record<string, boolean> }}
-	 */
-	function getTextFormatting(node) {
-		const text = node.text || '';
-
-		if (!node.format) {
-			return { text, formats: {} };
-		}
-
-		return {
-			text,
-			formats: {
-				bold: hasFormat(node.format, 'bold'),
-				italic: hasFormat(node.format, 'italic'),
-				strikethrough: hasFormat(node.format, 'strikethrough'),
-				underline: hasFormat(node.format, 'underline'),
-				code: hasFormat(node.format, 'code'),
-				subscript: hasFormat(node.format, 'subscript'),
-				superscript: hasFormat(node.format, 'superscript'),
-				highlight: hasFormat(node.format, 'highlight')
-			}
-		};
-	}
-
 	/**
 	 * Process node and its children recursively
 	 * @param {LexicalNode} node - Node to process
