@@ -1,7 +1,7 @@
 <!-- ImageWithBlurhash.svelte -->
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
-	import type { Media } from './types/payload-types';
+	import type { Media } from '../types/payload-types';
 
 	// Props
 	let {

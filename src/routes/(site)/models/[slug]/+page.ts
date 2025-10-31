@@ -1,15 +1,30 @@
-import { getModel } from '$lib/queries/getModel';
+import { getPayloadSDK } from '$lib/payload';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ parent, fetch, params }) => {
-	const { queryClient } = await parent();
-
-	const data = await queryClient.fetchQuery({
-		queryKey: ['model', params.slug],
-		queryFn: () => getModel(fetch, params.slug)
+	const modelData = await getPayloadSDK(fetch).find({
+		collection: 'models',
+		where: {
+			slug: {
+				equals: params.slug
+			}
+		},
+		select: {
+			id: true,
+			title: true,
+			createdAt: true,
+			updatedAt: true,
+			slug: true,
+			model_meta: true,
+			clockify_project: true,
+			buildLog: true,
+			image: true,
+			meta: true
+		}
 	});
 
 	return {
-		meta: data.meta
+		model: modelData.docs[0],
+		meta: modelData.docs[0].meta
 	};
 };

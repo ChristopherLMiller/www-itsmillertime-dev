@@ -1,15 +1,12 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onNavigate } from '$app/navigation';
+	import NavigationProgress from '$lib/components/NavigationProgress.svelte';
 	import Footer from '$lib/Footer.svelte';
 	import Header from '$lib/Header.svelte';
 	import Meta from '$lib/meta/Meta.svelte';
 	import Navigation from '$lib/navigation/Navigation.svelte';
 	import TopBar from '$lib/TopBar.svelte';
-	import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-	import { QueryClientProvider } from '@tanstack/svelte-query';
-	import { SvelteQueryDevtools } from '@tanstack/svelte-query-devtools';
-	import { PersistQueryClientProvider } from '@tanstack/svelte-query-persist-client';
 	import './styles.css';
 
 	let { children, data } = $props();
@@ -24,21 +21,9 @@
 			});
 		});
 	});
-
-	const persistor = createAsyncStoragePersister({
-		storage: browser ? localStorage : undefined,
-		key: 'svelte-query-cache'
-	});
-
-	const persistOptions = {
-		maxAge: 1000 * 60 * 60 * 24,
-		buster: 'v1.0.0',
-		persister: persistor
-	};
 </script>
 
-<QueryClientProvider client={data.queryClient}>
-	<PersistQueryClientProvider client={data.queryClient} {persistOptions}>
+		<NavigationProgress />
 		<Meta />
 		<TopBar />
 		<Header />
@@ -49,9 +34,6 @@
 			</main>
 		</div>
 		<Footer />
-		<SvelteQueryDevtools />
-	</PersistQueryClientProvider>
-</QueryClientProvider>
 
 <style lang="postcss">
 	.layout {

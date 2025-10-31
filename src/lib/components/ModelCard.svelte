@@ -1,20 +1,25 @@
 <script lang="ts">
-	import Image from '$lib/Image.svelte';
+	import Image from '$lib/components/Image.svelte';
 	import type { Media, Model } from '$lib/types/payload-types';
 	import { convertDate } from '../../utilities/convertDate';
 	import { makeClockifyDurationFriendly } from '../../utilities/makeClockifyDurationFriendly';
 
 	let { model }: { model: Model } = $props();
+	let isClockifyLoading = $state(true);
 	let completionDate = $derived(convertDate(model.model_meta.completionDate));
 	let clockifyProject = $state(null);
 
 	$effect(() => {
 		async function getClockifyProjects() {
-			if (!model.clockify_project) return;
+			if (!model.clockify_project) {
+				isClockifyLoading = false;
+				return;
+			}
 			const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
 
 			if (response.ok) {
 				clockifyProject = await response.json();
+				isClockifyLoading = false;
 			}
 		}
 
@@ -22,54 +27,68 @@
 	});
 </script>
 
-<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
-	<div class="contents">
-		<p class="head">
-			{model.model_meta.kit.manufacturer.title} • {model.model_meta.kit.kit_number}
-		</p>
-		<div class="card-image">
-			<Image image={model.model_meta.featuredImage as Media} />
-			<span class={`status ${model.model_meta.status.toLowerCase()}`}
-				>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
-			>
-			<a href={`/models/${model.slug}`} class="name">{model.model_meta.kit.title}</a>
-		</div>
-		<div class="details">
-			<div class="stats">
-				<div class="stat-row">
-					<span class="stat-label">Scale:</span>
-					<span class="value">{model.model_meta.kit.scale.title}</span>
+{#if !isClockifyLoading}
+	<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
+		<div class="contents">
+			<p class="head">
+				{model.model_meta.kit.manufacturer.title} • {model.model_meta.kit.kit_number}
+			</p>
+			<div class="card-image">
+				<Image image={model.model_meta.featuredImage as Media} />
+				<span class={`status ${model.model_meta.status.toLowerCase()}`}
+					>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
+				>
+				<a href={`/models/${model.slug}`} class="name">{model.model_meta.kit.title}</a>
+			</div>
+			<div class="details">
+				<div class="stats">
+					<div class="stat-row">
+						<span class="stat-label">Scale:</span>
+						<span class="value">{model.model_meta.kit.scale.title}</span>
+					</div>
+					{#if model.clockify_project}
+						<div class="stat-row">
+							<div class="stat-label">Build Time:</div>
+							<div class="vlaue">
+								{clockifyProject &&
+									makeClockifyDurationFriendly(clockifyProject.duration, false, true)}
+							</div>
+						</div>
+					{/if}
+					{#if model.model_meta.completionDate}
+						<div class="stat-row">
+							<div class="stat-label">Completed:</div>
+							<div class="value">
+								{completionDate}
+							</div>
+						</div>
+					{/if}
+					{#if model.model_meta.tags?.length}
+						<div class="tags">
+							{#each model.model_meta.tags as tag}
+								{#if typeof tag === 'object' && tag !== null && 'title' in tag}
+									<a href={`/models?tags=${tag.slug}`}>{tag.title}</a>
+								{/if}
+							{/each}
+						</div>
+					{/if}
 				</div>
-				{#if model.clockify_project}
-					<div class="stat-row">
-						<div class="stat-label">Build Time:</div>
-						<div class="vlaue">
-							{clockifyProject &&
-								makeClockifyDurationFriendly(clockifyProject.duration, false, true)}
-						</div>
-					</div>
-				{/if}
-				{#if model.model_meta.completionDate}
-					<div class="stat-row">
-						<div class="stat-label">Completed:</div>
-						<div class="value">
-							{completionDate}
-						</div>
-					</div>
-				{/if}
-				{#if model.model_meta.tags?.length}
-					<div class="tags">
-						{#each model.model_meta.tags as tag}
-							{#if typeof tag === 'object' && tag !== null && 'title' in tag}
-								<a href={`/models?tags=${tag.slug}`}>{tag.title}</a>
-							{/if}
-						{/each}
-					</div>
-				{/if}
 			</div>
 		</div>
-	</div>
-</article>
+	</article>
+{:else}
+	<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
+		<div class="contents">
+			<div class="skeleton-head"></div>
+			<div class="skeleton-image"></div>
+			<div class="skeleton-details">
+				<div class="skeleton-stat"></div>
+				<div class="skeleton-stat"></div>
+				<div class="skeleton-stat"></div>
+			</div>
+		</div>
+	</article>
+{/if}
 
 <style lang="postcss">
 	.model-card {
@@ -183,6 +202,64 @@
 			text-decoration: none;
 			padding: 0.25rem 0.5rem;
 			transform: skew(-10deg);
+		}
+	}
+
+	/* Skeleton loading styles */
+	.skeleton-head {
+		height: 32px;
+		background: linear-gradient(
+			90deg,
+			var(--color-primary-lighter) 25%,
+			var(--color-primary-light) 50%,
+			var(--color-primary-lighter) 75%
+		);
+		background-size: 200% 100%;
+		animation: loading 1.5s infinite;
+		border-radius: 4px;
+		margin: 5px 0;
+	}
+
+	.skeleton-image {
+		height: 200px;
+		background: linear-gradient(
+			90deg,
+			var(--color-primary-lighter) 25%,
+			var(--color-primary-light) 50%,
+			var(--color-primary-lighter) 75%
+		);
+		background-size: 200% 100%;
+		animation: loading 1.5s infinite;
+		border-radius: 8px;
+		margin: 10px 0;
+	}
+
+	.skeleton-details {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.5rem;
+	}
+
+	.skeleton-stat {
+		height: 16px;
+		background: linear-gradient(
+			90deg,
+			var(--color-primary-lighter) 25%,
+			var(--color-primary-light) 50%,
+			var(--color-primary-lighter) 75%
+		);
+		background-size: 200% 100%;
+		animation: loading 1.5s infinite;
+		border-radius: 2px;
+	}
+
+	@keyframes loading {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
 		}
 	}
 </style>

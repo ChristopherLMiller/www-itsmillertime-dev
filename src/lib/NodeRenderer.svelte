@@ -1,6 +1,6 @@
 <!-- NodeRenderer.svelte -->
 <script lang="ts">
-	import Image from '$lib/Image.svelte';
+	import Image from '$lib/components/Image.svelte';
 	import NodeRenderer from '$lib/NodeRenderer.svelte';
 	import type { Media } from './types/payload-types';
 

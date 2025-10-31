@@ -6,6 +6,9 @@
 	});
 
 	function generateTitle(title: string) {
+		if (meta.title) {
+			return meta.title;
+		}
 		// Home path will match all and return something random, make it deterministic
 		if (page.url.pathname === '/') {
 			return `${page.data.siteMeta.siteMeta.find((pageMeta: { title: string }) => pageMeta?.title.toLowerCase().includes('home')).title} | ItsMillerTime`;
