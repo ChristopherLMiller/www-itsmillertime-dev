@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getFirstParagraph } from '../utilities/getFirstParagraph';
-	import Image from './Image.svelte';
+	import Image from './components/Image.svelte';
 	let { item } = $props();
 	const featuredImage = $derived(item?.featuredImage);
 </script>

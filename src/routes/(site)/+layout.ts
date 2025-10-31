@@ -1,19 +1,34 @@
 import { browser } from '$app/environment';
-import { getNavigation } from '$lib/queries/getNavigation';
-import { getSiteMeta } from '$lib/queries/getSiteMeta';
-import { QueryClient } from '@tanstack/svelte-query';
+import type { LayoutLoad } from './$types';
+import { getPayloadSDK } from '$lib/payload';
 
-export async function load({ fetch }) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				enabled: browser
-			}
-		}
+export const load: LayoutLoad = async ({ fetch }) => {
+	const sdk = getPayloadSDK(fetch);
+	const nav = await sdk.findGlobal({
+		slug: 'site-navigation',
+		depth: 1,
+		draft: true
 	});
 
-	const navigation = await getNavigation(fetch);
-	const siteMeta = await getSiteMeta(fetch);
+	// Sort navItems by order ascending, and also sort childNodes if they exist
+	const navigation = {
+		...nav,
+		navItems: nav.navItems
+			? [...nav.navItems]
+					.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+					.map((item) => ({
+						...item,
+						childNodes: item.childNodes
+							? [...item.childNodes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+							: item.childNodes
+					}))
+			: nav.navItems
+	};
 
-	return { queryClient, navigation, siteMeta };
-}
+	const siteMeta = await sdk.findGlobal({
+		slug: 'site-meta',
+		depth: 1
+	});
+
+	return { navigation, siteMeta };
+};

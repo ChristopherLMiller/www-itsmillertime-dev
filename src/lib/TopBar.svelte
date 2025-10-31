@@ -5,13 +5,23 @@
 	import NavLink from './navigation/NavLink.svelte';
 
 	let navState = $state<NavState>({ isOpen: false, activeDropdown: null });
+	let currentPath = $state(page.url.pathname);
 
 	// Subscribe to the store changes
 	navStore.subscribe((state) => {
 		navState = state;
 	});
 
-	// Handle click outsid to close dropdown
+	// Watch for page changes and close navigation
+	$effect(() => {
+		const newPath = page.url.pathname;
+		if (newPath !== currentPath) {
+			currentPath = newPath;
+			navStore.close();
+		}
+	});
+
+	// Handle click outside to close dropdown
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as HTMLElement;
 		if (!target.closest('.mobile-nav')) {

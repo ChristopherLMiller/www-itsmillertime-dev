@@ -1,49 +1,39 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import Accordian from '$lib/components/Accordian.svelte';
-	import Image from '$lib/Image.svelte';
+	import Image from '$lib/components/Image.svelte';
 	import Lexical from '$lib/Lexical.svelte';
 	import Panel from '$lib/Panel.svelte';
-	import { getModel } from '$lib/queries/getModel';
 	import { type Media, type Model } from '$lib/types/payload-types.js';
-	import { createQuery } from '@tanstack/svelte-query';
 	import { makeClockifyDurationFriendly } from '../../../../utilities/makeClockifyDurationFriendly';
 
 	let clockifyProject = $state(null);
+	const { data } = $props();
 
 	$effect(() => {
 		async function getClockifyProject() {
-			if ($modelQuery.isSuccess) {
-				if (!$modelQuery.data.model.clockify_project) return;
+				if (!data.model.clockify_project) return;
 				const response = await fetch(
-					`/api/clockify/projects/${$modelQuery.data.model.clockify_project}`
+					`/api/clockify/projects/${data.model.clockify_project}`
 				);
 
 				if (response.ok) {
 					clockifyProject = await response.json();
 				}
-			}
 		}
 
 		getClockifyProject();
 	});
 
-	const modelQuery = createQuery<{ model: Model; meta: unknown }>({
-		queryKey: ['model', page.params.slug],
-		queryFn: () => getModel(fetch, page.params.slug),
-		staleTime: 1000 * 60 * 60 * 24,
-		gcTime: 1000 * 60 * 60 * 24
-	});
 </script>
 
-<article style:view-transition-name={`model-${$modelQuery.data?.model?.slug}`}>
+<article style:view-transition-name={`model-${data?.model?.slug}`}>
 	<div class="split-column">
 		<div class="column first">
-			<Image hasBorder image={$modelQuery.data?.model?.model_meta.featuredImage as Media} />
-			{#if $modelQuery.data?.model?.buildLog && $modelQuery.data?.model?.buildLog?.length > 0}
+			<Image hasBorder image={data?.model?.model_meta.featuredImage as Media} />
+			{#if data?.model?.buildLog && data?.model?.buildLog?.length > 0}
 				<Panel hasBorder>
 					<h3 class="font-oswald text-center color-primary-darker">Build Log</h3>
-					{#each $modelQuery.data?.model?.buildLog as part}
+					{#each data?.model?.buildLog as part}
 						<Accordian summary={part.title}>
 							<Lexical data={part.content} />
 						</Accordian>
@@ -54,12 +44,12 @@
 		<div class="column second">
 			<Panel hasBorder hasPadding>
 				<h1 class="font-oswald text-medium color-primary-darker">
-					{$modelQuery.data?.model?.title}
+					{data?.model?.title}
 				</h1>
-				{#if $modelQuery.data?.model?.model_meta.completionDate}
+				{#if data?.model?.model_meta.completionDate}
 					<p>
-						{$modelQuery.data?.model?.model_meta.status} on {new Date(
-							$modelQuery.data?.model?.model_meta.completionDate
+						{data?.model?.model_meta.status} on {new Date(
+							data?.model?.model_meta.completionDate
 						).toLocaleDateString('en-US', {
 							year: 'numeric',
 							month: 'long',
@@ -70,30 +60,30 @@
 			</Panel>
 			<Panel hasBorder hasPadding>
 				<h2 class="font-oswald text-medium color-primary-darker">About the Kit</h2>
-				<p>Manufacturer: {$modelQuery.data?.model?.model_meta.kit?.manufacturer?.title}</p>
-				<p>Scale: {$modelQuery.data?.model?.model_meta.kit?.scale?.title}</p>
-				<p>Year Released: {$modelQuery.data?.model?.model_meta.kit?.year_released}</p>
-				<p>Kit Number: {$modelQuery.data?.model?.model_meta.kit?.kit_number}</p>
-				<a href={$modelQuery.data?.model?.model_meta.kit?.scalemates}>Scalemates Link</a>
+				<p>Manufacturer: {data?.model?.model_meta.kit?.manufacturer?.title}</p>
+				<p>Scale: {data?.model?.model_meta.kit?.scale?.title}</p>
+				<p>Year Released: {data?.model?.model_meta.kit?.year_released}</p>
+				<p>Kit Number: {data?.model?.model_meta.kit?.kit_number}</p>
+				<a href={data?.model?.model_meta.kit?.scalemates}>Scalemates Link</a>
 				<p>
 					Build Time: {clockifyProject &&
 						makeClockifyDurationFriendly(clockifyProject.duration, false, true)}
 				</p>
 			</Panel>
-			{#if $modelQuery.data?.model?.model_meta?.videos && $modelQuery.data?.model?.model_meta?.videos.length > 0}
+			{#if data?.model?.model_meta?.videos && data?.model?.model_meta?.videos.length > 0}
 				<Panel hasBorder hasPadding>
 					<h2 class="font-oswald text-medium color-primary-darker">Videos</h2>
-					{#each $modelQuery.data?.model?.model_meta?.videos as video}
+					{#each data?.model?.model_meta?.videos as video}
 						<a href={video.link}>{video.title}</a>
 					{/each}
 				</Panel>
 			{/if}
-			{#if $modelQuery.data?.model?.image && $modelQuery.data?.model?.image?.length > 0}
+			{#if data?.model?.image && data?.model?.image?.length > 0}
 				<div
 					class="image-grid"
-					style:grid-template-columns={`repeat(${$modelQuery.data?.model?.image?.length <= 3 ? $modelQuery.data?.model?.image?.length : $modelQuery.data?.model?.image?.length % 3 === 1 ? 2 : 3}, 1fr)`}
+					style:grid-template-columns={`repeat(${data?.model?.image?.length <= 3 ? data?.model?.image?.length : data?.model?.image?.length % 3 === 1 ? 2 : 3}, 1fr)`}
 				>
-					{#each $modelQuery.data?.model?.image as image}
+					{#each data?.model?.image as image}
 						<Image {image} hasLightbox />
 					{/each}
 				</div>

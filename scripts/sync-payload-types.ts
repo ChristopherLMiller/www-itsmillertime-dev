@@ -112,64 +112,6 @@ class PayloadTypesSyncer {
 		};
 	}
 
-	private async updateZodSchmea(typesContent: string): Promise<void> {
-		const dependencies = this.loadPackageDependencies();
-		const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-		if (!anthropicApiKey) {
-			throw new Error('ANTHROPIC_API_KEY environment variable is required');
-		}
-
-		const prompt = `Convert the following TypeScript types to zod schemas.  I am using TypeScript version ${dependencies.devDependencies.typescript} and zod version ${dependencies.dependencies.zod}
-
-		Please:
-		1. Import zod with: import { z } from 'zod'
-		2. Convert each type/interface to a corresponding Zod schema
-		3. Export each schema with a clear name (e.g., UserSchema for User type)
-		4. Maintain the same validation rules and optional/required fields
-		5. Add appropriate Zod validators for specific types (email, dates, etc.)
-		6. Handle union types, arrays, nested objects, and enums properly
-		7. Add JSDoc comments explaining each schema
-		8. Make sure that the return type of each is explicit
-		9. Tuples do not require a length as they are defined by the number of elements
-
-		${typesContent}
-
-		Return only the Zod schema code, ready to use.`;
-
-		const anthropic = new Anthropic({ apiKey: anthropicApiKey });
-
-		console.log('Streaming response from Anthropic');
-		const stream = anthropic.messages.stream({
-			model: process.env.ANTHROPIC_MODEL || 'claude-3-7-sonnet-latest',
-			max_tokens: 64000,
-			stream: true,
-			messages: [
-				{
-					role: 'user',
-					content: prompt
-				}
-			]
-		});
-
-		let zodSchema = '';
-		stream.on('text', (text) => {
-			process.stdout.write('.');
-			zodSchema += text;
-		});
-
-		await stream.done();
-		console.log('\n✅ Streaming complete');
-
-		const cleanedSchema = zodSchema
-			.replace(/^```(?:typescript|javascript|ts|js)?\n?/gm, '')
-			.replace(/^```\n?/gm, '')
-			.trim();
-
-		this.ensureDirectoryExists(this.config.outputPathZod);
-		writeFileSync(this.config.outputPathZod, cleanedSchema, 'utf8');
-		console.log(`✅ Zod schema written to: ${this.config.outputPathZod}`);
-	}
-
 	private ensureDirectoryExists(filePath: string): void {
 		const dir = dirname(filePath);
 		if (!existsSync(dir)) {
@@ -192,7 +134,6 @@ class PayloadTypesSyncer {
 			this.ensureDirectoryExists(this.config.outputPath);
 
 			writeFileSync(this.config.outputPath, typesContent, 'utf8');
-			this.updateZodSchmea(typesContent);
 			this.saveCache(contentHash);
 
 			const lines = typesContent.split('\n').length;

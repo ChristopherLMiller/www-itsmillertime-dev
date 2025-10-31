@@ -1,17 +1,27 @@
 import { PUBLIC_URL } from '$env/static/public';
-import { getArticles } from '$lib/queries/getArticles';
-import { getModels } from '$lib/queries/getModels';
-import { getPages } from '$lib/queries/getPages';
+import { getPayloadSDK } from '$lib/payload';
 import type { RequestHandler } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
-	const posts = await getArticles(fetch, { limit: 1000 });
-	const pages = await getPages(fetch, { limit: 1000 });
-	const models = await getModels(fetch, { limit: 1000 });
+	const sdk = getPayloadSDK(fetch);
+	const posts = await sdk.find({
+		collection: 'posts',
+		limit: 1000,
+		sort: '-publishedAt'
+	});
+
+	const pages = await sdk.find({
+		collection: 'pages',
+		limit: 1000
+	});
+	const models = await sdk.find({
+		collection: 'models',
+		limit: 1000
+	});
 
 	const postsOutput =
 		posts &&
-		posts.articles.map((post) => {
+		posts.docs.map((post) => {
 			return `
     <url>
       <loc>${PUBLIC_URL}/articles/${post.slug}</loc>

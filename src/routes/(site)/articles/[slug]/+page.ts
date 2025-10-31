@@ -1,15 +1,30 @@
-import { getArticle } from '$lib/queries/getArticle';
+import { getPayloadSDK } from '$lib/payload';
+import { error } from '@sveltejs/kit';
 import type { PageLoad } from '../$types';
 
-export const load: PageLoad = async ({ parent, fetch, params }) => {
-	const { queryClient } = await parent();
-
-	const data = await queryClient.fetchQuery({
-		queryKey: ['article', params.slug],
-		queryFn: () => getArticle(fetch, params.slug)
+export const load: PageLoad = async ({ fetch, params }) => {
+	const post = await getPayloadSDK(fetch).find({
+		collection: 'posts',
+		where: {
+			and: [
+				{
+					_status: {
+						equals: 'published'
+					},
+					slug: {
+						equals: params.slug
+					}
+				}
+			]
+		}
 	});
 
+	if (post.totalDocs === 0) {
+		throw error(404, 'Article not found');
+	}
+
 	return {
-		meta: data?.meta
+		article: post.docs[0],
+		meta: post.docs[0].meta
 	};
 };

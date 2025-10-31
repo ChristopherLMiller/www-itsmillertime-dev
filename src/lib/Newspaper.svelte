@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Image from '$lib/Image.svelte';
+	import Image from '$lib/components/Image.svelte';
 	import Panel from '$lib/Panel.svelte';
 	import type { Snippet } from 'svelte';
 
@@ -48,6 +48,8 @@
 				hasBorder
 			/>
 		</div>
+	{:else}
+		<hr />
 	{/if}
 	<div class="contents">
 		<div class="columns" style:columns={columns || ''}>
