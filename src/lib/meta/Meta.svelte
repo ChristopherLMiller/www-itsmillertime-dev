@@ -27,6 +27,14 @@
 	}
 
 	function getImage() {
+		if (meta.image) {
+			if (meta.image.sizes['og']?.url) {
+				return meta.image.sizes['og'].url;
+			} else {
+				return meta.image.url;
+			}
+		}
+
 		return 'https://cdn.itsmillertime.dev/6/default_cd50bfe553.jpg';
 	}
 
