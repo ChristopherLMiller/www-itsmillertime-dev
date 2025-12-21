@@ -2,6 +2,8 @@
 	import { page } from '$app/state';
 	import Lexical from '$lib/Lexical.svelte';
 	import Newspaper from '$lib/Newspaper.svelte';
+	import Disqus from '$lib/components/Disqus.svelte';
+	import ShareButtons from '$lib/components/ShareButtons.svelte';
 
 	const { data } = $props();
 </script>
@@ -39,6 +41,7 @@
 				Filed under {data.article.category?.title}
 			</span>
 		</div>
+		
 	{/snippet}
 	<article
 		class="post contents"
@@ -46,11 +49,20 @@
 	>
 		<Lexical data={data.article.content} />
 	</article>
+	{#snippet footerContent()}
+		<ShareButtons url={page.url.href} title={data.article.title} />
+		<Disqus identifier={`article-${data.article.slug}`} title={data.article.title} url={page.url.href} />
+	{/snippet}
 </Newspaper>
 
 <style lang="postcss">
 	.meta {
 		font-size: var(--fs-xs);
 		line-height: initial;
+	}
+
+	:global(.share-buttons) {
+		margin-top: 1rem;
+		margin-bottom: 0.5rem;
 	}
 </style>

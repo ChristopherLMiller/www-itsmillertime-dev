@@ -1,8 +1,8 @@
 <script lang="ts">
-  let {children, hasBorder = false, hasPadding = false} = $props();
+  let {children, hasBorder = false, hasPadding = false, hasTexture = true} = $props();
 </script>
 
-<div class={`${hasBorder ? 'border' : ''} ${hasPadding ? 'padding' : ''}`}>
+<div class={`${hasBorder ? 'border' : ''} ${hasPadding ? 'padding' : ''} ${!hasTexture ? 'no-texture' : ''}`}>
   {@render children?.()}
 </div>
 
@@ -12,11 +12,15 @@
     color: var(--color-tertiary-darker);
   }
 
-    .border {
-      border: var(--border-width) solid var(--color-primary-darker);
-    }
+  .no-texture {
+    background: var(--color-white);
+  }
 
-    .padding {
-      padding: clamp(1rem, 1rem + 1vw, 2rem);
-    }
+  .border {
+    border: var(--border-width) solid var(--color-primary-darker);
+  }
+
+  .padding {
+    padding: clamp(1rem, 1rem + 1vw, 2rem);
+  }
 </style>
