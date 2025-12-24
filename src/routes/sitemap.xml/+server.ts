@@ -4,19 +4,83 @@ import type { RequestHandler } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
 	const sdk = getPayloadSDK(fetch);
+	// Count how many posts are published first
+	const postsCount = await sdk.count({
+		collection: 'posts',
+		where: {
+			_status: {
+				equals: 'published'
+			}
+		}
+	});
+
+	// Count how many pages are published and visible to all
+	const pagesCount = await sdk.count({
+		collection: 'pages',
+		where: {
+			and: [
+				{
+					_status: {
+						equals: 'published'
+					}
+				},
+				{
+					visibility: {
+						equals: 'ALL'
+					}
+				}
+			]
+		}
+	});
+
+	// Find all the models that have been started at least
+	const modelsCount = await sdk.count({
+		collection: 'models',
+		where: {
+			'model_meta.status': {
+				not_equals: 'NOT_STARTED'
+			}
+		}
+	});
+
 	const posts = await sdk.find({
 		collection: 'posts',
-		limit: 1000,
+		limit: postsCount.totalDocs,
+		where: {
+			_status: {
+				equals: 'published'
+			}
+		},
 		sort: '-publishedAt'
 	});
 
 	const pages = await sdk.find({
 		collection: 'pages',
-		limit: 1000
+		limit: pagesCount.totalDocs,
+		where: {
+			and: [
+				{
+					_status: {
+						equals: 'published'
+					}
+				},
+				{
+					visibility: {
+						equals: 'ALL'
+					}
+				}
+			]
+		}
 	});
+
 	const models = await sdk.find({
 		collection: 'models',
-		limit: 1000
+		limit: modelsCount.totalDocs,
+		where: {
+			'model_meta.status': {
+				not_equals: 'NOT_STARTED'
+			}
+		}
 	});
 
 	const postsOutput =
@@ -45,7 +109,7 @@ export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
 
 	const modelsOutput =
 		models &&
-		models.models.map((model) => {
+		models.docs.map((model) => {
 			return `
     <url>
       <loc>${PUBLIC_URL}/models/${model.slug}</loc>
@@ -66,7 +130,8 @@ export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
     >
       ${postsOutput?.join('') || ''}
       ${pagesOutput?.join('') || ''}
-      ${modelsOutput?.join('') || ''}
+			${modelsOutput?.join('') || ''}
+
   </urlset>`;
 
 	setHeaders({
