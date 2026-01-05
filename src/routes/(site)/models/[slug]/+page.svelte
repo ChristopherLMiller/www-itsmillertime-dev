@@ -70,9 +70,16 @@
 						</span>
 					{/if}
 				</div>
-				<ShareButtons url={page.url.href} title={model.title} className="hero-share" />
+				<div class="hero-share-wrapper">
+					<ShareButtons url={page.url.href} title={model.title} className="hero-share" />
+				</div>
 			</div>
 		</div>
+	</div>
+
+	<!-- Mobile Share Buttons (shown only on smaller screens) -->
+	<div class="mobile-share-wrapper">
+		<ShareButtons url={page.url.href} title={model.title} className="mobile-share" />
 	</div>
 
 	<!-- Two-Column Content -->
@@ -133,8 +140,8 @@
 			<!-- Photos -->
 			{#if model.image && model.image.length > 0}
 				<div class="photo-grid">
-					{#each model.image as image}
-						<Image {image} hasLightbox />
+					{#each model.image as image, index}
+						<Image {image} hasLightbox gallery={model.image} galleryIndex={index} />
 					{/each}
 				</div>
 			{/if}
@@ -243,8 +250,13 @@
 		color: var(--color-primary-darker);
 	}
 
-	:global(.hero-share) {
+	.hero-share-wrapper :global(.hero-share) {
 		margin: 0;
+	}
+
+	/* Mobile Share Buttons - hidden by default */
+	.mobile-share-wrapper {
+		display: none;
 	}
 
 	/* Two-Column Layout */
@@ -339,17 +351,39 @@
 
 	/* Responsive Design */
 	@media (max-width: 768px) {
+		.hero-fade {
+			background: linear-gradient(180deg,rgba(228, 228, 228, 0) 30%, rgba(228, 228, 228, 0.95) 70%, rgba(228, 228, 228, 1) 90%);
+		}
+
 		.hero-content {
 			padding: 1.5rem;
 		}
 
 		.hero-content h1 {
 			font-size: clamp(1.5rem, 4vw, 2rem);
+			margin-bottom: 0.75rem;
 		}
 
 		.hero-meta {
 			flex-direction: column;
 			align-items: flex-start;
+		}
+
+		/* Hide share buttons in hero on smaller screens */
+		.hero-share-wrapper {
+			display: none;
+		}
+
+		/* Show mobile share buttons */
+		.mobile-share-wrapper {
+			display: block;
+			padding: 1rem clamp(1rem, 1rem + 1vw, 2rem);
+			border-bottom: 2px solid var(--color-primary-lighter);
+		}
+
+		:global(.mobile-share) {
+			margin: 0;
+			justify-content: center;
 		}
 
 		.content-grid {
@@ -362,8 +396,29 @@
 	}
 
 	@media (max-width: 480px) {
+		.hero-fade {
+			background: linear-gradient(180deg,rgba(228, 228, 228, 0) 20%, rgba(228, 228, 228, 0.98) 60%, rgba(228, 228, 228, 1) 85%);
+		}
+
 		.hero-content {
 			padding: 1rem;
+		}
+
+		.hero-content h1 {
+			margin-bottom: 0.5rem;
+		}
+
+		.meta-left {
+			gap: 0.5rem;
+		}
+
+		.status-badge {
+			font-size: 0.7rem;
+			padding: 0.3rem 0.6rem;
+		}
+
+		.meta-item {
+			font-size: 0.7rem;
 		}
 	}
 </style>

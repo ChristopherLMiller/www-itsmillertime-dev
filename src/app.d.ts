@@ -8,6 +8,21 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	interface DisqusConfig {
+		page: {
+			identifier: string;
+			title: string;
+			url: string;
+		};
+	}
+
+	interface Window {
+		DISQUS?: {
+			reset: (options: { reload: boolean; config: (this: DisqusConfig) => void }) => void;
+		};
+		disqus_config?: (this: DisqusConfig) => void;
+	}
 }
 
 export {};

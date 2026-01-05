@@ -1,11 +1,12 @@
 <script lang="ts">
 	let { navItem } = $props();
 	import { page } from '$app/state';
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 </script>
 
 <a href={navItem.link} class={`${navItem.link === page.url.pathname ? 'active' : ''}`}>
 	{#if navItem.icon}
-		<img src={navItem.icon.url} alt={navItem.title} />
+		<img src={`${PUBLIC_PAYLOAD_URL}${navItem.icon.url}`} alt={navItem.title} />
 	{/if}
 	{navItem.title}
 </a>

@@ -44,7 +44,7 @@
 			<Image
 				transitionName={featuredImageTransitionName || 'newspaper-featured-image'}
 				image={featuredImage}
-				hasLightbox
+				hasLightbox={false}
 				hasBorder
 			/>
 		</div>
