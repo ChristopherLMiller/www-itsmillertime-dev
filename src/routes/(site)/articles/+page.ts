@@ -23,7 +23,7 @@ export const load: PageLoad = async ({ fetch, url }) => {
 			and: [
 				{
 					_status: {
-						equals: undefined
+						not_equals: 'draft'
 					}
 				},
 				{

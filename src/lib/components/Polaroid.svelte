@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import type { Media } from '../types/payload-types';
 
 	type PolaroidProps = {
@@ -60,7 +61,7 @@
 					{#if imageSrc}
 						<img
 							class="polaroid__image polaroid__image--main"
-							src={imageSrc}
+							src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
 							alt={media?.alt ?? ''}
 							loading="lazy"
 							style:opacity={isLoaded ? 1 : 0}
