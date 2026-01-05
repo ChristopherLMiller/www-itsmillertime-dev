@@ -80,7 +80,7 @@
 	.sticky-note__content {
 		position: relative;
 		z-index: 1;
-		font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+		font-family: 'Delius', sans-serif;
 		font-size: 1rem;
 		line-height: 1.6;
 		color: #3f3f46;
@@ -117,7 +117,7 @@
 
 	.sticky-note__title {
 		margin: 0 0 0.5rem 0;
-		font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+		font-family: 'Delius', sans-serif;
 		font-size: 1.15rem;
 		font-weight: 700;
 		color: #27272a;

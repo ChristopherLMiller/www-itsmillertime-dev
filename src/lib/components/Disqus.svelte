@@ -34,7 +34,7 @@
     const d = document;
     const s = d.createElement('script');
     s.src = `https://${shortname}.disqus.com/embed.js`;
-    s.setAttribute('data-timestamp', Date.now());
+    s.setAttribute('data-timestamp', Date.now().toString());
     s.async = true,
     d.body.appendChild(s);
   })

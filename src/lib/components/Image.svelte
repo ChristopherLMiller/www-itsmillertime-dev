@@ -1,7 +1,10 @@
 <!-- ImageWithBlurhash.svelte -->
 <script lang="ts">
-	import { fade, scale } from 'svelte/transition';
+	import { fade, scale, fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
 	import type { Media } from '../types/payload-types';
+	import Icon from './Icon.svelte';
+	import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_URL } from '$env/static/public';
 
 	// Props
 	let {
@@ -12,7 +15,9 @@
 		containerWidth = 0,
 		containerHeight = 0,
 		className = '',
-		objectFit = 'cover'
+		objectFit = 'cover',
+		gallery = undefined,
+		galleryIndex = 0
 	}: {
 		image: Media;
 		transitionName?: string;
@@ -22,6 +27,8 @@
 		containerHeight?: number;
 		className?: string;
 		objectFit?: string;
+		gallery?: Media[];
+		galleryIndex?: number;
 	} = $props();
 
 	// State
@@ -31,7 +38,15 @@
 	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
 	let containerElement: HTMLDivElement | undefined = $state(undefined);
 	let currentImageSrc: string | undefined | null = $state('');
+	let currentGalleryIndex = $state(0);
+	let imageTransitionDirection = $state<'left' | 'right'>('right');
 	const aspectRatio = $derived((image?.width && image?.height && image?.width / image.height) || 1);
+
+	// Derived state for current lightbox image
+	const currentLightboxImage = $derived(gallery ? gallery[currentGalleryIndex] : image);
+	const hasGallery = $derived(gallery && gallery.length > 1);
+	const canGoPrev = $derived(hasGallery && currentGalleryIndex > 0);
+	const canGoNext = $derived(hasGallery && currentGalleryIndex < gallery!.length - 1);
 
 	// Function to select the best image based on container size
 	function selectBestImage(targetWidth: number, targetHeight: number) {
@@ -69,6 +84,52 @@
 		});
 	}
 
+	// Gallery navigation functions
+	function openLightbox() {
+		if (!lightboxDialog) return;
+		currentGalleryIndex = galleryIndex;
+		lightboxDialog.showModal();
+		document.body.style.overflow = 'hidden';
+	}
+
+	function closeLightbox() {
+		if (!lightboxDialog) return;
+		lightboxDialog.close();
+		document.body.style.overflow = '';
+	}
+
+	function goToPrevImage() {
+		if (canGoPrev) {
+			imageTransitionDirection = 'left';
+			currentGalleryIndex--;
+		}
+	}
+
+	function goToNextImage() {
+		if (canGoNext) {
+			imageTransitionDirection = 'right';
+			currentGalleryIndex++;
+		}
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (!lightboxDialog?.open) return;
+
+		switch (e.key) {
+			case 'Escape':
+				closeLightbox();
+				break;
+			case 'ArrowLeft':
+				e.preventDefault();
+				goToPrevImage();
+				break;
+			case 'ArrowRight':
+				e.preventDefault();
+				goToNextImage();
+				break;
+		}
+	}
+
 	// Custom transition to combine fade and scale
 	function fadeScale(node, params) {
 		return {
@@ -96,10 +157,10 @@
 			selectedImage = bestImage;
 			isLoaded = false;
 
-			loadImage(bestImage.url)
+			loadImage(`${PUBLIC_PAYLOAD_URL}${bestImage.url}`)
 				.then(() => {
 					// Only set loaded if this is still the current image
-					if (bestImage.url === currentImageSrc) {
+					if (`${PUBLIC_PAYLOAD_URL}${bestImage.url}` === currentImageSrc) {
 						isLoaded = true;
 					}
 				})
@@ -113,7 +174,7 @@
 <div
 	bind:this={containerElement}
 	class="image-container {className} {hasBorder ? 'border' : ''}"
-	style="position: relative; overflow: hidden;"
+	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatio > 1 ? aspectRatio : 1 / aspectRatio};"
 	style:view-transition-name={transitionName}
 >
 	<!-- Base64 placeholder image (shown while loading) -->
@@ -133,7 +194,6 @@
         opacity: {isLoaded ? 0 : 1};
         pointer-events: none;
         filter: blur(5px);
-				aspect-ratio: {aspectRatio > 1 ? aspectRatio : 1 / aspectRatio};
       "
 		/>
 	{/if}
@@ -144,7 +204,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<img
 			bind:this={imgElement}
-			src={selectedImage.url}
+			src={`${PUBLIC_PAYLOAD_URL}${selectedImage.url}`}
 			alt={image.alt}
 			width={selectedImage.width}
 			height={selectedImage.height}
@@ -155,32 +215,84 @@
         object-fit: {objectFit};
         transition: opacity 0.3s ease;
         opacity: {isLoaded ? 1 : 0};
-				aspect-ratio: {aspectRatio > 1 ? aspectRatio : 1 / aspectRatio};
+        cursor: {hasLightbox ? 'pointer' : 'default'};
       "
 			onload={() => {
 				isLoaded = true;
 			}}
-			onclick={() => hasLightbox && lightboxDialog && lightboxDialog.showModal()}
+			onclick={hasLightbox ? openLightbox : undefined}
 		/>
 	{/if}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 </div>
 {#if hasLightbox}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<dialog
 		bind:this={lightboxDialog}
 		class="lightbox"
-		transition:fadeScale={{ duration: 500 }}
+		transition:fadeScale={{ duration: 400, easing: quintOut }}
 		onclick={(e) => {
-			// Close if the user clicked anything except the image
-			if (!(e.target instanceof HTMLImageElement)) {
-				lightboxDialog.close();
+			// Close if the user clicked the backdrop
+			if (e.target === lightboxDialog) {
+				closeLightbox();
 			}
 		}}
+		onkeydown={handleKeydown}
 	>
-		<div class="contents">
-			<img src={image.url} alt={image.alt} class="lightbox-image" />
+		<button class="close-button" onclick={closeLightbox} aria-label="Close lightbox" type="button">
+			<Icon name="x" size={32} />
+		</button>
+
+		<div class="lightbox-contents">
+			<div class="image-wrapper">
+				{#key currentGalleryIndex}
+					<img
+						src={`${PUBLIC_PAYLOAD_URL}${currentLightboxImage.url}`}
+						alt={currentLightboxImage.alt}
+						class="lightbox-image"
+						in:fly={{
+							x: imageTransitionDirection === 'right' ? 100 : -100,
+							duration: 300,
+							easing: quintOut
+						}}
+						out:fly={{
+							x: imageTransitionDirection === 'right' ? -100 : 100,
+							duration: 300,
+							easing: quintOut
+						}}
+					/>
+				{/key}
+			</div>
+
+			{#if hasGallery}
+				<div class="gallery-counter">
+					{currentGalleryIndex + 1} / {gallery.length}
+				</div>
+			{/if}
 		</div>
+
+		{#if canGoPrev}
+			<button
+				class="nav-button nav-button--prev"
+				onclick={goToPrevImage}
+				aria-label="Previous image"
+				type="button"
+			>
+				<Icon name="chevron-left" size={48} />
+			</button>
+		{/if}
+
+		{#if canGoNext}
+			<button
+				class="nav-button nav-button--next"
+				onclick={goToNextImage}
+				aria-label="Next image"
+				type="button"
+			>
+				<Icon name="chevron-right" size={48} />
+			</button>
+		{/if}
 	</dialog>
 {/if}
 
@@ -199,19 +311,147 @@
 			border: 0;
 			width: 100%;
 			height: 100%;
-			padding: 5rem;
+			padding: 0;
 			margin: 0;
 			max-width: 100vw;
 			max-height: 100vh;
-			background: rgba(0, 0, 0, 0.8);
+			background: rgba(0, 0, 0, 0.95);
+			position: relative;
 		}
 
-		.contents {
+		.lightbox-contents {
 			display: flex;
 			justify-content: center;
 			align-items: center;
 			width: 100%;
 			height: 100%;
+			padding: 5rem;
+			position: relative;
+		}
+
+		.image-wrapper {
+			position: relative;
+			width: 100%;
+			height: 100%;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.lightbox-image {
+			position: absolute;
+			max-width: 100%;
+			max-height: 100%;
+			object-fit: contain;
+			cursor: default;
+		}
+	}
+
+	.close-button {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		z-index: 10;
+		background: rgba(255, 255, 255, 0.1);
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-radius: 4px;
+		color: white;
+		padding: 0.5rem;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s ease;
+		backdrop-filter: blur(10px);
+
+		&:hover {
+			background: rgba(255, 255, 255, 0.2);
+			border-color: rgba(255, 255, 255, 0.5);
+			transform: scale(1.05);
+		}
+
+		&:active {
+			transform: scale(0.95);
+		}
+	}
+
+	.nav-button {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		z-index: 10;
+		background: rgba(255, 255, 255, 0.1);
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-radius: 4px;
+		color: white;
+		padding: 1rem;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s ease;
+		backdrop-filter: blur(10px);
+
+		&:hover {
+			background: rgba(255, 255, 255, 0.2);
+			border-color: rgba(255, 255, 255, 0.5);
+			transform: translateY(-50%) scale(1.05);
+		}
+
+		&:active {
+			transform: translateY(-50%) scale(0.95);
+		}
+	}
+
+	.nav-button--prev {
+		left: 1rem;
+	}
+
+	.nav-button--next {
+		right: 1rem;
+	}
+
+	.gallery-counter {
+		position: absolute;
+		bottom: 2rem;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(0, 0, 0, 0.7);
+		color: white;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		font-family: var(--font-oswald, sans-serif);
+		font-size: 0.875rem;
+		backdrop-filter: blur(10px);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+	}
+
+	/* Responsive adjustments */
+	@media (max-width: 768px) {
+		.lightbox-contents {
+			padding: 3rem 1rem;
+		}
+
+		.nav-button {
+			padding: 0.75rem;
+		}
+
+		.nav-button--prev {
+			left: 0.5rem;
+		}
+
+		.nav-button--next {
+			right: 0.5rem;
+		}
+
+		.close-button {
+			top: 0.5rem;
+			right: 0.5rem;
+		}
+
+		.gallery-counter {
+			bottom: 1rem;
+			font-size: 0.75rem;
 		}
 	}
 </style>

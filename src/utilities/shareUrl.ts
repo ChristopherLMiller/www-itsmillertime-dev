@@ -1,3 +1,5 @@
+import { PUBLIC_FACEBOOK_APP_ID } from '$env/static/public';
+
 /**
  * Generates share URLs for various social platforms
  *
@@ -14,8 +16,13 @@ export function generateShareUrl(
 	const encodedUrl = encodeURIComponent(url);
 	const encodedTitle = title ? encodeURIComponent(title) : '';
 
+	// Use Facebook Share Dialog if app ID is available, otherwise fall back to basic sharer
+	const facebookUrl = PUBLIC_FACEBOOK_APP_ID
+		? `https://www.facebook.com/dialog/share?app_id=${PUBLIC_FACEBOOK_APP_ID}&href=${encodedUrl}&display=popup`
+		: `https://www.facebook.com/sharer.php?u=${encodedUrl}`;
+
 	const shareUrls = {
-		facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+		facebook: facebookUrl,
 		twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
 		linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
 		reddit: `https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`

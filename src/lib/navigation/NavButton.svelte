@@ -1,12 +1,13 @@
 <script lang="ts">
   let {navItem} = $props();
   import { page } from '$app/state';
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
   import NavLink from './NavLink.svelte';
 </script>
 
 <button class={`${navItem.path === page.url.pathname ? 'active' : ''}`}>
   {#if navItem.icon}
-    <img src={navItem.icon.url} alt={navItem.title} />
+    <img src={`${PUBLIC_PAYLOAD_URL}${navItem.icon.url}`} alt={navItem.title} />
   {/if}
   <span>{navItem.title}</span>
   <div class={`sub-menu`}>

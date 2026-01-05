@@ -1,6 +1,6 @@
 <script lang="ts">
 	type IconProps = {
-		name: 'calendar' | 'clock';
+		name: 'calendar' | 'clock' | 'x' | 'chevron-left' | 'chevron-right';
 		size?: number;
 		color?: string;
 		className?: string;
@@ -29,6 +29,13 @@
 	{:else if name === 'clock'}
 		<circle cx="12" cy="12" r="10"></circle>
 		<polyline points="12 6 12 12 16 14"></polyline>
+	{:else if name === 'x'}
+		<line x1="18" y1="6" x2="6" y2="18"></line>
+		<line x1="6" y1="6" x2="18" y2="18"></line>
+	{:else if name === 'chevron-left'}
+		<polyline points="15 18 9 12 15 6"></polyline>
+	{:else if name === 'chevron-right'}
+		<polyline points="9 18 15 12 9 6"></polyline>
 	{/if}
 </svg>
 
