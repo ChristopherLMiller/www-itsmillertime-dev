@@ -22,5 +22,27 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		throw error(404, 'Gallery not found');
 	}
 
-	return { gallery };
+	// Fetch all images for this gallery album
+	const imagesData = await getPayloadSDK(fetch).find({
+		collection: 'gallery-images',
+		where: {
+			albums: {
+				contains: gallery.id
+			}
+		},
+		limit: 1000, // Set a high limit to get all images
+		depth: 1
+	});
+
+	// Replace the paginated images with all images
+	const galleryWithAllImages = {
+		...gallery,
+		images: {
+			docs: imagesData.docs,
+			totalDocs: imagesData.totalDocs,
+			hasNextPage: false
+		}
+	};
+
+	return { gallery: galleryWithAllImages };
 };
