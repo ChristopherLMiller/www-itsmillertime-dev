@@ -4,7 +4,7 @@
 	import { quintOut } from 'svelte/easing';
 	import type { Media } from '../types/payload-types';
 	import Icon from './Icon.svelte';
-	import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import {PUBLIC_PAYLOAD_URL } from '$env/static/public';
 
 	// Props
 	let {

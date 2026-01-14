@@ -8,6 +8,7 @@
 		caption?: string;
 		className?: string;
 		maxStack?: number;
+		enableViewTransition?: boolean;
 	};
 
 	const {
@@ -15,7 +16,8 @@
 		images = [],
 		caption,
 		className = '',
-		maxStack = 6
+		maxStack = 6,
+		enableViewTransition = false
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -117,6 +119,7 @@
 				caption={item.caption}
 				interactive={item.isPrimary}
 				className="polaroid-stack__polaroid"
+				enableViewTransition={enableViewTransition}
 			/>
 		</div>
 	{/each}
