@@ -52,10 +52,10 @@
 		{/if}
 	</header>
 
-	<div class="gallery-masonry">
+	<div class="gallery-grid">
 		{#each galleryImages as media, index (media.id)}
 			<button
-				class="gallery-masonry__item"
+				class="gallery-grid__item"
 				onclick={() => openLightbox(index)}
 				aria-label="View {media.alt || media.title || 'image'} in lightbox"
 			>
@@ -98,35 +98,32 @@
 		line-height: 1.6;
 	}
 
-	.gallery-masonry {
-		column-count: 1;
-		column-gap: 2rem;
+	.gallery-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2rem;
 		margin: 0 auto;
 	}
 
 	@media (min-width: 640px) {
-		.gallery-masonry {
-			column-count: 2;
+		.gallery-grid {
+			grid-template-columns: repeat(2, 1fr);
 		}
 	}
 
 	@media (min-width: 1024px) {
-		.gallery-masonry {
-			column-count: 3;
+		.gallery-grid {
+			grid-template-columns: repeat(3, 1fr);
 		}
 	}
 
 	@media (min-width: 1280px) {
-		.gallery-masonry {
-			column-count: 4;
+		.gallery-grid {
+			grid-template-columns: repeat(4, 1fr);
 		}
 	}
 
-	.gallery-masonry__item {
-		break-inside: avoid;
-		margin-bottom: 2rem;
-		display: inline-block;
-		width: 100%;
+	.gallery-grid__item {
 		background: transparent;
 		border: none;
 		padding: 0;
@@ -134,32 +131,32 @@
 		transition: transform 250ms ease;
 	}
 
-	.gallery-masonry__item :global(.polaroid) {
+	.gallery-grid__item :global(.polaroid) {
 		width: 100%;
 		transform: rotate(0deg) !important;
 		cursor: pointer;
 	}
 
 	/* Slightly rotate polaroids for variety */
-	.gallery-masonry__item:nth-child(3n + 1) :global(.polaroid) {
+	.gallery-grid__item:nth-child(3n + 1) :global(.polaroid) {
 		transform: rotate(-1.5deg) !important;
 	}
 
-	.gallery-masonry__item:nth-child(3n + 2) :global(.polaroid) {
+	.gallery-grid__item:nth-child(3n + 2) :global(.polaroid) {
 		transform: rotate(1deg) !important;
 	}
 
-	.gallery-masonry__item:nth-child(3n + 3) :global(.polaroid) {
+	.gallery-grid__item:nth-child(3n + 3) :global(.polaroid) {
 		transform: rotate(-0.5deg) !important;
 	}
 
-	.gallery-masonry__item:hover :global(.polaroid),
-	.gallery-masonry__item:focus-visible :global(.polaroid) {
+	.gallery-grid__item:hover :global(.polaroid),
+	.gallery-grid__item:focus-visible :global(.polaroid) {
 		transform: rotate(0deg) scale(1.02) !important;
 		z-index: 10;
 	}
 
-	.gallery-masonry__item:focus-visible {
+	.gallery-grid__item:focus-visible {
 		outline: 2px solid var(--color-accent, #3b82f6);
 		outline-offset: 4px;
 		border-radius: 8px;
