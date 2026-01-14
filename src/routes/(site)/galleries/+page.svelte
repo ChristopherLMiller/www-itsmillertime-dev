@@ -1,7 +1,5 @@
 <script lang="ts">
 	import PolaroidStack from '$lib/components/PolaroidStack.svelte';
-	import StickyNote from '$lib/components/StickyNote.svelte';
-	import Panel from '$lib/Panel.svelte';
 	import type { Media } from '$lib/types/payload-types';
 
 	const { data } = $props();
@@ -26,24 +24,28 @@
 	}
 </script>
 
-<Panel hasBorder hasPadding>
-	<h1>Gallery</h1>
-	<p>Coming soon...</p>
-</Panel>
-
-<StickyNote>
-	<p><strong>Reminder:</strong> Don't forget to check out these amazing galleries!</p>
-	<p>Each one tells a unique story through beautiful imagery.</p>
-	<p>Click on any polaroid stack to explore more...</p>
-</StickyNote>
-
 {#each data.galleries as gallery (gallery.id)}
-	{@const cover = gallery.meta?.image as Media | number | null}
 	{@const galleryDocs = gallery.images?.docs ?? []}
 	{@const stackImages = galleryDocs
 		.map((doc) => extractMediaFromDoc(doc))
 		.filter((media): media is Media => Boolean(media))}
-	{#if cover && typeof cover === 'object'}
-		<PolaroidStack primary={cover} images={stackImages} caption={gallery.title} />
+	{@const cover = (gallery.meta?.image as Media | number | null) ?? stackImages[0]}
+	{#if cover && typeof cover === 'object' && stackImages.length > 0}
+		<a href="/galleries/{gallery.slug}" class="gallery-link">
+			<PolaroidStack
+				primary={cover}
+				images={stackImages}
+				caption={gallery.title}
+				enableViewTransition={true}
+			/>
+		</a>
 	{/if}
 {/each}
+
+<style>
+	.gallery-link {
+		display: inline-block;
+		text-decoration: none;
+		color: inherit;
+	}
+</style>

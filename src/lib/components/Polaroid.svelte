@@ -7,13 +7,15 @@
 		caption?: string;
 		className?: string;
 		interactive?: boolean;
+		enableViewTransition?: boolean;
 	};
 
 	const {
 		media,
 		caption,
 		className = '',
-		interactive = true
+		interactive = true,
+		enableViewTransition = false
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? media?.alt ?? '');
@@ -65,6 +67,7 @@
 							alt={media?.alt ?? ''}
 							loading="lazy"
 							style:opacity={isLoaded ? 1 : 0}
+							style:view-transition-name={enableViewTransition ? `gallery-image-${media.id}` : undefined}
 							onload={() => (isLoaded = true)}
 						/>
 					{/if}
@@ -100,10 +103,11 @@
 					{#if imageSrc}
 						<img
 							class="polaroid__image polaroid__image--main"
-							src={imageSrc}
+							src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
 							alt={media?.alt ?? ''}
 							loading="lazy"
 							style:opacity={isLoaded ? 1 : 0}
+							style:view-transition-name={enableViewTransition ? `gallery-image-${media.id}` : undefined}
 							onload={() => (isLoaded = true)}
 						/>
 					{/if}
