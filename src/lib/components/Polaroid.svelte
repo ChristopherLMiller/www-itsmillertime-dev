@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import Image from './Image.svelte';
 	import type { Media } from '../types/payload-types';
 
 	type PolaroidProps = {
@@ -8,6 +8,9 @@
 		className?: string;
 		interactive?: boolean;
 		enableViewTransition?: boolean;
+		hoverFlip?: boolean;
+		albumTitle?: string;
+		albumDescription?: string;
 	};
 
 	const {
@@ -15,62 +18,55 @@
 		caption,
 		className = '',
 		interactive = true,
-		enableViewTransition = false
+		enableViewTransition = false,
+		hoverFlip = false,
+		albumTitle,
+		albumDescription
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? media?.alt ?? '');
 
 	let isFlipped = $state(false);
-	let isLoaded = $state(false);
-
-	const imageSrc = $derived(
-		media?.sizes?.xlarge?.url ??
-			media?.sizes?.large?.url ??
-			media?.sizes?.medium?.url ??
-			media?.sizes?.small?.url ??
-			media?.url ??
-			null
-	);
-
-	const placeholderSrc = $derived(media?.blurhash ?? null);
+	let isHovering = $state(false);
 
 	function toggleFlip() {
 		if (!interactive) return;
 		isFlipped = !isFlipped;
 	}
+
+	function handleMouseEnter() {
+		if (hoverFlip) {
+			isHovering = true;
+		}
+	}
+
+	function handleMouseLeave() {
+		if (hoverFlip) {
+			isHovering = false;
+		}
+	}
+
+	const shouldBeFlipped = $derived(hoverFlip ? isHovering : isFlipped);
 </script>
 
 {#if interactive}
 	<button
 		type="button"
-		class="polaroid {className} {isFlipped ? 'flipped' : ''}"
-		aria-pressed={isFlipped}
+		class="polaroid {className} {shouldBeFlipped ? 'flipped' : ''}"
+		aria-pressed={shouldBeFlipped}
 		onclick={toggleFlip}
+		onmouseenter={handleMouseEnter}
+		onmouseleave={handleMouseLeave}
 	>
 		<div class="polaroid__inner">
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__image-wrapper">
-					{#if placeholderSrc}
-						<img
-							class="polaroid__image polaroid__image--placeholder"
-							src={placeholderSrc}
-							alt="Loading placeholder"
-							aria-hidden="true"
-							style:opacity={isLoaded ? 0 : 1}
-						/>
-					{/if}
-
-					{#if imageSrc}
-						<img
-							class="polaroid__image polaroid__image--main"
-							src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
-							alt={media?.alt ?? ''}
-							loading="lazy"
-							style:opacity={isLoaded ? 1 : 0}
-							style:view-transition-name={enableViewTransition ? `gallery-image-${media.id}` : undefined}
-							onload={() => (isLoaded = true)}
-						/>
-					{/if}
+					<Image
+						image={media}
+						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
+						className="polaroid__image-component"
+						objectFit="cover"
+					/>
 				</div>
 				{#if displayCaption}
 					<div class="polaroid__caption">{displayCaption}</div>
@@ -78,39 +74,38 @@
 			</div>
 
 			<div class="polaroid__face polaroid__face--back">
-				<p class="polaroid__note">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus
-					tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.
-				</p>
+				{#if albumTitle || albumDescription}
+					<div class="polaroid__back-content">
+						{#if albumTitle}
+							<h3 class="polaroid__album-title">{albumTitle}</h3>
+						{/if}
+						{#if albumDescription}
+							<p class="polaroid__album-description">{albumDescription}</p>
+						{/if}
+					</div>
+				{:else}
+					<p class="polaroid__note">
+						{caption}
+					</p>
+				{/if}
 			</div>
 		</div>
 	</button>
 {:else}
-	<div class="polaroid {className} polaroid--static">
+	<div
+		class="polaroid {className} polaroid--static {shouldBeFlipped ? 'flipped' : ''}"
+		onmouseenter={handleMouseEnter}
+		onmouseleave={handleMouseLeave}
+	>
 		<div class="polaroid__inner">
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__image-wrapper">
-					{#if placeholderSrc}
-						<img
-							class="polaroid__image polaroid__image--placeholder"
-							src={placeholderSrc}
-							alt="Loading placeholder"
-							aria-hidden="true"
-							style:opacity={isLoaded ? 0 : 1}
-						/>
-					{/if}
-
-					{#if imageSrc}
-						<img
-							class="polaroid__image polaroid__image--main"
-							src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
-							alt={media?.alt ?? ''}
-							loading="lazy"
-							style:opacity={isLoaded ? 1 : 0}
-							style:view-transition-name={enableViewTransition ? `gallery-image-${media.id}` : undefined}
-							onload={() => (isLoaded = true)}
-						/>
-					{/if}
+					<Image
+						image={media}
+						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
+						className="polaroid__image-component"
+						objectFit="cover"
+					/>
 				</div>
 				{#if displayCaption}
 					<div class="polaroid__caption">{displayCaption}</div>
@@ -118,10 +113,20 @@
 			</div>
 
 			<div class="polaroid__face polaroid__face--back">
-				<p class="polaroid__note">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus
-					tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.
-				</p>
+				{#if albumTitle || albumDescription}
+					<div class="polaroid__back-content">
+						{#if albumTitle}
+							<h3 class="polaroid__album-title">{albumTitle}</h3>
+						{/if}
+						{#if albumDescription}
+							<p class="polaroid__album-description">{albumDescription}</p>
+						{/if}
+					</div>
+				{:else}
+					<p class="polaroid__note">
+						{caption}
+					</p>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -206,18 +211,10 @@
 		justify-content: center;
 	}
 
-	.polaroid__image {
-		position: absolute;
-		inset: 0;
+	.polaroid__image-wrapper :global(.polaroid__image-component) {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
-		transition: opacity 300ms ease;
-	}
-
-	.polaroid__image--placeholder {
-		filter: blur(8px);
-		transform: scale(1.05);
+		border-radius: 6px;
 	}
 
 	.polaroid__caption {
@@ -233,6 +230,29 @@
 		font-size: 0.95rem;
 		line-height: 1.5;
 		color: #4a4a47;
+	}
+
+	.polaroid__back-content {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		text-align: center;
+	}
+
+	.polaroid__album-title {
+		font-family: 'Permanent Marker', cursive;
+		font-size: 1.25rem;
+		color: #2f2b25;
+		margin: 0;
+		letter-spacing: 0.04em;
+	}
+
+	.polaroid__album-description {
+		font-family: 'Permanent Marker', cursive;
+		font-size: 0.9rem;
+		line-height: 1.6;
+		color: #4a4a47;
+		margin: 0;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

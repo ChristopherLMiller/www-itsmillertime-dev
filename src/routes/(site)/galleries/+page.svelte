@@ -38,6 +38,9 @@
 					images={stackImages}
 					caption={gallery.title}
 					enableViewTransition={true}
+					hoverFlip={true}
+					albumTitle={gallery.title}
+					albumDescription={gallery.meta?.description}
 				/>
 			</a>
 		{/if}
@@ -76,5 +79,14 @@
 		display: block;
 		text-decoration: none;
 		color: inherit;
+		width: 100%;
+	}
+
+	.gallery-link :global(.polaroid-stack) {
+		width: 100%;
+	}
+
+	.gallery-link :global(.polaroid-stack__polaroid.polaroid) {
+		width: 100%;
 	}
 </style>
