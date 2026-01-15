@@ -9,6 +9,9 @@
 		className?: string;
 		maxStack?: number;
 		enableViewTransition?: boolean;
+		hoverFlip?: boolean;
+		albumTitle?: string;
+		albumDescription?: string;
 	};
 
 	const {
@@ -17,7 +20,10 @@
 		caption,
 		className = '',
 		maxStack = 6,
-		enableViewTransition = false
+		enableViewTransition = false,
+		hoverFlip = false,
+		albumTitle,
+		albumDescription
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -26,9 +32,14 @@
 	let container: HTMLDivElement | null = $state(null);
 	let viewportWidth = $state(initialViewportWidth);
 	let viewportHeight = $state(initialViewportHeight);
+	let hasBeenHovered = $state(false);
 
 	function isMedia(value: unknown): value is Media {
 		return typeof value === 'object' && value !== null && 'id' in value;
+	}
+
+	function handleMouseEnter() {
+		hasBeenHovered = true;
 	}
 
 	const secondaryMedia = $derived(
@@ -108,20 +119,25 @@
 	});
 </script>
 
-<div bind:this={container} class="polaroid-stack {className}">
+<div bind:this={container} class="polaroid-stack {className}" onmouseenter={handleMouseEnter}>
 	{#each stackLayout as item (item.key)}
-		<div
-			class="polaroid-stack__item {item.isPrimary ? 'polaroid-stack__item--primary' : ''}"
-			style={`z-index: ${item.zIndex}; --target-translate-x: ${item.translateX}px; --target-translate-y: ${item.translateY}px; --target-rotate: ${item.rotate}deg;`}
-		>
-			<Polaroid
-				media={item.media}
-				caption={item.caption}
-				interactive={item.isPrimary}
-				className="polaroid-stack__polaroid"
-				enableViewTransition={enableViewTransition}
-			/>
-		</div>
+		{#if item.isPrimary || hasBeenHovered}
+			<div
+				class="polaroid-stack__item {item.isPrimary ? 'polaroid-stack__item--primary' : ''}"
+				style={`z-index: ${item.zIndex}; --target-translate-x: ${item.translateX}px; --target-translate-y: ${item.translateY}px; --target-rotate: ${item.rotate}deg;`}
+			>
+				<Polaroid
+					media={item.media}
+					caption={item.caption}
+					interactive={item.isPrimary}
+					className="polaroid-stack__polaroid"
+					enableViewTransition={enableViewTransition}
+					hoverFlip={item.isPrimary && hoverFlip}
+					albumTitle={item.isPrimary ? albumTitle : undefined}
+					albumDescription={item.isPrimary ? albumDescription : undefined}
+				/>
+			</div>
+		{/if}
 	{/each}
 </div>
 
