@@ -1,5 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { extractYouTubeId } from '../../utilities/extractYouTubeId';
+	import videojs from 'video.js';
+	import 'video.js/dist/video-js.css';
+	import 'videojs-youtube';
+	import type Player from 'video.js/dist/types/player';
 
 	type YouTubeEmbedProps = {
 		title: string;
@@ -9,23 +14,43 @@
 	const { title, url }: YouTubeEmbedProps = $props();
 
 	const videoId = $derived(extractYouTubeId(url));
-	const embedUrl = $derived(videoId ? `https://www.youtube.com/embed/${videoId}` : null);
+	let videoElement: HTMLVideoElement;
+	let player: Player | null = null;
+
+	onMount(() => {
+		if (videoId && videoElement) {
+			player = videojs(videoElement, {
+				techOrder: ['youtube'],
+				sources: [{
+					type: 'video/youtube',
+					src: `https://www.youtube.com/watch?v=${videoId}`
+				}],
+				youtube: {
+					ytControls: 0
+				}
+			});
+		}
+
+		return () => {
+			if (player) {
+				player.dispose();
+			}
+		};
+	});
 </script>
 
-{#if embedUrl}
+{#if videoId}
 	<div class="video-wrapper">
 		{#if title}
 			<h3 class="video-title">{title}</h3>
 		{/if}
 		<div class="video-container">
-			<iframe
-				src={embedUrl}
-				title={title || 'YouTube video'}
-				frameborder="0"
-				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-				allowfullscreen
-				loading="lazy"
-			></iframe>
+			<video
+				bind:this={videoElement}
+				class="video-js vjs-default-skin"
+				controls
+				preload="auto"
+			></video>
 		</div>
 	</div>
 {:else}
@@ -58,13 +83,12 @@
 		background: var(--color-tertiary-darker);
 	}
 
-	.video-container iframe {
+	.video-container :global(.video-js) {
 		position: absolute;
 		top: 0;
 		left: 0;
 		width: 100%;
 		height: 100%;
-		border: 0;
 	}
 
 	.error {
