@@ -33,6 +33,7 @@
 	let viewportWidth = $state(initialViewportWidth);
 	let viewportHeight = $state(initialViewportHeight);
 	let hasBeenHovered = $state(false);
+	let isHovering = $state(false);
 
 	function isMedia(value: unknown): value is Media {
 		return typeof value === 'object' && value !== null && 'id' in value;
@@ -40,6 +41,11 @@
 
 	function handleMouseEnter() {
 		hasBeenHovered = true;
+		isHovering = true;
+	}
+
+	function handleMouseLeave() {
+		isHovering = false;
 	}
 
 	const secondaryMedia = $derived(
@@ -51,8 +57,11 @@
 
 	const stackMedias = $derived([primary, ...secondaryMedia]);
 
-	const stackLayout = $derived(
-		stackMedias.map((media, index, array) => {
+	const stackLayout = $derived.by(() => {
+		// Force recalculation when hovering to get fresh container position
+		const shouldRecalcBounds = isHovering;
+
+		return stackMedias.map((media, index, array) => {
 			const total = array.length;
 			const isPrimary = index === 0;
 			const offset = isPrimary ? 0 : index - (total - 1) / 2;
@@ -65,16 +74,19 @@
 			let translateY = isPrimary ? 0 : depth * 26 + 32 + Math.abs(offset) * 14;
 			const rotate = isPrimary ? 0 : offset * 7 + (jitter - 0.5) * 15;
 
-			if (!isPrimary && container) {
+			if (!isPrimary && container && shouldRecalcBounds) {
 				const rect = container.getBoundingClientRect();
 				const reservedEdge = 64;
 				const width = rect.width;
 				const height = rect.height;
-				const futureLeft = rect.left + translateX;
-				const futureRight = rect.left + translateX + width;
-				const futureTop = rect.top + translateY;
-				const futureBottom = rect.top + translateY + height;
 
+				// Calculate where the polaroid will end up in viewport coordinates
+				const futureLeft = rect.left + translateX;
+				const futureRight = futureLeft + width;
+				const futureTop = rect.top + translateY;
+				const futureBottom = futureTop + height;
+
+				// Adjust if it goes out of bounds
 				if (futureLeft < reservedEdge) {
 					translateX += reservedEdge - futureLeft;
 				}
@@ -99,8 +111,8 @@
 				isPrimary,
 				caption: isPrimary ? caption ?? media.alt ?? '' : media.alt ?? ''
 			};
-		})
-	);
+		});
+	});
 
 	$effect(() => {
 		if (typeof window === 'undefined') return;
@@ -119,7 +131,7 @@
 	});
 </script>
 
-<div bind:this={container} class="polaroid-stack {className}" onmouseenter={handleMouseEnter}>
+<div bind:this={container} class="polaroid-stack {className}" onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
 	{#each stackLayout as item (item.key)}
 		{#if item.isPrimary || hasBeenHovered}
 			<div

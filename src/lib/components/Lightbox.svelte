@@ -34,6 +34,26 @@
 			: 1
 	);
 
+	// Calculate dimensions for the container based on aspect ratio and viewport
+	const containerDimensions = $derived.by(() => {
+		const maxWidth = typeof window !== 'undefined' ? window.innerWidth * 0.9 : 1600;
+		const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.8 : 900;
+
+		if (aspectRatio > maxWidth / maxHeight) {
+			// Width-constrained
+			return {
+				width: maxWidth,
+				height: maxWidth / aspectRatio
+			};
+		} else {
+			// Height-constrained
+			return {
+				width: maxHeight * aspectRatio,
+				height: maxHeight
+			};
+		}
+	});
+
 	function close() {
 		open = false;
 		onClose?.();
@@ -75,9 +95,45 @@
 		}
 	}
 
+	// Preload images in the background
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		// Preload all images when component mounts
+		images.forEach((image) => {
+			const src =
+				image?.sizes?.xlarge?.url ??
+				image?.sizes?.large?.url ??
+				image?.sizes?.medium?.url ??
+				image?.url;
+
+			if (src) {
+				const img = new Image();
+				img.src = `${PUBLIC_PAYLOAD_URL}${src}`;
+			}
+		});
+	});
+
+	// Reset to initial index when initialIndex changes
 	$effect(() => {
 		currentIndex = initialIndex;
-		isLoaded = false;
+	});
+
+	// Check if current image is cached and update loaded state
+	$effect(() => {
+		if (imageSrc && typeof window !== 'undefined') {
+			const img = new Image();
+			img.src = `${PUBLIC_PAYLOAD_URL}${imageSrc}`;
+
+			// If image is complete (cached), set loaded immediately
+			if (img.complete) {
+				isLoaded = true;
+			} else {
+				isLoaded = false;
+			}
+		} else {
+			isLoaded = false;
+		}
 	});
 
 	$effect(() => {
@@ -116,62 +172,66 @@
 				</svg>
 			</button>
 
-			<div class="lightbox__image-container">
-				{#if placeholderSrc}
-					<img
-						class="lightbox__image lightbox__image--placeholder"
-						src={placeholderSrc}
-						alt="Loading placeholder"
-						aria-hidden="true"
-						style:opacity={isLoaded ? 0 : 1}
-					/>
-				{/if}
+			<div
+				class="lightbox__image-container"
+				style:width="{containerDimensions.width}px"
+				style:height="{containerDimensions.height}px"
+			>
+				{#key currentIndex}
+					{#if placeholderSrc && !isLoaded}
+						<img
+							class="lightbox__image lightbox__image--placeholder"
+							src={placeholderSrc}
+							alt="Loading placeholder"
+							aria-hidden="true"
+						/>
+					{/if}
 
-				{#if imageSrc}
-					<img
-						class="lightbox__image lightbox__image--main"
-						src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
-						alt={currentImage?.alt ?? ''}
-						style:opacity={isLoaded ? 1 : 0}
-						style:aspect-ratio={aspectRatio}
-						onload={() => (isLoaded = true)}
-					/>
-				{/if}
-
-				{#if hasPrevious}
-					<button class="lightbox__nav lightbox__nav--prev" onclick={previous} aria-label="Previous image">
-						<svg
-							width="32"
-							height="32"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<polyline points="15 18 9 12 15 6"></polyline>
-						</svg>
-					</button>
-				{/if}
-
-				{#if hasNext}
-					<button class="lightbox__nav lightbox__nav--next" onclick={next} aria-label="Next image">
-						<svg
-							width="32"
-							height="32"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<polyline points="9 18 15 12 9 6"></polyline>
-						</svg>
-					</button>
-				{/if}
+					{#if imageSrc}
+						<img
+							class="lightbox__image lightbox__image--main"
+							src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
+							alt={currentImage?.alt ?? ''}
+							style:opacity={isLoaded ? 1 : 0}
+							onload={() => (isLoaded = true)}
+						/>
+					{/if}
+				{/key}
 			</div>
+
+			{#if hasPrevious}
+				<button class="lightbox__nav lightbox__nav--prev" onclick={previous} aria-label="Previous image">
+					<svg
+						width="32"
+						height="32"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<polyline points="15 18 9 12 15 6"></polyline>
+					</svg>
+				</button>
+			{/if}
+
+			{#if hasNext}
+				<button class="lightbox__nav lightbox__nav--next" onclick={next} aria-label="Next image">
+					<svg
+						width="32"
+						height="32"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<polyline points="9 18 15 12 9 6"></polyline>
+					</svg>
+				</button>
+			{/if}
 
 			{#if currentImage?.title || currentImage?.alt}
 				<div class="lightbox__caption">
@@ -243,25 +303,29 @@
 
 	.lightbox__image-container {
 		position: relative;
-		max-width: 90vw;
-		max-height: 80vh;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
 	.lightbox__image {
-		max-width: 100%;
-		max-height: 80vh;
+		display: block;
+		width: 100%;
+		height: 100%;
 		object-fit: contain;
+		object-position: center;
 		transition: opacity 300ms ease;
 		border-radius: 4px;
 	}
 
 	.lightbox__image--placeholder {
 		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		filter: blur(20px);
-		transform: scale(1.1);
+		z-index: 0;
 	}
 
 	.lightbox__image--main {
@@ -273,8 +337,8 @@
 		position: absolute;
 		top: 50%;
 		transform: translateY(-50%);
-		background: rgba(255, 255, 255, 0.1);
-		border: none;
+		background: rgba(0, 0, 0, 0.5);
+		border: 2px solid rgba(255, 255, 255, 0.3);
 		color: white;
 		width: 48px;
 		height: 48px;
@@ -283,20 +347,22 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: background 200ms ease;
-		z-index: 2;
+		transition: all 200ms ease;
+		backdrop-filter: blur(10px);
+		z-index: 10;
 	}
 
 	.lightbox__nav:hover {
-		background: rgba(255, 255, 255, 0.2);
+		background: rgba(0, 0, 0, 0.7);
+		border-color: rgba(255, 255, 255, 0.5);
 	}
 
 	.lightbox__nav--prev {
-		left: -64px;
+		left: 1rem;
 	}
 
 	.lightbox__nav--next {
-		right: -64px;
+		right: 1rem;
 	}
 
 	@media (max-width: 768px) {

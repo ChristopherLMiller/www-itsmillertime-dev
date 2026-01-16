@@ -37,11 +37,16 @@
 	},
 	"packageManager": "pnpm@10.27.0",
 	"dependencies": {
+		"@fortawesome/fontawesome-free": "^7.1.0",
 		"@js-temporal/polyfill": "^0.5.1",
 		"@payloadcms/sdk": "^3.69.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@upstash/redis": "^1.36.0",
+		"fast-xml-parser": "^5.3.3",
+		"maplibre-gl": "^5.16.0",
 		"nodejs": "link:@upstash/redis/nodejs",
-		"qs-esm": "^7.0.3"
+		"qs-esm": "^7.0.3",
+		"video.js": "^8.23.4",
+		"videojs-youtube": "^3.0.1"
 	}
 }
