@@ -26,7 +26,7 @@
 		}
 	}
 
-	function getImage() {
+	function getImage(title: string) {
 		if (meta.image) {
 			if (meta.image.sizes['og']?.url) {
 				return meta.image.sizes['og'].url;
@@ -35,7 +35,10 @@
 			}
 		}
 
-		return 'https://cdn.itsmillertime.dev/6/default_cd50bfe553.jpg';
+		// Generate dynamic OG image with title
+		const titleParts = title.split(' | ');
+		const encodedTitle = encodeURIComponent(titleParts[0]);
+		return `${page.url.origin}/og-image?text=${encodedTitle}`;
 	}
 
 	function generateDescription(description: string) {
@@ -54,29 +57,34 @@
 		);
 		return pageMeta?.description || description;
 	}
+
+	let pageTitle = $derived(generateTitle(meta?.metaTitle));
+	let pageDescription = $derived(generateDescription(meta?.metaDescription));
+	let pageImage = $derived(meta?.metaImage?.url || getImage(meta?.title));
 </script>
 
 <svelte:head>
-	<title>{generateTitle(meta?.metaTitle)}</title>
-	<meta name="description" content={generateDescription(meta?.metaDescription)} />
-	<meta name="image" property="og:image" content={meta?.metaImage?.url || getImage()} />
+
+	<title>{pageTitle}</title>
+	<meta name="description" content={pageDescription} />
+	<meta name="image" property="og:image" content={pageImage} />
 	{#if meta?.canonicalURL}
 		<link rel="canonical" href={meta?.canonicalURL} />
 	{/if}
 
 	<!-- OG -->
 	<meta property="og:type" content="website" />
-	<meta property="og:title" content={generateTitle(meta?.metaTitle)} />
-	<meta property="og:image" content={meta?.metaImage?.url || getImage()} />
-	<meta property="og:description" content={generateDescription(meta?.metaDescription)} />
+	<meta property="og:title" content={pageTitle} />
+	<meta property="og:image" content={pageImage} />
+	<meta property="og:description" content={pageDescription} />
 	{#if meta?.canonicalURL}
 		<meta property="og:url" content={meta?.canonicalURL} />
 	{/if}
 
 	<!-- Twitter -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={generateTitle(meta?.metaTitle)} />
-	<meta name="twitter:description" content={generateDescription(meta?.metaDescription)} />
+	<meta name="twitter:title" content={pageTitle} />
+	<meta name="twitter:description" content={pageDescription} />
 	<meta name="twitter:site" content="@itsmiller_time" />
-	<meta name="twitter:image" content={meta?.metaImage?.url || getImage()} />
+	<meta name="twitter:image" content={pageImage} />
 </svelte:head>
