@@ -36,7 +36,7 @@
 		}
 
 		// Generate dynamic OG image with title
-		const titleParts = title.split(' | ');
+		const titleParts = generateTitle(title).split(' | ');
 		const encodedTitle = encodeURIComponent(titleParts[0]);
 		return `${page.url.origin}/og-image?text=${encodedTitle}`;
 	}
