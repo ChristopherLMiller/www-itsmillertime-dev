@@ -53,8 +53,7 @@ function createOGImage(text: string) {
 					props: {
 						src: logo,
 						style: {
-							maxWidth: '80%',
-							maxHeight: '60%'
+							maxWidth: '100%',
 						}
 					}
 				},
@@ -64,9 +63,9 @@ function createOGImage(text: string) {
 					props: {
 						style: {
 							position: 'absolute',
-							bottom: 80,
+							bottom: 120,
 							left: '50%',
-							transform: 'translateX(-50%) rotate(-2deg)',
+							transform: 'translateX(-50%) rotate(-3deg)',
 							boxShadow: '0 4px 8px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.1)',
 							borderRadius: 4,
 							display: 'flex',
@@ -77,7 +76,7 @@ function createOGImage(text: string) {
 							type: 'div',
 							props: {
 								style: {
-									fontSize: 48,
+									fontSize: 60,
 									fontWeight: 'bold',
 									backgroundColor: '#FFFFFF',
 									textTransform: 'uppercase',
