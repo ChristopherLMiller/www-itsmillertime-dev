@@ -4,9 +4,6 @@
 	const { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Board Game Collection</title>
-</svelte:head>
 
 <Panel hasBorder hasTexture={false}>
 	<div class="board-games-page">
@@ -27,8 +24,10 @@
 			<div class="loading-message">
 				<p>No games found in collection</p>
 			</div>
-		{:else}
-			<div class="games-grid">
+		{/if}
+		</div>
+		</Panel>
+			<div class="games-flex">
 				{#each data.games as game (game.id)}
 					<a
 						href="https://boardgamegeek.com/boardgame/{game.id}"
@@ -36,35 +35,16 @@
 						rel="noopener noreferrer"
 						class="game-card"
 					>
-						<div class="game-image-container">
-							{#if game.thumbnail}
-								<img src={game.thumbnail} alt={game.name} class="game-image" loading="lazy" />
-							{:else}
-								<div class="game-image-placeholder">
-									<span>No Image</span>
-								</div>
-							{/if}
-						</div>
-						<div class="game-info">
-							<h3 class="game-title">{game.name}</h3>
-							{#if game.yearPublished}
-								<p class="game-year">({game.yearPublished})</p>
-							{/if}
-							<div class="game-stats">
-								{#if game.numPlays > 0}
-									<span class="stat">Plays: {game.numPlays}</span>
-								{/if}
-								{#if game.rating > 0}
-									<span class="stat">Rating: {game.rating.toFixed(1)}/10</span>
-								{/if}
+						{#if game.thumbnail}
+							<img src={game.image} alt={game.name['#text']} class="game-image" loading="lazy" />
+						{:else}
+							<div class="game-image-placeholder">
+								<span>No Image</span>
 							</div>
-						</div>
+						{/if}
 					</a>
 				{/each}
 			</div>
-		{/if}
-	</div>
-</Panel>
 
 <style>
 	.board-games-page {
@@ -101,23 +81,26 @@
 		color: var(--color-tertiary);
 	}
 
-	.games-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-		gap: 2rem;
+	.games-flex {
+		margin-block-start: 1.5rem;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0;
 		max-width: 1400px;
-		margin: 0 auto;
+		align-items: flex-end;
+		border-left: 15px solid #A0522D;
+		border-right: 15px solid #A0522D;
 	}
 
 	.game-card {
-		display: flex;
-		flex-direction: column;
-		background: var(--linen-paper);
-		border: var(--border-width) solid var(--color-primary-darker);
+		display: block;
+		width: 150px;
+		flex-shrink: 0;
 		text-decoration: none;
-		color: inherit;
 		transition: transform 0.2s ease, box-shadow 0.2s ease;
 		overflow: hidden;
+		border-bottom: 15px solid #A0522D;
+		margin-bottom: 1.5rem;
 	}
 
 	.game-card:hover {
@@ -125,24 +108,14 @@
 		box-shadow: 8px 8px 0 var(--color-primary);
 	}
 
-	.game-image-container {
-		position: relative;
-		width: 100%;
-		aspect-ratio: 1;
-		background: var(--color-tertiary-lighter);
-		overflow: hidden;
-	}
-
 	.game-image {
 		width: 100%;
-		height: 100%;
-		object-fit: cover;
 		display: block;
 	}
 
 	.game-image-placeholder {
 		width: 100%;
-		height: 100%;
+		height: 150px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -151,45 +124,13 @@
 		color: var(--color-tertiary);
 	}
 
-	.game-info {
-		padding: 1rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.game-title {
-		font-family: var(--font-special-elite);
-		font-size: var(--fs-xs);
-		color: var(--color-primary-darker);
-		margin: 0;
-		line-height: 1.2;
-	}
-
-	.game-year {
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		margin: 0;
-	}
-
-	.game-stats {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		margin-top: 0.5rem;
-	}
-
-	.stat {
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary-darker);
-	}
-
 	@media (max-width: 768px) {
-		.games-grid {
-			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-			gap: 1rem;
+		.game-card {
+			width: 120px;
+		}
+		
+		.game-image-placeholder {
+			height: 120px;
 		}
 	}
 </style>

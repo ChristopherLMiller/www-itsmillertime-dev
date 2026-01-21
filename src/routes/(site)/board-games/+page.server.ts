@@ -22,7 +22,10 @@ interface BGGResponse {
 	};
 }
 
-async function fetchBGGCollection(username: string, retryCount = 0): Promise<{ games: any[], total: number, error?: string }> {
+async function fetchBGGCollection(
+	username: string,
+	retryCount = 0
+): Promise<{ games: any[]; total: number; error?: string }> {
 	const maxRetries = 5;
 	const retryDelay = 3000;
 
@@ -36,12 +39,12 @@ async function fetchBGGCollection(username: string, retryCount = 0): Promise<{ g
 			};
 		}
 
-		const url = `https://boardgamegeek.com/xmlapi2/collection?username=${username}`;
+		const url = `https://boardgamegeek.com/xmlapi2/collection?username=${username}&subtype=boardgame&own=1&excludesubtype=boardgameexpansion`;
 		console.log('Fetching BGG collection:', url);
 
 		const response = await fetch(url, {
 			headers: {
-				'Authorization': `Bearer ${BGG_API_TOKEN}`
+				Authorization: `Bearer ${BGG_API_TOKEN}`
 			}
 		});
 
@@ -50,8 +53,10 @@ async function fetchBGGCollection(username: string, retryCount = 0): Promise<{ g
 		// Handle 202 - BGG is queuing the request
 		if (response.status === 202) {
 			if (retryCount < maxRetries) {
-				console.log(`Request queued (202), retrying in ${retryDelay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-				await new Promise(resolve => setTimeout(resolve, retryDelay));
+				console.log(
+					`Request queued (202), retrying in ${retryDelay}ms... (attempt ${retryCount + 1}/${maxRetries})`
+				);
+				await new Promise((resolve) => setTimeout(resolve, retryDelay));
 				return fetchBGGCollection(username, retryCount + 1);
 			} else {
 				return {
