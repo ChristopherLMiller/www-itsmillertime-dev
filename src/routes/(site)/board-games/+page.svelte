@@ -28,7 +28,7 @@
 		</div>
 		</Panel>
 			<div class="games-flex">
-				{#each data.games as game (game.id)}
+				{#each data.games as game, i (`${game.id}-${i}`)}
 					<a
 						href="https://boardgamegeek.com/boardgame/{game.id}"
 						target="_blank"
@@ -36,7 +36,7 @@
 						class="game-card"
 					>
 						{#if game.thumbnail}
-							<img src={game.image} alt={game.name['#text']} class="game-image" loading="lazy" />
+							<img src={game.image} alt={game.name} class="game-image" loading="lazy" />
 						{:else}
 							<div class="game-image-placeholder">
 								<span>No Image</span>

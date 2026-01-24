@@ -42,7 +42,6 @@
 		"@payloadcms/sdk": "^3.69.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@upstash/redis": "^1.36.0",
-		"fast-xml-parser": "^5.3.3",
 		"maplibre-gl": "^5.16.0",
 		"nodejs": "link:@upstash/redis/nodejs",
 		"qs-esm": "^7.0.3",

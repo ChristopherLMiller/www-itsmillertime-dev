@@ -1,26 +1,5 @@
-import { XMLParser } from 'fast-xml-parser';
 import { BGG_API_TOKEN } from '$env/static/private';
 import type { PageServerLoad } from './$types';
-
-interface BGGCollectionItem {
-	objectid: string;
-	name: string;
-	thumbnail?: string;
-	image?: string;
-	yearpublished?: string;
-	numplays?: string;
-	stats?: {
-		rating?: {
-			value?: string;
-		};
-	};
-}
-
-interface BGGResponse {
-	items: {
-		item: BGGCollectionItem | BGGCollectionItem[];
-	};
-}
 
 async function fetchBGGCollection(
 	username: string,
@@ -39,14 +18,10 @@ async function fetchBGGCollection(
 			};
 		}
 
-		const url = `https://boardgamegeek.com/xmlapi2/collection?username=${username}&subtype=boardgame&own=1&excludesubtype=boardgameexpansion`;
+		const url = `https://cms.itsmillertime.dev/api/bgg/collection?username=${username}`;
 		console.log('Fetching BGG collection:', url);
 
-		const response = await fetch(url, {
-			headers: {
-				Authorization: `Bearer ${BGG_API_TOKEN}`
-			}
-		});
+		const response = await fetch(url);
 
 		console.log('BGG Response status:', response.status);
 
@@ -77,38 +52,18 @@ async function fetchBGGCollection(
 			};
 		}
 
-		const xmlData = await response.text();
-		console.log('XML data received, length:', xmlData.length);
+		const data = await response.json();
 
-		const parser = new XMLParser({
-			ignoreAttributes: false,
-			attributeNamePrefix: ''
-		});
-
-		const result = parser.parse(xmlData) as BGGResponse;
-
-		// Handle both single item and array of items
-		let items: BGGCollectionItem[] = [];
-		if (result.items?.item) {
-			items = Array.isArray(result.items.item) ? result.items.item : [result.items.item];
+		if (data.error) {
+			return { games: [], total: 0, error: data.error };
 		}
 
-		console.log('Found', items.length, 'games');
-
-		// Transform the data
-		const games = items.map((item) => ({
-			id: item.objectid,
-			name: item.name,
-			thumbnail: item.thumbnail,
-			image: item.image,
-			yearPublished: item.yearpublished,
-			numPlays: item.numplays ? parseInt(item.numplays) : 0,
-			rating: item.stats?.rating?.value ? parseFloat(item.stats.rating.value) : 0
-		}));
+		const games = data.docs ?? [];
+		console.log('Found', games.length, 'games');
 
 		return {
 			games,
-			total: games.length
+			total: data.totalDocs ?? games.length
 		};
 	} catch (error) {
 		console.error('Error fetching BGG collection:', error);
@@ -120,8 +75,9 @@ async function fetchBGGCollection(
 	}
 }
 
-export const load: PageServerLoad = async () => {
-	const username = 'moose517';
+export const load: PageServerLoad = async ({ request }) => {
+	const url = new URL(request.url);
+	const username = url.searchParams.get('username') || 'moose517';
 	const result = await fetchBGGCollection(username);
 
 	return {
