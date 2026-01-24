@@ -163,7 +163,6 @@ export interface Config {
       });
   jobs: {
     tasks: {
-      sendWelcomeEmail: TaskSendWelcomeEmail;
       generateImageEXIF: TaskGenerateImageEXIF;
       schedulePublish: TaskSchedulePublish;
       inline: {
@@ -361,6 +360,7 @@ export interface User {
   roles: (number | Role)[];
   displayName?: string | null;
   showNSFW?: boolean | null;
+  bggUsername?: string | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -1361,7 +1361,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'sendWelcomeEmail' | 'generateImageEXIF' | 'schedulePublish';
+        taskSlug: 'inline' | 'generateImageEXIF' | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1394,7 +1394,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'sendWelcomeEmail' | 'generateImageEXIF' | 'schedulePublish') | null;
+  taskSlug?: ('inline' | 'generateImageEXIF' | 'schedulePublish') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1625,6 +1625,7 @@ export interface UsersSelect<T extends boolean = true> {
   roles?: T;
   displayName?: T;
   showNSFW?: T;
+  bggUsername?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -2592,22 +2593,12 @@ export interface WebhooksSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskSendWelcomeEmail".
- */
-export interface TaskSendWelcomeEmail {
-  input: {
-    userEmail: string;
-    userName: string;
-  };
-  output?: unknown;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskGenerateImageEXIF".
  */
 export interface TaskGenerateImageEXIF {
   input: {
-    imageId: number;
+    id: number;
+    collection: string;
   };
   output?: unknown;
 }
