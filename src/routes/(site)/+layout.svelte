@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { onNavigate } from '$app/navigation';
 	import NavigationProgress from '$lib/components/NavigationProgress.svelte';
+	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying.svelte';
 	import Footer from '$lib/Footer.svelte';
 	import Header from '$lib/Header.svelte';
 	import Meta from '$lib/meta/Meta.svelte';
@@ -34,6 +35,7 @@
 			</main>
 		</div>
 		<Footer />
+		<LastFmNowPlaying />
 
 <style lang="postcss">
 	.layout {
