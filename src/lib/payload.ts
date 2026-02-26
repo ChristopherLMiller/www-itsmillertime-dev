@@ -1,4 +1,4 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
+import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_API_ENDPOINT_DEV } from '$env/static/public';
 import { PayloadSDK } from '@payloadcms/sdk';
 import type { Config } from '$lib/types/payload-types';
 
