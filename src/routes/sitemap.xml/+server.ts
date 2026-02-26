@@ -43,6 +43,16 @@ export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
 		}
 	});
 
+	// Find all galleries
+	/*const galleriesCount = await sdk.count({
+		collection: 'gallery-albums',
+		where: {
+			'settings.isNsfw': {
+				equals: false
+			}
+		}
+	});*/
+
 	const posts = await sdk.find({
 		collection: 'posts',
 		limit: postsCount.totalDocs,
@@ -83,6 +93,16 @@ export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
 		}
 	});
 
+	/*sconst galleries = await sdk.find({
+		collection: 'gallery-albums',
+		limit: galleriesCount.totalDocs,
+		where: {
+			'settings.isNsfw': {
+				equals: false
+			}
+		}
+	});*/
+
 	const postsOutput =
 		posts &&
 		posts.docs.map((post) => {
@@ -118,6 +138,18 @@ export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
     </url>
     `;
 		});
+
+	/*const galleriesOutput =
+		galleries &&
+		galleries.docs.map((gallery) => {
+			return `
+		<url>
+			<loc>${PUBLIC_URL}/galleries/${gallery.slug}</loc>
+			<changefreq>monthly</changefreq>
+			<priority>1.0</priority>
+		</url>
+		`;
+		});*/
 
 	const xml = `<?xml version="1.0" encoding="UTF-8" ?>
     <urlset
