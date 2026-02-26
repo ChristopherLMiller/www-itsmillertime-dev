@@ -7,11 +7,12 @@
 		initialIndex?: number;
 		open?: boolean;
 		onClose?: () => void;
+		onIndexChange?: (index: number) => void;
 	};
 
-	let { images, initialIndex = 0, open = $bindable(false), onClose }: LightboxProps = $props();
+	let { images, initialIndex = 0, open = $bindable(false), onClose, onIndexChange }: LightboxProps = $props();
 
-	let currentIndex = $state(initialIndex);
+	let currentIndex = $state(0);
 	let isLoaded = $state(false);
 
 	const currentImage = $derived(images[currentIndex]);
@@ -63,6 +64,7 @@
 		if (hasPrevious) {
 			currentIndex--;
 			isLoaded = false;
+			onIndexChange?.(currentIndex);
 		}
 	}
 
@@ -70,6 +72,7 @@
 		if (hasNext) {
 			currentIndex++;
 			isLoaded = false;
+			onIndexChange?.(currentIndex);
 		}
 	}
 
@@ -89,11 +92,6 @@
 		}
 	}
 
-	function handleBackdropClick(event: MouseEvent) {
-		if (event.target === event.currentTarget) {
-			close();
-		}
-	}
 
 	// Preload images in the background
 	$effect(() => {
@@ -154,7 +152,13 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<div class="lightbox" onclick={handleBackdropClick} role="presentation">
+	<div class="lightbox" role="presentation">
+		<button
+			type="button"
+			class="lightbox__backdrop"
+			aria-label="Close lightbox"
+			onclick={close}
+		></button>
 		<div class="lightbox__content">
 			<button class="lightbox__close" onclick={close} aria-label="Close lightbox">
 				<svg
@@ -251,12 +255,21 @@
 		position: fixed;
 		inset: 0;
 		z-index: 9999;
-		background: rgba(0, 0, 0, 0.95);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		padding: 2rem;
 		animation: fadeIn 200ms ease;
+	}
+
+	.lightbox__backdrop {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background: rgba(0, 0, 0, 0.95);
+		border: none;
+		cursor: pointer;
+		padding: 0;
 	}
 
 	@keyframes fadeIn {
@@ -270,6 +283,7 @@
 
 	.lightbox__content {
 		position: relative;
+		z-index: 1;
 		width: 100%;
 		height: 100%;
 		display: flex;
@@ -277,6 +291,11 @@
 		align-items: center;
 		justify-content: center;
 		gap: 1rem;
+		pointer-events: none;
+	}
+
+	.lightbox__content > * {
+		pointer-events: auto;
 	}
 
 	.lightbox__close {

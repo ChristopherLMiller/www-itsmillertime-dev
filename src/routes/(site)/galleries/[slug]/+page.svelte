@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Polaroid from '$lib/components/Polaroid.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import type { Media } from '$lib/types/payload-types';
@@ -35,7 +37,40 @@
 	function openLightbox(index: number) {
 		lightboxIndex = index;
 		lightboxOpen = true;
+		const media = galleryImages[index];
+		if (media?.id != null) {
+			const url = new URL(page.url);
+			url.searchParams.set('selected', String(media.id));
+			goto(url.toString(), { replaceState: true });
+		}
 	}
+
+	function closeLightbox() {
+		const url = new URL(page.url);
+		url.searchParams.delete('selected');
+		goto(url.toString(), { replaceState: true });
+	}
+
+	function updateUrlForIndex(index: number) {
+		const media = galleryImages[index];
+		if (media?.id != null && typeof window !== 'undefined') {
+			const url = new URL(window.location.href);
+			url.searchParams.set('selected', String(media.id));
+			window.history.replaceState(null, '', url.toString());
+		}
+	}
+
+	// Open lightbox on load when ?selected=<imageId> is present
+	$effect(() => {
+		const selected = page.url.searchParams.get('selected');
+		if (!selected || galleryImages.length === 0) return;
+		const id = parseInt(selected, 10);
+		if (Number.isNaN(id)) return;
+		const idx = galleryImages.findIndex((m) => m.id === id);
+		if (idx === -1) return;
+		lightboxIndex = idx;
+		lightboxOpen = true;
+	});
 </script>
 
 <svelte:head>
@@ -70,7 +105,13 @@
 	</div>
 </div>
 
-<Lightbox images={galleryImages} initialIndex={lightboxIndex} bind:open={lightboxOpen} />
+<Lightbox
+		images={galleryImages}
+		initialIndex={lightboxIndex}
+		bind:open={lightboxOpen}
+		onClose={closeLightbox}
+		onIndexChange={updateUrlForIndex}
+	/>
 
 <style>
 	.gallery-page {

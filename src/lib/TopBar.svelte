@@ -3,6 +3,12 @@
 	import { fly } from 'svelte/transition';
 	import { navStore, type NavState } from '../stores/navigation';
 	import NavLink from './navigation/NavLink.svelte';
+	import { authClient } from '$lib/auth-client';
+
+	const session = authClient.useSession();
+
+	let isLoggedIn = $derived(!$session.isPending && !!$session.data?.user);
+	let isAdmin = $derived(isLoggedIn && ($session.data?.user?.role as string[] | undefined)?.includes('admin'));
 
 	let navState = $state<NavState>({ isOpen: false, activeDropdown: null });
 	let currentPath = $state(page.url.pathname);
@@ -40,13 +46,18 @@
 			<span style:font-family="Oswald"><strong>M</strong>enu</span>
 		</button>
 		{#if navState.isOpen && navState.activeDropdown === 'mobile'}
-			<div class="dropdown-links" transition:fly={{ y: 20, duration: 200 }}>
+			<div class="dropdown-links" transition:fly={{ y: 20, duration: 200 }} onclick={() => navStore.close()}>
 				<div class="dropdown-section account">
-					<NavLink navItem={{ title: 'Login', path: '/login' }} />
-					<NavLink navItem={{ title: 'Sign Up', path: '/sign-up' }} />
-					<NavLink navItem={{ title: 'Sign Out', path: '/logout' }} />
-					<NavLink navItem={{ title: 'Profile', path: '/profile' }} />
-					<NavLink navItem={{ title: 'Admin', path: 'https://cms.itsmillertime.dev/admin' }} />
+					{#if isLoggedIn}
+						<NavLink navItem={{ title: 'Profile', link: '/profile' }} />
+						<NavLink navItem={{ title: 'Sign Out', link: '/logout' }} />
+						{#if isAdmin}
+							<NavLink navItem={{ title: 'Admin', link: 'https://cms.itsmillertime.dev/admin' }} />
+						{/if}
+					{:else}
+						<NavLink navItem={{ title: 'Login', link: '/account/login' }} />
+						<NavLink navItem={{ title: 'Sign Up', link: '/sign-up' }} />
+					{/if}
 				</div>
 				<div class="dropdown-section hide-on-desktop">
 					{#each page.data.navigation.navItems as navItem}

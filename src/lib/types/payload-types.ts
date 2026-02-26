@@ -75,7 +75,6 @@ export interface Config {
     'posts-categories': PostsCategory;
     'posts-tags': PostsTag;
     pages: Page;
-    roles: Role;
     'gallery-albums': GalleryAlbum;
     'gallery-images': GalleryImage;
     'gallery-tags': GalleryTag;
@@ -86,6 +85,15 @@ export interface Config {
     manufacturers: Manufacturer;
     'models-tags': ModelsTag;
     models: Model;
+    projects: Project;
+    'projects-categories': ProjectsCategory;
+    'projects-technologies': ProjectsTechnology;
+    sessions: Session;
+    accounts: Account;
+    verifications: Verification;
+    twoFactors: TwoFactor;
+    passkeys: Passkey;
+    apikeys: Apikey;
     'payload-mcp-api-keys': PayloadMcpApiKey;
     search: Search;
     'api-keys': ApiKey;
@@ -97,6 +105,9 @@ export interface Config {
     'payload-query-presets': PayloadQueryPreset;
   };
   collectionsJoins: {
+    users: {
+      apiKeys: 'apikeys';
+    };
     media: {
       relatedPosts: 'posts';
     };
@@ -107,7 +118,7 @@ export interface Config {
       models: 'models';
     };
     'payload-folders': {
-      documentsAndFolders: 'payload-folders' | 'media' | 'gallery-images';
+      documentsAndFolders: 'payload-folders' | 'media';
     };
   };
   collectionsSelect: {
@@ -118,7 +129,6 @@ export interface Config {
     'posts-categories': PostsCategoriesSelect<false> | PostsCategoriesSelect<true>;
     'posts-tags': PostsTagsSelect<false> | PostsTagsSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
-    roles: RolesSelect<false> | RolesSelect<true>;
     'gallery-albums': GalleryAlbumsSelect<false> | GalleryAlbumsSelect<true>;
     'gallery-images': GalleryImagesSelect<false> | GalleryImagesSelect<true>;
     'gallery-tags': GalleryTagsSelect<false> | GalleryTagsSelect<true>;
@@ -129,6 +139,15 @@ export interface Config {
     manufacturers: ManufacturersSelect<false> | ManufacturersSelect<true>;
     'models-tags': ModelsTagsSelect<false> | ModelsTagsSelect<true>;
     models: ModelsSelect<false> | ModelsSelect<true>;
+    projects: ProjectsSelect<false> | ProjectsSelect<true>;
+    'projects-categories': ProjectsCategoriesSelect<false> | ProjectsCategoriesSelect<true>;
+    'projects-technologies': ProjectsTechnologiesSelect<false> | ProjectsTechnologiesSelect<true>;
+    sessions: SessionsSelect<false> | SessionsSelect<true>;
+    accounts: AccountsSelect<false> | AccountsSelect<true>;
+    verifications: VerificationsSelect<false> | VerificationsSelect<true>;
+    twoFactors: TwoFactorsSelect<false> | TwoFactorsSelect<true>;
+    passkeys: PasskeysSelect<false> | PasskeysSelect<true>;
+    apikeys: ApikeysSelect<false> | ApikeysSelect<true>;
     'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     search: SearchSelect<false> | SearchSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
@@ -154,13 +173,7 @@ export interface Config {
     webhooks: WebhooksSelect<false> | WebhooksSelect<true>;
   };
   locale: null;
-  user:
-    | (User & {
-        collection: 'users';
-      })
-    | (PayloadMcpApiKey & {
-        collection: 'payload-mcp-api-keys';
-      });
+  user: User | PayloadMcpApiKey;
   jobs: {
     tasks: {
       generateImageEXIF: TaskGenerateImageEXIF;
@@ -254,7 +267,7 @@ export interface GalleryAlbum {
     category?: (number | null) | GalleryCategory;
     tags?: (number | GalleryTag)[] | null;
     visibility: 'ALL' | 'AUTHENTICATED' | 'PRIVILEGED';
-    allowedRoles?: (number | Role)[] | null;
+    permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
     allowedUsers?: (number | User)[] | null;
   };
   tracking?: {
@@ -327,29 +340,6 @@ export interface GalleryTag {
   createdAt: string;
 }
 /**
- * User roles and permissions
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "roles".
- */
-export interface Role {
-  id: number;
-  name: string;
-  description?: string | null;
-  isDefault?: boolean | null;
-  permissions?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * User accounts
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -357,27 +347,73 @@ export interface Role {
  */
 export interface User {
   id: number;
-  roles: (number | Role)[];
+  email: string;
+  emailVerified?: boolean | null;
+  role: ('family' | 'friend' | 'client' | 'user' | 'admin')[];
   displayName?: string | null;
+  apiKeys?: {
+    docs?: (number | Apikey)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
   showNSFW?: boolean | null;
   bggUsername?: string | null;
+  /**
+   * Auto-added by Better Auth (name)
+   */
+  name: string;
+  /**
+   * Auto-added by Better Auth (image)
+   */
+  image?: string | null;
+  /**
+   * Auto-added by Better Auth (banned)
+   */
+  banned?: boolean | null;
+  /**
+   * Auto-added by Better Auth (banReason)
+   */
+  banReason?: string | null;
+  /**
+   * Auto-added by Better Auth (banExpires)
+   */
+  banExpires?: string | null;
+  /**
+   * Auto-added by Better Auth (twoFactorEnabled)
+   */
+  twoFactorEnabled?: boolean | null;
   updatedAt: string;
   createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
+  collection: 'users';
+}
+/**
+ * Auto-generated from Better Auth schema (apikey)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "apikeys".
+ */
+export interface Apikey {
+  id: number;
+  name?: string | null;
+  start?: string | null;
+  prefix?: string | null;
+  key: string;
+  user: number | User;
+  refillInterval?: number | null;
+  refillAmount?: number | null;
+  lastRefillAt?: string | null;
+  enabled?: boolean | null;
+  rateLimitEnabled?: boolean | null;
+  rateLimitTimeWindow?: number | null;
+  rateLimitMax?: number | null;
+  requestCount?: number | null;
+  remaining?: number | null;
+  lastRequest?: string | null;
+  expiresAt?: string | null;
+  permissions?: string | null;
+  metadata?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Image
@@ -396,7 +432,7 @@ export interface GalleryImage {
     isNsfw?: boolean | null;
     'gallery-tags'?: (number | GalleryTag)[] | null;
     visibility: 'ALL' | 'AUTHENTICATED' | 'PRIVILEGED';
-    allowedRoles?: (number | Role)[] | null;
+    permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
     allowedUsers?: (number | User)[] | null;
   };
   exif?:
@@ -442,7 +478,6 @@ export interface GalleryImage {
      */
     image?: (number | null) | GalleryImage;
   };
-  folder?: (number | null) | FolderInterface;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -512,36 +547,6 @@ export interface GalleryImage {
       filename?: string | null;
     };
   };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "payload-folders".
- */
-export interface FolderInterface {
-  id: number;
-  name: string;
-  folder?: (number | null) | FolderInterface;
-  documentsAndFolders?: {
-    docs?: (
-      | {
-          relationTo?: 'payload-folders';
-          value: number | FolderInterface;
-        }
-      | {
-          relationTo?: 'media';
-          value: number | Media;
-        }
-      | {
-          relationTo?: 'gallery-images';
-          value: number | GalleryImage;
-        }
-    )[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  folderType?: ('media' | 'gallery-images')[] | null;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * Media Items, images and otherwise
@@ -727,6 +732,32 @@ export interface PostsTag {
   createdAt: string;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-folders".
+ */
+export interface FolderInterface {
+  id: number;
+  name: string;
+  folder?: (number | null) | FolderInterface;
+  documentsAndFolders?: {
+    docs?: (
+      | {
+          relationTo?: 'payload-folders';
+          value: number | FolderInterface;
+        }
+      | {
+          relationTo?: 'media';
+          value: number | Media;
+        }
+    )[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  folderType?: 'media'[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Singular dynamic page of the front end
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -738,7 +769,7 @@ export interface Page {
   slug?: string | null;
   slugLock?: boolean | null;
   visibility?: ('ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED') | null;
-  allowedRoles?: (number | Role)[] | null;
+  permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
   blocks?:
     | {
         block?: {
@@ -935,6 +966,213 @@ export interface Scale {
   title: string;
   slug?: string | null;
   slugLock?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Coding projects and portfolio items
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects".
+ */
+export interface Project {
+  id: number;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  projectStatus: 'inProgress' | 'active' | 'completed' | 'archived' | 'experimental';
+  /**
+   * Highlight this project on the homepage
+   */
+  featured?: boolean | null;
+  category?: (number | null) | ProjectsCategory;
+  technologies?: (number | ProjectsTechnology)[] | null;
+  /**
+   * Current version (e.g., 1.2.0, v2.0.0-beta)
+   */
+  version?: string | null;
+  license?: ('MIT' | 'Apache-2.0' | 'GPL-3.0' | 'BSD-3-Clause' | 'ISC' | 'Proprietary' | 'Unlicensed' | 'Other') | null;
+  role?: ('creator' | 'maintainer' | 'contributor' | 'collaborator') | null;
+  relatedResources?: {
+    relatedPosts?: (number | Post)[] | null;
+    relatedProjects?: (number | Project)[] | null;
+  };
+  title: string;
+  /**
+   * A brief one-liner description for cards and listings
+   */
+  shortDescription: string;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * External links related to this project
+   */
+  links?:
+    | {
+        type: 'github' | 'live' | 'npm' | 'docs' | 'custom';
+        /**
+         * Full URL including https://
+         */
+        url: string;
+        /**
+         * Custom label for this link
+         */
+        label?: string | null;
+        /**
+         * Hex color for this link (e.g., #ff5500)
+         */
+        color?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Screenshots and images showcasing the project
+   */
+  screenshots?: (number | Media)[] | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Project categories. Used for classifying project types (Web App, CLI, Library, etc.).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects-categories".
+ */
+export interface ProjectsCategory {
+  id: number;
+  title: string;
+  /**
+   * Optional description of this category
+   */
+  description?: string | null;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Technologies and frameworks used in projects (React, Node.js, TypeScript, etc.).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects-technologies".
+ */
+export interface ProjectsTechnology {
+  id: number;
+  title: string;
+  /**
+   * Hex color for this technology (e.g., #61dafb for React)
+   */
+  color?: string | null;
+  /**
+   * Optional icon/logo for this technology
+   */
+  icon?: (number | null) | Media;
+  /**
+   * Link to official site or documentation
+   */
+  url?: string | null;
+  slug?: string | null;
+  slugLock?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Auto-generated from Better Auth schema (session)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sessions".
+ */
+export interface Session {
+  id: number;
+  expiresAt: string;
+  token: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  user: number | User;
+  impersonatedBy?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Auto-generated from Better Auth schema (account)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "accounts".
+ */
+export interface Account {
+  id: number;
+  accountId: string;
+  providerId: string;
+  user: number | User;
+  accessToken?: string | null;
+  refreshToken?: string | null;
+  idToken?: string | null;
+  accessTokenExpiresAt?: string | null;
+  refreshTokenExpiresAt?: string | null;
+  scope?: string | null;
+  password?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Auto-generated from Better Auth schema (verification)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "verifications".
+ */
+export interface Verification {
+  id: number;
+  identifier: string;
+  value: string;
+  expiresAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Auto-generated from Better Auth schema (twoFactor)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "twoFactors".
+ */
+export interface TwoFactor {
+  id: number;
+  secret: string;
+  backupCodes: string;
+  user: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Auto-generated from Better Auth schema (passkey)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "passkeys".
+ */
+export interface Passkey {
+  id: number;
+  name?: string | null;
+  publicKey: string;
+  user: number | User;
+  credentialID: string;
+  counter: number;
+  deviceType: string;
+  backedUp: boolean;
+  transports?: string | null;
+  aaguid?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1251,6 +1489,7 @@ export interface PayloadMcpApiKey {
   enableAPIKey?: boolean | null;
   apiKey?: string | null;
   apiKeyIndex?: string | null;
+  collection: 'payload-mcp-api-keys';
 }
 /**
  * This is a collection of automatically created search results. These results are used by the global site search and will be updated automatically as documents in the CMS are created or updated.
@@ -1437,10 +1676,6 @@ export interface PayloadLockedDocument {
         value: number | Page;
       } | null)
     | ({
-        relationTo: 'roles';
-        value: number | Role;
-      } | null)
-    | ({
         relationTo: 'gallery-albums';
         value: number | GalleryAlbum;
       } | null)
@@ -1479,6 +1714,42 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'models';
         value: number | Model;
+      } | null)
+    | ({
+        relationTo: 'projects';
+        value: number | Project;
+      } | null)
+    | ({
+        relationTo: 'projects-categories';
+        value: number | ProjectsCategory;
+      } | null)
+    | ({
+        relationTo: 'projects-technologies';
+        value: number | ProjectsTechnology;
+      } | null)
+    | ({
+        relationTo: 'sessions';
+        value: number | Session;
+      } | null)
+    | ({
+        relationTo: 'accounts';
+        value: number | Account;
+      } | null)
+    | ({
+        relationTo: 'verifications';
+        value: number | Verification;
+      } | null)
+    | ({
+        relationTo: 'twoFactors';
+        value: number | TwoFactor;
+      } | null)
+    | ({
+        relationTo: 'passkeys';
+        value: number | Passkey;
+      } | null)
+    | ({
+        relationTo: 'apikeys';
+        value: number | Apikey;
       } | null)
     | ({
         relationTo: 'payload-mcp-api-keys';
@@ -1589,7 +1860,7 @@ export interface PayloadQueryPreset {
     | boolean
     | null;
   groupBy?: string | null;
-  relatedCollection: 'posts' | 'kits' | 'models';
+  relatedCollection: 'posts' | 'kits' | 'models' | 'projects';
   /**
    * This is a temporary field used to determine if updating the preset would remove the user's access to it. When `true`, this record will be deleted after running the preset's `validate` function.
    */
@@ -1622,26 +1893,21 @@ export interface MapMarkersSelect<T extends boolean = true> {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
-  roles?: T;
+  email?: T;
+  emailVerified?: T;
+  role?: T;
   displayName?: T;
+  apiKeys?: T;
   showNSFW?: T;
   bggUsername?: T;
+  name?: T;
+  image?: T;
+  banned?: T;
+  banReason?: T;
+  banExpires?: T;
+  twoFactorEnabled?: T;
   updatedAt?: T;
   createdAt?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
-    | T
-    | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
-      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1798,7 +2064,7 @@ export interface PagesSelect<T extends boolean = true> {
   slug?: T;
   slugLock?: T;
   visibility?: T;
-  allowedRoles?: T;
+  permittedRoles?: T;
   blocks?:
     | T
     | {
@@ -1819,18 +2085,6 @@ export interface PagesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "roles_select".
- */
-export interface RolesSelect<T extends boolean = true> {
-  name?: T;
-  description?: T;
-  isDefault?: T;
-  permissions?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-albums_select".
  */
 export interface GalleryAlbumsSelect<T extends boolean = true> {
@@ -1843,7 +2097,7 @@ export interface GalleryAlbumsSelect<T extends boolean = true> {
         category?: T;
         tags?: T;
         visibility?: T;
-        allowedRoles?: T;
+        permittedRoles?: T;
         allowedUsers?: T;
       };
   tracking?:
@@ -1883,7 +2137,7 @@ export interface GalleryImagesSelect<T extends boolean = true> {
         isNsfw?: T;
         'gallery-tags'?: T;
         visibility?: T;
-        allowedRoles?: T;
+        permittedRoles?: T;
         allowedUsers?: T;
       };
   exif?: T;
@@ -1908,7 +2162,6 @@ export interface GalleryImagesSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
-  folder?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -2137,6 +2390,167 @@ export interface ModelsSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects_select".
+ */
+export interface ProjectsSelect<T extends boolean = true> {
+  slug?: T;
+  slugLock?: T;
+  projectStatus?: T;
+  featured?: T;
+  category?: T;
+  technologies?: T;
+  version?: T;
+  license?: T;
+  role?: T;
+  relatedResources?:
+    | T
+    | {
+        relatedPosts?: T;
+        relatedProjects?: T;
+      };
+  title?: T;
+  shortDescription?: T;
+  content?: T;
+  links?:
+    | T
+    | {
+        type?: T;
+        url?: T;
+        label?: T;
+        color?: T;
+        id?: T;
+      };
+  screenshots?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects-categories_select".
+ */
+export interface ProjectsCategoriesSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  slug?: T;
+  slugLock?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects-technologies_select".
+ */
+export interface ProjectsTechnologiesSelect<T extends boolean = true> {
+  title?: T;
+  color?: T;
+  icon?: T;
+  url?: T;
+  slug?: T;
+  slugLock?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sessions_select".
+ */
+export interface SessionsSelect<T extends boolean = true> {
+  expiresAt?: T;
+  token?: T;
+  ipAddress?: T;
+  userAgent?: T;
+  user?: T;
+  impersonatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "accounts_select".
+ */
+export interface AccountsSelect<T extends boolean = true> {
+  accountId?: T;
+  providerId?: T;
+  user?: T;
+  accessToken?: T;
+  refreshToken?: T;
+  idToken?: T;
+  accessTokenExpiresAt?: T;
+  refreshTokenExpiresAt?: T;
+  scope?: T;
+  password?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "verifications_select".
+ */
+export interface VerificationsSelect<T extends boolean = true> {
+  identifier?: T;
+  value?: T;
+  expiresAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "twoFactors_select".
+ */
+export interface TwoFactorsSelect<T extends boolean = true> {
+  secret?: T;
+  backupCodes?: T;
+  user?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "passkeys_select".
+ */
+export interface PasskeysSelect<T extends boolean = true> {
+  name?: T;
+  publicKey?: T;
+  user?: T;
+  credentialID?: T;
+  counter?: T;
+  deviceType?: T;
+  backedUp?: T;
+  transports?: T;
+  aaguid?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "apikeys_select".
+ */
+export interface ApikeysSelect<T extends boolean = true> {
+  name?: T;
+  start?: T;
+  prefix?: T;
+  key?: T;
+  user?: T;
+  refillInterval?: T;
+  refillAmount?: T;
+  lastRefillAt?: T;
+  enabled?: T;
+  rateLimitEnabled?: T;
+  rateLimitTimeWindow?: T;
+  rateLimitMax?: T;
+  requestCount?: T;
+  remaining?: T;
+  lastRequest?: T;
+  expiresAt?: T;
+  permissions?: T;
+  metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2449,7 +2863,7 @@ export interface SiteNavigation {
               order: number;
               icon?: (number | null) | Media;
               visibility: 'ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED';
-              allowedRoles?: (number | Role)[] | null;
+              permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
               allowedUsers?: (number | User)[] | null;
               id?: string | null;
             }[]
@@ -2457,7 +2871,7 @@ export interface SiteNavigation {
         order: number;
         icon?: (number | null) | Media;
         visibility: 'ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED';
-        allowedRoles?: (number | Role)[] | null;
+        permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
         allowedUsers?: (number | User)[] | null;
         id?: string | null;
       }[]
@@ -2488,7 +2902,6 @@ export interface Webhook {
           | 'posts-categories'
           | 'posts-tags'
           | 'pages'
-          | 'roles'
           | 'gallery-albums'
           | 'gallery-images'
           | 'gallery-tags'
@@ -2499,6 +2912,15 @@ export interface Webhook {
           | 'manufacturers'
           | 'models-tags'
           | 'models'
+          | 'projects'
+          | 'projects-categories'
+          | 'projects-technologies'
+          | 'sessions'
+          | 'accounts'
+          | 'verifications'
+          | 'twoFactors'
+          | 'passkeys'
+          | 'apikeys'
           | 'payload-mcp-api-keys'
           | 'search';
         enabled?: boolean | null;
@@ -2552,14 +2974,14 @@ export interface SiteNavigationSelect<T extends boolean = true> {
               order?: T;
               icon?: T;
               visibility?: T;
-              allowedRoles?: T;
+              permittedRoles?: T;
               allowedUsers?: T;
               id?: T;
             };
         order?: T;
         icon?: T;
         visibility?: T;
-        allowedRoles?: T;
+        permittedRoles?: T;
         allowedUsers?: T;
         id?: T;
       };
@@ -2618,6 +3040,10 @@ export interface TaskSchedulePublish {
       | ({
           relationTo: 'pages';
           value: number | Page;
+        } | null)
+      | ({
+          relationTo: 'projects';
+          value: number | Project;
         } | null);
     global?: string | null;
     user?: (number | null) | User;

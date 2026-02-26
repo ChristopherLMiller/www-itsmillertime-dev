@@ -5,12 +5,12 @@
 	import Panel from '$lib/Panel.svelte';
 	import StickyNote from '$lib/components/StickyNote.svelte';
 	import TimelineCard from '$lib/components/TimelineCard.svelte';
-	import YouTubeEmbed from '$lib/components/YouTubeEmbed.svelte';
 	import { type Media } from '$lib/types/payload-types.js';
 	import { convertDate } from '../../../../utilities/convertDate';
 	import { makeClockifyDurationFriendly } from '../../../../utilities/makeClockifyDurationFriendly';
 	import Disqus from '$lib/components/Disqus.svelte';
 	import ShareButtons from '$lib/components/ShareButtons.svelte';
+	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
 	
 	let clockifyProject = $state(null);
 	const { data } = $props();
@@ -131,7 +131,7 @@
 				<div class="videos-section">
 					{#each model.model_meta.videos as video}
 						{#if video.url}
-							<YouTubeEmbed title={video.title} url={video.url} />
+							<VideoPlayer title={video.title} url={video.url} />
 						{/if}
 					{/each}
 				</div>
