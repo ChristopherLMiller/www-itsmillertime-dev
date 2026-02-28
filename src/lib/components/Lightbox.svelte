@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import type { Media } from '../types/payload-types';
+	import { getMediaUrl } from '$lib/utils/media-url';
 
 	type LightboxProps = {
 		images: Media[];
@@ -8,9 +8,10 @@
 		open?: boolean;
 		onClose?: () => void;
 		onIndexChange?: (index: number) => void;
+		useProxy?: boolean;
 	};
 
-	let { images, initialIndex = 0, open = $bindable(false), onClose, onIndexChange }: LightboxProps = $props();
+	let { images, initialIndex = 0, open = $bindable(false), onClose, onIndexChange, useProxy = false }: LightboxProps = $props();
 
 	let currentIndex = $state(0);
 	let isLoaded = $state(false);
@@ -107,7 +108,7 @@
 
 			if (src) {
 				const img = new Image();
-				img.src = `${PUBLIC_PAYLOAD_URL}${src}`;
+				img.src = getMediaUrl(src, useProxy);
 			}
 		});
 	});
@@ -121,7 +122,7 @@
 	$effect(() => {
 		if (imageSrc && typeof window !== 'undefined') {
 			const img = new Image();
-			img.src = `${PUBLIC_PAYLOAD_URL}${imageSrc}`;
+			img.src = getMediaUrl(imageSrc, useProxy);
 
 			// If image is complete (cached), set loaded immediately
 			if (img.complete) {
@@ -194,7 +195,7 @@
 					{#if imageSrc}
 						<img
 							class="lightbox__image lightbox__image--main"
-							src={`${PUBLIC_PAYLOAD_URL}${imageSrc}`}
+							src={getMediaUrl(imageSrc, useProxy)}
 							alt={currentImage?.alt ?? ''}
 							style:opacity={isLoaded ? 1 : 0}
 							onload={() => (isLoaded = true)}

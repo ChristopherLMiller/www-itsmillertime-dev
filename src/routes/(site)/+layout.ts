@@ -1,16 +1,21 @@
-import { browser } from '$app/environment';
 import type { LayoutLoad } from './$types';
 import { getPayloadSDK } from '$lib/payload';
 
-export const load: LayoutLoad = async ({ fetch }) => {
+export const load: LayoutLoad = async ({ fetch, data }) => {
 	const sdk = getPayloadSDK(fetch);
-	const nav = await sdk.findGlobal({
-		slug: 'site-navigation',
-		depth: 1,
-		draft: true
-	});
 
-	// Sort navItems by order ascending, and also sort childNodes if they exist
+	const [nav, siteMeta] = await Promise.all([
+		sdk.findGlobal({
+			slug: 'site-navigation',
+			depth: 1,
+			draft: true
+		}),
+		sdk.findGlobal({
+			slug: 'site-meta',
+			depth: 1
+		})
+	]);
+
 	const navigation = {
 		...nav,
 		navItems: nav.navItems
@@ -25,10 +30,5 @@ export const load: LayoutLoad = async ({ fetch }) => {
 			: nav.navItems
 	};
 
-	const siteMeta = await sdk.findGlobal({
-		slug: 'site-meta',
-		depth: 1
-	});
-
-	return { navigation, siteMeta };
+	return { navigation, siteMeta, session: data.session };
 };

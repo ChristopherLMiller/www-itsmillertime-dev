@@ -1,54 +1,76 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import Masonry from 'svelte-bricks';
+	import Panel from '$lib/Panel.svelte';
 	import Polaroid from '$lib/components/Polaroid.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
-	import type { Media } from '$lib/types/payload-types';
+	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
+	import type { Media, GalleryImage } from '$lib/types/payload-types';
+
+	type GalleryMedia = Media & { isNsfw: boolean };
 
 	const { data } = $props();
+
+	const isRestricted = $derived(
+		data.gallery.settings?.isNsfw === true ||
+		data.gallery.settings?.visibility !== 'ALL'
+	);
+	const useProxy = $derived(isRestricted);
+	const albumIsNsfw = $derived(data.gallery.settings?.isNsfw === true);
+	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
+	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
 
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
 
-	function normalizeMedia(value: unknown): Media | null {
-		if (typeof value === 'object' && value !== null && 'id' in value) {
-			return value as Media;
+	function extractGalleryMedia(doc: unknown): GalleryMedia | null {
+		if (typeof doc !== 'object' || doc === null) return null;
+
+		const imageDoc = doc as Partial<GalleryImage>;
+		const docIsNsfw = imageDoc.settings?.isNsfw === true || albumIsNsfw;
+
+		if ('url' in imageDoc && 'id' in imageDoc) {
+			return { ...(imageDoc as Media), isNsfw: docIsNsfw };
 		}
+
+		if ('image' in imageDoc) {
+			const candidate = (imageDoc as { image?: unknown }).image;
+			if (typeof candidate === 'object' && candidate !== null && 'id' in candidate) {
+				return { ...(candidate as Media), isNsfw: docIsNsfw };
+			}
+		}
+
 		return null;
 	}
 
-	function extractMediaFromDoc(doc: unknown): Media | null {
-		if (typeof doc !== 'object' || doc === null) return null;
-
-		if ('image' in doc) {
-			const candidate = (doc as { image?: unknown }).image;
-			return normalizeMedia(candidate ?? null);
-		}
-
-		return normalizeMedia(doc);
-	}
-
-	const galleryImages = $derived(
+	const allGalleryImages = $derived(
 		(data.gallery.images?.docs ?? [])
-			.map((doc) => extractMediaFromDoc(doc))
-			.filter((media): media is Media => Boolean(media))
+			.map((doc) => extractGalleryMedia(doc))
+			.filter((media): media is GalleryMedia => Boolean(media))
 	);
 
-	function openLightbox(index: number) {
-		lightboxIndex = index;
+	const galleryImages = $derived(
+		nsfwPref === 'hide'
+			? allGalleryImages.filter((m) => !m.isNsfw)
+			: allGalleryImages
+	);
+
+	const descriptionText = $derived(lexicalToPlainText(data.gallery.content));
+
+	function openLightboxForItem(item: GalleryMedia) {
+		const idx = galleryImages.findIndex((m) => m.id === item.id);
+		if (idx === -1) return;
+		lightboxIndex = idx;
 		lightboxOpen = true;
-		const media = galleryImages[index];
-		if (media?.id != null) {
-			const url = new URL(page.url);
-			url.searchParams.set('selected', String(media.id));
-			goto(url.toString(), { replaceState: true });
-		}
+		const url = new URL(window.location.href);
+		url.searchParams.set('selected', String(item.id));
+		window.history.replaceState(null, '', url.toString());
 	}
 
 	function closeLightbox() {
-		const url = new URL(page.url);
+		const url = new URL(window.location.href);
 		url.searchParams.delete('selected');
-		goto(url.toString(), { replaceState: true });
+		window.history.replaceState(null, '', url.toString());
 	}
 
 	function updateUrlForIndex(index: number) {
@@ -77,41 +99,71 @@
 	<title>{data.gallery.title} - Gallery</title>
 </svelte:head>
 
-<div class="gallery-page">
-	<header class="gallery-header">
-		<h1>{data.gallery.title}</h1>
-		{#if data.gallery.content}
-			<div class="gallery-description">
-				{data.gallery.content}
-			</div>
-		{/if}
-	</header>
-
-	<div class="gallery-grid">
-		{#each galleryImages as media, index (media.id)}
-			<button
-				class="gallery-grid__item"
-				onclick={() => openLightbox(index)}
-				aria-label="View {media.alt || media.title || 'image'} in lightbox"
-			>
-				<Polaroid
-					{media}
-					caption={media.alt || media.title}
-					interactive={false}
-					enableViewTransition={true}
-				/>
-			</button>
-		{/each}
+{#if shouldHideAlbum}
+	<div class="gallery-page">
+		<div class="gallery-header-wrap">
+			<Panel hasBorder hasPadding>
+				<header class="gallery-header">
+					<h1>{data.gallery.title}</h1>
+					<p class="gallery-hidden-notice">This album contains NSFW content and is hidden by your profile settings.</p>
+				</header>
+			</Panel>
+		</div>
 	</div>
-</div>
+{:else}
+	<div class="gallery-page">
+		<div class="gallery-header-wrap">
+			<Panel hasBorder hasPadding>
+				<header class="gallery-header">
+					<h1>{data.gallery.title}</h1>
+					{#if descriptionText}
+						<p class="gallery-description">{descriptionText}</p>
+					{/if}
+				</header>
+			</Panel>
+		</div>
 
-<Lightbox
-		images={galleryImages}
-		initialIndex={lightboxIndex}
-		bind:open={lightboxOpen}
-		onClose={closeLightbox}
-		onIndexChange={updateUrlForIndex}
-	/>
+		<div class="gallery-grid">
+			<Masonry
+				items={galleryImages}
+				idKey="id"
+				minColWidth={400}
+				maxColWidth={800}
+				gap={24}
+				animate={false}
+			>
+				{#snippet children({ item })}
+				{@const rotation = ((((item.id * 9301 + 49297) % 233280) / 233280) * 10 - 5).toFixed(1)}
+					<button
+						class="gallery-grid__item"
+						style:--rotation="{rotation}deg"
+						onclick={() => openLightboxForItem(item)}
+						aria-label="View {item.alt || 'image'} in lightbox"
+					>
+						<Polaroid
+							media={item}
+							caption={item.alt || undefined}
+							interactive={false}
+							enableViewTransition={false}
+							adaptiveHeight={true}
+							{useProxy}
+							isNsfw={item.isNsfw}
+						/>
+					</button>
+				{/snippet}
+			</Masonry>
+		</div>
+	</div>
+
+	<Lightbox
+			images={galleryImages}
+			initialIndex={lightboxIndex}
+			bind:open={lightboxOpen}
+			onClose={closeLightbox}
+			onIndexChange={updateUrlForIndex}
+			{useProxy}
+		/>
+{/if}
 
 <style>
 	.gallery-page {
@@ -122,49 +174,40 @@
 
 	.gallery-header {
 		text-align: center;
+		margin-bottom: 0;
+	}
+
+	.gallery-header-wrap {
 		margin-bottom: 3rem;
 	}
 
 	.gallery-header h1 {
-		font-size: 2.5rem;
+		font-size: var(--fs-m);
 		font-weight: 700;
-		margin-bottom: 1rem;
-		color: var(--color-text-primary, #1a1a1a);
+		margin-bottom: 0.75rem;
+		color: var(--color-primary-darkest);
+		font-family: var(--font-oswald);
+	}
+
+	.gallery-hidden-notice {
+		color: var(--color-tertiary);
+		font-family: var(--font-roboto);
+		font-size: var(--fs-base);
 	}
 
 	.gallery-description {
-		max-width: 600px;
+		max-width: 42ch;
 		margin: 0 auto;
-		color: var(--color-text-secondary, #666);
-		line-height: 1.6;
-	}
-
-	.gallery-grid {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: 2rem;
-		margin: 0 auto;
-	}
-
-	@media (min-width: 640px) {
-		.gallery-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.gallery-grid {
-			grid-template-columns: repeat(3, 1fr);
-		}
-	}
-
-	@media (min-width: 1280px) {
-		.gallery-grid {
-			grid-template-columns: repeat(4, 1fr);
-		}
+		font-family: var(--font-roboto);
+		font-size: var(--fs-base);
+		line-height: 1.7;
+		color: var(--color-tertiary-darkest);
+		letter-spacing: 0.01em;
 	}
 
 	.gallery-grid__item {
+		display: block;
+		width: 100%;
 		background: transparent;
 		border: none;
 		padding: 0;
@@ -174,32 +217,17 @@
 
 	.gallery-grid__item :global(.polaroid) {
 		width: 100%;
-		transform: rotate(0deg) !important;
+		transform: rotate(var(--rotation, 0deg));
 		cursor: pointer;
-	}
-
-	/* Slightly rotate polaroids for variety */
-	.gallery-grid__item:nth-child(3n + 1) :global(.polaroid) {
-		transform: rotate(-1.5deg) !important;
-	}
-
-	.gallery-grid__item:nth-child(3n + 2) :global(.polaroid) {
-		transform: rotate(1deg) !important;
-	}
-
-	.gallery-grid__item:nth-child(3n + 3) :global(.polaroid) {
-		transform: rotate(-0.5deg) !important;
 	}
 
 	.gallery-grid__item:hover :global(.polaroid),
 	.gallery-grid__item:focus-visible :global(.polaroid) {
-		transform: rotate(0deg) scale(1.02) !important;
+		transform: rotate(0deg) scale(1.02);
 		z-index: 10;
 	}
 
 	.gallery-grid__item:focus-visible {
-		outline: 2px solid var(--color-accent, #3b82f6);
-		outline-offset: 4px;
-		border-radius: 8px;
+		outline: none;
 	}
 </style>

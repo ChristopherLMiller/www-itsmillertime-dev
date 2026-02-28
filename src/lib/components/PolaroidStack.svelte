@@ -12,6 +12,9 @@
 		hoverFlip?: boolean;
 		albumTitle?: string;
 		albumDescription?: string;
+		useProxy?: boolean;
+		isNsfw?: boolean;
+		nsfwImageIds?: Set<number>;
 	};
 
 	const {
@@ -23,7 +26,10 @@
 		enableViewTransition = false,
 		hoverFlip = false,
 		albumTitle,
-		albumDescription
+		albumDescription,
+		useProxy = false,
+		isNsfw = false,
+		nsfwImageIds
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -131,6 +137,7 @@
 	});
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div bind:this={container} class="polaroid-stack {className}" onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
 	{#each stackLayout as item (item.key)}
 		{#if item.isPrimary || hasBeenHovered}
@@ -147,6 +154,8 @@
 					hoverFlip={item.isPrimary && hoverFlip}
 					albumTitle={item.isPrimary ? albumTitle : undefined}
 					albumDescription={item.isPrimary ? albumDescription : undefined}
+					{useProxy}
+					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 				/>
 			</div>
 		{/if}

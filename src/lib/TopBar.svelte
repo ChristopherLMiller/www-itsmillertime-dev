@@ -3,12 +3,9 @@
 	import { fly } from 'svelte/transition';
 	import { navStore, type NavState } from '../stores/navigation';
 	import NavLink from './navigation/NavLink.svelte';
-	import { authClient } from '$lib/auth-client';
 
-	const session = authClient.useSession();
-
-	let isLoggedIn = $derived(!$session.isPending && !!$session.data?.user);
-	let isAdmin = $derived(isLoggedIn && ($session.data?.user?.role as string[] | undefined)?.includes('admin'));
+	let isLoggedIn = $derived(!!page.data.session?.user);
+	let isAdmin = $derived(isLoggedIn && (page.data.session?.user?.role as string[] | undefined)?.includes('admin'));
 
 	let navState = $state<NavState>({ isOpen: false, activeDropdown: null });
 	let currentPath = $state(page.url.pathname);

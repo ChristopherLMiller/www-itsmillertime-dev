@@ -1,11 +1,12 @@
 import { getPayloadSDK } from '$lib/payload';
 import { error } from '@sveltejs/kit';
-import type { PageLoad } from './$types';
+import type { PageServerLoad } from './$types';
 
-export const load: PageLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, request }) => {
 	const { slug } = params;
+	const sdk = getPayloadSDK(fetch, request);
 
-	const galleriesData = await getPayloadSDK(fetch).find({
+	const galleriesData = await sdk.find({
 		collection: 'gallery-albums',
 		where: {
 			slug: {
@@ -23,7 +24,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 	}
 
 	// Fetch all images for this gallery album
-	const imagesData = await getPayloadSDK(fetch).find({
+	const imagesData = await sdk.find({
 		collection: 'gallery-images',
 		where: {
 			albums: {

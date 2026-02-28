@@ -1,8 +1,8 @@
 import { getPayloadSDK } from '$lib/payload';
-import type { PageLoad } from '../$types';
+import type { PageServerLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, url }) => {
-	const sdk = getPayloadSDK(fetch);
+export const load: PageServerLoad = async ({ fetch, url, request }) => {
+	const sdk = getPayloadSDK(fetch, request);
 
 	const [galleriesData, categoriesData, tagsData] = await Promise.all([
 		sdk.find({
@@ -13,11 +13,6 @@ export const load: PageLoad = async ({ fetch, url }) => {
 			depth: 2,
 			where: {
 				and: [
-					{
-						'settings.isNsfw': {
-							equals: false
-						}
-					},
 					{
 						'settings.category.slug': {
 							equals: url.searchParams.get('category') || undefined

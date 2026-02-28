@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { authClient } from '$lib/auth-client';
 	import Panel from '$lib/Panel.svelte';
 
-	const session = authClient.useSession();
-
 	let signingOut = $state(false);
 
+	let session = $derived(page.data.session);
+	let user = $derived(session?.user);
+	let sess = $derived(session?.session);
+
 	$effect(() => {
-		if (!$session.isPending && !$session.data?.user) {
+		if (!user) {
 			goto('/account/login');
 		}
 	});
@@ -61,14 +64,7 @@
 </svelte:head>
 
 <div class="profile-container">
-	{#if $session.isPending}
-		<Panel hasPadding={true} hasBorder={true}>
-			<div class="loading">Loading profile...</div>
-		</Panel>
-	{:else if $session.data?.user}
-		{@const user = $session.data.user}
-		{@const sess = $session.data.session}
-
+	{#if user && sess}
 		<div class="profile-header">
 			<Panel hasPadding={true} hasBorder={true}>
 				<div class="header-content">
@@ -76,11 +72,14 @@
 						<img src={user.image} alt={user.name ?? 'Avatar'} class="avatar" />
 					{:else}
 						<div class="avatar-placeholder">
-							{getInitials(user.name ?? 'U')}
+							{getInitials(user.displayName || user.name || 'U')}
 						</div>
 					{/if}
 					<div class="header-info">
-						<h1>{user.name}</h1>
+						<h1>{user.displayName || user.name}</h1>
+						{#if user.displayName && user.name}
+							<p class="name">{user.name}</p>
+						{/if}
 						<p class="email">{user.email}</p>
 						<div class="badges">
 							{#each user.role ?? [] as role}
@@ -111,6 +110,10 @@
 							<dd class="mono">{user.id}</dd>
 						</div>
 						<div class="detail-row">
+							<dt>Display Name</dt>
+							<dd>{user.displayName ?? '—'}</dd>
+						</div>
+						<div class="detail-row">
 							<dt>Member Since</dt>
 							<dd>{formatDate(user.createdAt)}</dd>
 						</div>
@@ -134,6 +137,28 @@
 								</span>
 							</dd>
 						</div>
+					</dl>
+				</div>
+			</Panel>
+
+			<Panel hasPadding={true} hasBorder={true}>
+				<div class="section">
+					<h2>Preferences</h2>
+					<dl class="details-list">
+						<div class="detail-row">
+							<dt>NSFW Filtering</dt>
+							<dd>{user.nsfwFiltering ?? '—'}</dd>
+						</div>
+						{#if user.bggUsername}
+							<div class="detail-row">
+								<dt>BGG Username</dt>
+								<dd>
+									<a href="https://boardgamegeek.com/user/{user.bggUsername}" target="_blank" rel="noopener">
+										{user.bggUsername}
+									</a>
+								</dd>
+							</div>
+						{/if}
 					</dl>
 				</div>
 			</Panel>
@@ -186,13 +211,6 @@
 		width: 100%;
 	}
 
-	.loading {
-		text-align: center;
-		padding: 2rem;
-		font-family: var(--font-special-elite);
-		color: var(--color-tertiary);
-	}
-
 	.header-content {
 		display: flex;
 		align-items: center;
@@ -236,6 +254,13 @@
 		color: var(--color-primary);
 		margin: 0;
 		line-height: 1.1;
+	}
+
+	.name {
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+		color: var(--color-tertiary-darkest);
+		margin: 0;
 	}
 
 	.email {
@@ -284,12 +309,8 @@
 
 	.profile-grid {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 		gap: 1.5rem;
-
-		@media (max-width: 640px) {
-			grid-template-columns: 1fr;
-		}
 	}
 
 	.section h2 {

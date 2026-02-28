@@ -29,6 +29,7 @@
 		"stylelint-config-standard": "^39.0.1",
 		"stylelint-declaration-strict-value": "^1.10.11",
 		"svelte": "^5.46.1",
+		"svelte-bricks": "^0.4.1",
 		"svelte-check": "^4.3.5",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
