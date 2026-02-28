@@ -11,6 +11,9 @@
 		hoverFlip?: boolean;
 		albumTitle?: string;
 		albumDescription?: string;
+		useProxy?: boolean;
+		isNsfw?: boolean;
+		adaptiveHeight?: boolean;
 	};
 
 	const {
@@ -21,7 +24,10 @@
 		enableViewTransition = false,
 		hoverFlip = false,
 		albumTitle,
-		albumDescription
+		albumDescription,
+		useProxy = false,
+		isNsfw = false,
+		adaptiveHeight = false
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? media?.alt ?? '');
@@ -47,6 +53,9 @@
 	}
 
 	const shouldBeFlipped = $derived(hoverFlip ? isHovering : isFlipped);
+	const imageRatio = $derived(
+		media?.width && media?.height ? media.height / media.width : 1.2
+	);
 </script>
 
 {#if interactive}
@@ -58,7 +67,7 @@
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
-		<div class="polaroid__inner">
+		<div class="polaroid__inner" style:padding-top={adaptiveHeight ? `calc(${imageRatio * 100}% + 3.5rem)` : undefined}>
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__image-wrapper">
 					<Image
@@ -66,6 +75,8 @@
 						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
 						className="polaroid__image-component"
 						objectFit="cover"
+						{useProxy}
+						{isNsfw}
 					/>
 				</div>
 				{#if displayCaption}
@@ -92,12 +103,13 @@
 		</div>
 	</button>
 {:else}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="polaroid {className} polaroid--static {shouldBeFlipped ? 'flipped' : ''}"
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
-		<div class="polaroid__inner">
+		<div class="polaroid__inner" style:padding-top={adaptiveHeight ? `calc(${imageRatio * 100}% + 3.5rem)` : undefined}>
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__image-wrapper">
 					<Image
@@ -105,6 +117,8 @@
 						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
 						className="polaroid__image-component"
 						objectFit="cover"
+						{useProxy}
+						{isNsfw}
 					/>
 				</div>
 				{#if displayCaption}

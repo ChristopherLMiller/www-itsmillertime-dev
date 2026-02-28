@@ -2,9 +2,10 @@
 <script lang="ts">
 	import { fade, scale, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
+	import { page } from '$app/state';
 	import type { Media } from '../types/payload-types';
 	import Icon from './Icon.svelte';
-	import {PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import { getMediaUrl } from '$lib/utils/media-url';
 
 	// Props
 	let {
@@ -17,7 +18,9 @@
 		className = '',
 		objectFit = 'cover',
 		gallery = undefined,
-		galleryIndex = 0
+		galleryIndex = 0,
+		useProxy = false,
+		isNsfw = false
 	}: {
 		image: Media;
 		transitionName?: string;
@@ -29,7 +32,14 @@
 		objectFit?: string;
 		gallery?: Media[];
 		galleryIndex?: number;
+		useProxy?: boolean;
+		isNsfw?: boolean;
 	} = $props();
+
+	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
+	const shouldHide = $derived(isNsfw && nsfwPref === 'hide');
+	const shouldBlur = $derived(isNsfw && nsfwPref === 'blur');
+	let nsfwRevealed = $state(false);
 
 	// State
 	let isLoaded = $state(false);
@@ -157,10 +167,10 @@
 			selectedImage = bestImage;
 			isLoaded = false;
 
-			loadImage(`${PUBLIC_PAYLOAD_URL}${bestImage.url}`)
+			const fullUrl = getMediaUrl(bestImage.url, useProxy);
+			loadImage(fullUrl)
 				.then(() => {
-					// Only set loaded if this is still the current image
-					if (`${PUBLIC_PAYLOAD_URL}${bestImage.url}` === currentImageSrc) {
+					if (bestImage.url === currentImageSrc) {
 						isLoaded = true;
 					}
 				})
@@ -171,13 +181,19 @@
 	});
 </script>
 
+{#if !shouldHide}
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
 	bind:this={containerElement}
 	class="image-container {className} {hasBorder ? 'border' : ''}"
+	class:nsfw-blur={shouldBlur && !nsfwRevealed}
 	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatio > 1 ? aspectRatio : 1 / aspectRatio};"
 	style:view-transition-name={transitionName}
+	onmouseenter={() => { if (shouldBlur) nsfwRevealed = true; }}
+	onmouseleave={() => { if (shouldBlur) nsfwRevealed = false; }}
+	onclick={() => { if (shouldBlur && !nsfwRevealed) nsfwRevealed = true; }}
 >
-	<!-- Base64 placeholder image (shown while loading) -->
 	{#if image?.blurhash}
 		<img
 			src={image.blurhash}
@@ -198,13 +214,12 @@
 		/>
 	{/if}
 
-	<!-- Actual image (shown when loaded) -->
 	{#if selectedImage}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<img
 			bind:this={imgElement}
-			src={`${PUBLIC_PAYLOAD_URL}${selectedImage.url}`}
+			src={getMediaUrl(selectedImage.url, useProxy)}
 			alt={image.alt}
 			width={selectedImage.width}
 			height={selectedImage.height}
@@ -213,9 +228,9 @@
         width: 100%;
         height: 100%;
         object-fit: {objectFit};
-        transition: opacity 0.3s ease;
+        transition: opacity 0.3s ease, filter 0.4s ease;
         opacity: {isLoaded ? 1 : 0};
-        cursor: {hasLightbox ? 'pointer' : 'default'};
+        cursor: {hasLightbox || shouldBlur ? 'pointer' : 'default'};
       "
 			onload={() => {
 				isLoaded = true;
@@ -223,8 +238,13 @@
 			onclick={hasLightbox ? openLightbox : undefined}
 		/>
 	{/if}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
+
+	{#if shouldBlur && !nsfwRevealed}
+		<div class="nsfw-overlay">
+			<Icon name="eye" size={32} color="white" />
+			<span>NSFW</span>
+		</div>
+	{/if}
 </div>
 {#if hasLightbox}
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -248,7 +268,7 @@
 			<div class="image-wrapper">
 				{#key currentGalleryIndex}
 					<img
-						src={`${PUBLIC_PAYLOAD_URL}${currentLightboxImage.url}`}
+						src={getMediaUrl(currentLightboxImage.url, useProxy)}
 						alt={currentLightboxImage.alt}
 						class="lightbox-image"
 						in:fly={{
@@ -295,6 +315,7 @@
 		{/if}
 	</dialog>
 {/if}
+{/if}
 
 <style>
 	.image-container {
@@ -304,6 +325,29 @@
 		&.border {
 			border: 5px solid var(--color-primary-darker);
 		}
+	}
+
+	.image-container.nsfw-blur :global(img:not(.placeholder-image)) {
+		filter: blur(24px) brightness(0.6);
+	}
+
+	.nsfw-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		z-index: 2;
+		pointer-events: none;
+		color: white;
+		font-family: var(--font-oswald, sans-serif);
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 	}
 
 	dialog {

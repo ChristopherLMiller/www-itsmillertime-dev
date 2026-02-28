@@ -49,7 +49,6 @@ export const load: PageLoad = async ({ fetch, url }) => {
 		})
 	]);
 
-	console.log(postsData);
 	const { docs: articles, ...meta } = postsData;
 	const { docs: categories } = categoriesData;
 	const { docs: tags } = tagsData;

@@ -11,7 +11,8 @@
 			| 'globe'
 			| 'play'
 			| 'book'
-			| 'link';
+			| 'link'
+			| 'eye';
 		size?: number;
 		color?: string;
 		className?: string;
@@ -66,6 +67,9 @@
 	{:else if name === 'link'}
 		<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
 		<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+	{:else if name === 'eye'}
+		<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+		<circle cx="12" cy="12" r="3"></circle>
 	{/if}
 </svg>
 

@@ -7,6 +7,13 @@
 
 	const { data } = $props();
 
+	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
+	const filteredGalleries = $derived(
+		nsfwPref === 'hide'
+			? data.galleries.filter((g) => !g.settings?.isNsfw)
+			: data.galleries
+	);
+
 	const perPageOptions = [6, 12, 15, 24, 48];
 
 	let selectedCategory = $state(page.url.searchParams.get('category') || '');
@@ -48,6 +55,12 @@
 		await goto(url.toString(), { keepFocus: true, noScroll: false });
 	}
 
+	function isImageNsfw(doc: unknown): boolean {
+		if (typeof doc !== 'object' || doc === null) return false;
+		const settings = (doc as { settings?: { isNsfw?: boolean } }).settings;
+		return settings?.isNsfw === true;
+	}
+
 	function asMedia(value: unknown): Media | null {
 		if (typeof value === 'object' && value !== null && 'id' in value && 'url' in value) {
 			return value as Media;
@@ -78,13 +91,17 @@
 </div>
 
 <div class="galleries-grid">
-	{#each data.galleries as gallery (gallery.id)}
-		{@const stackImages = (gallery.images?.docs ?? [])
-			.map((doc) => asMedia(doc))
-			.filter((img): img is Media => img !== null)}
+	{#each filteredGalleries as gallery (gallery.id)}
+		{@const docs = gallery.images?.docs ?? []}
+		{@const stackImages = (nsfwPref === 'hide'
+			? docs.filter((doc) => !isImageNsfw(doc))
+			: docs
+		).map((doc) => asMedia(doc)).filter((img): img is Media => img !== null)}
 		{@const metaImage = asMedia(gallery.meta?.image)}
 		{@const cover = metaImage ?? stackImages[0]}
 		{@const displayImages = stackImages.length > 0 ? stackImages : cover ? [cover] : []}
+		{@const nsfwIds = new Set(docs.filter((doc) => isImageNsfw(doc)).map((doc) => (doc as { id: number }).id))}
+		{@const needsProxy = gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
 		{#if cover}
 			<a href="/galleries/{gallery.slug}" class="gallery-link">
 				<PolaroidStack
@@ -95,6 +112,9 @@
 					hoverFlip={true}
 					albumTitle={gallery.title}
 					albumDescription={gallery.meta?.description}
+					useProxy={needsProxy}
+					isNsfw={gallery.settings?.isNsfw === true}
+					nsfwImageIds={nsfwIds}
 				/>
 			</a>
 		{/if}
