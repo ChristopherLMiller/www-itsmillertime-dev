@@ -43,7 +43,19 @@
 			<span style:font-family="Oswald"><strong>M</strong>enu</span>
 		</button>
 		{#if navState.isOpen && navState.activeDropdown === 'mobile'}
-			<div class="dropdown-links" transition:fly={{ y: 20, duration: 200 }} onclick={() => navStore.close()}>
+			<div
+				class="dropdown-links"
+				role="button"
+				tabindex="0"
+				transition:fly={{ y: 20, duration: 200 }}
+				onclick={() => navStore.close()}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						navStore.close();
+					}
+				}}
+			>
 				<div class="dropdown-section account">
 					{#if isLoggedIn}
 						<NavLink navItem={{ title: 'Profile', link: '/profile' }} />

@@ -3,11 +3,11 @@
 	import Panel from '$lib/Panel.svelte';
 
 	const { data } = $props();
-	const pageData = data.page;
+	const pageData = $derived(data.page);
 </script>
 
 <Panel hasPadding={true} hasBorder={true}>
-	{#if pageData.blocks}
+	{#if pageData?.blocks}
 		{#each pageData.blocks as block}
 			<Lexical data={block.block} />
 		{/each}
