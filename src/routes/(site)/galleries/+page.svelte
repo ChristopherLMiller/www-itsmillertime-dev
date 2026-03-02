@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import Paginator from '$lib/Paginator.svelte';
 	import PolaroidStack from '$lib/components/PolaroidStack.svelte';
@@ -67,6 +68,16 @@
 		}
 		return null;
 	}
+
+	// Refresh data when returning to the tab (e.g. after uploading elsewhere)
+	$effect(() => {
+		if (!browser) return;
+		const handler = () => {
+			if (document.visibilityState === 'visible') invalidateAll();
+		};
+		document.addEventListener('visibilitychange', handler);
+		return () => document.removeEventListener('visibilitychange', handler);
+	});
 </script>
 
 <div class="filters">

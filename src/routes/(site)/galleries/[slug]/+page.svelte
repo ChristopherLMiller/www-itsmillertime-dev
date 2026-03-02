@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import Masonry from 'svelte-bricks';
 	import Panel from '$lib/Panel.svelte';
@@ -92,6 +94,16 @@
 		if (idx === -1) return;
 		lightboxIndex = idx;
 		lightboxOpen = true;
+	});
+
+	// Refresh data when returning to the tab (e.g. after uploading elsewhere)
+	$effect(() => {
+		if (!browser) return;
+		const handler = () => {
+			if (document.visibilityState === 'visible') invalidateAll();
+		};
+		document.addEventListener('visibilitychange', handler);
+		return () => document.removeEventListener('visibilitychange', handler);
 	});
 </script>
 
