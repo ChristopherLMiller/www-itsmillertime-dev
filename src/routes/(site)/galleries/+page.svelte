@@ -114,7 +114,8 @@
 		{@const nsfwIds = new Set(docs.filter((doc) => isImageNsfw(doc)).map((doc) => (doc as { id: number }).id))}
 		{@const needsProxy = gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
 		{#if cover}
-			<a href="/galleries/{gallery.slug}" class="gallery-link">
+			{@const categoryObj = typeof gallery.settings?.category === 'object' && gallery.settings?.category !== null ? gallery.settings.category : null}
+			<div class="gallery-link">
 				<PolaroidStack
 					primary={cover}
 					images={displayImages}
@@ -126,8 +127,26 @@
 					useProxy={needsProxy}
 					isNsfw={gallery.settings?.isNsfw === true}
 					nsfwImageIds={nsfwIds}
+					imageCount={stackImages.length}
+					category={categoryObj}
+					tags={gallery.settings?.tags ?? undefined}
+					onNavigate={() => goto(`/galleries/${gallery.slug}`)}
+					onCategoryClick={(slug) => {
+						const url = new URL(page.url);
+						url.searchParams.set('category', slug);
+						url.searchParams.delete('tag');
+						url.searchParams.set('page', '1');
+						goto(url.toString(), { keepFocus: true });
+					}}
+					onTagClick={(slug) => {
+						const url = new URL(page.url);
+						url.searchParams.set('tag', slug);
+						url.searchParams.delete('category');
+						url.searchParams.set('page', '1');
+						goto(url.toString(), { keepFocus: true });
+					}}
 				/>
-			</a>
+			</div>
 		{/if}
 	{/each}
 </div>

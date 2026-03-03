@@ -1,8 +1,12 @@
 import { getPayloadSDK } from '$lib/payload';
-import type { PageServerLoad } from './$types';
+import type { PageLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch, url, request }) => {
-	const sdk = getPayloadSDK(fetch, request);
+/**
+ * Client-side load: calls Payload CMS directly. credentials: 'include' ensures
+ * better-auth session cookies are sent with the cross-origin request.
+ */
+export const load: PageLoad = async ({ fetch, url }) => {
+	const sdk = getPayloadSDK(fetch);
 
 	const [galleriesData, categoriesData, tagsData] = await Promise.all([
 		sdk.find({

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Polaroid from './Polaroid.svelte';
 	import type { Media } from '../types/payload-types';
+	import type { GalleryCategory, GalleryTag } from '../types/payload-types';
 
 	type PolaroidStackProps = {
 		primary: Media;
@@ -15,6 +16,12 @@
 		useProxy?: boolean;
 		isNsfw?: boolean;
 		nsfwImageIds?: Set<number>;
+		imageCount?: number;
+		category?: GalleryCategory | null;
+		tags?: (GalleryTag | number)[] | null;
+		onNavigate?: () => void;
+		onCategoryClick?: (slug: string) => void;
+		onTagClick?: (slug: string) => void;
 	};
 
 	const {
@@ -29,7 +36,13 @@
 		albumDescription,
 		useProxy = false,
 		isNsfw = false,
-		nsfwImageIds
+		nsfwImageIds,
+		imageCount,
+		category,
+		tags,
+		onNavigate,
+		onCategoryClick,
+		onTagClick
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -156,6 +169,12 @@
 					albumDescription={item.isPrimary ? albumDescription : undefined}
 					{useProxy}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
+					imageCount={item.isPrimary ? imageCount : undefined}
+					category={item.isPrimary ? category : undefined}
+					tags={item.isPrimary ? tags : undefined}
+					onNavigate={item.isPrimary ? onNavigate : undefined}
+					onCategoryClick={item.isPrimary ? onCategoryClick : undefined}
+					onTagClick={item.isPrimary ? onTagClick : undefined}
 				/>
 			</div>
 		{/if}

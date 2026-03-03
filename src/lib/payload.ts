@@ -32,22 +32,24 @@ export function createPayloadFetch(
 
 export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request) {
 	const fetcher =
-		request && fetch
-			? createPayloadFetch(fetch, request)
-			: (fetch ?? globalThis.fetch);
+		request && fetch ? createPayloadFetch(fetch, request) : (fetch ?? globalThis.fetch);
 
-	// When request is provided, create a fresh SDK per call so each request gets its own cookies
+	const baseInit = { credentials: 'include' as RequestCredentials };
+
+	// When request is provided (server), create fresh SDK per call
 	if (request) {
 		return new PayloadSDK<Config>({
 			baseURL: PUBLIC_PAYLOAD_API_ENDPOINT,
-			fetch: fetcher
+			fetch: fetcher,
+			baseInit
 		});
 	}
 
 	if (!sdk) {
 		sdk = new PayloadSDK<Config>({
 			baseURL: PUBLIC_PAYLOAD_API_ENDPOINT,
-			fetch: fetcher
+			fetch: fetcher,
+			baseInit
 		});
 	}
 	return sdk;
