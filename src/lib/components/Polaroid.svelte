@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Image from './Image.svelte';
 	import type { Media } from '../types/payload-types';
+	import type { GalleryCategory, GalleryTag } from '../types/payload-types';
 
 	type PolaroidProps = {
 		media: Media;
@@ -14,6 +15,12 @@
 		useProxy?: boolean;
 		isNsfw?: boolean;
 		adaptiveHeight?: boolean;
+		imageCount?: number;
+		category?: GalleryCategory | null;
+		tags?: (GalleryTag | number)[] | null;
+		onNavigate?: () => void;
+		onCategoryClick?: (slug: string) => void;
+		onTagClick?: (slug: string) => void;
 	};
 
 	const {
@@ -27,13 +34,51 @@
 		albumDescription,
 		useProxy = false,
 		isNsfw = false,
-		adaptiveHeight = false
+		adaptiveHeight = false,
+		imageCount,
+		category,
+		tags = [],
+		onNavigate,
+		onCategoryClick,
+		onTagClick
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? media?.alt ?? '');
 
 	let isFlipped = $state(false);
 	let isHovering = $state(false);
+
+	const resolvedCategory = $derived(
+		typeof category === 'object' && category !== null && 'slug' in category ? category : null
+	);
+	const resolvedTags = $derived(
+		(tags ?? []).filter((t): t is GalleryTag => typeof t === 'object' && t !== null && 'slug' in t)
+	);
+
+	function handleMainClick(e: MouseEvent) {
+		if ((e.target as HTMLElement).closest('a.polaroid__description-link')) return;
+		onNavigate?.();
+	}
+
+	function handleMainKeydown(e: KeyboardEvent) {
+		if ((e.target as HTMLElement).closest('a.polaroid__description-link')) return;
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			onNavigate?.();
+		}
+	}
+
+	function handleCategoryClick(e: MouseEvent, slug: string) {
+		e.preventDefault();
+		e.stopPropagation();
+		onCategoryClick?.(slug);
+	}
+
+	function handleTagClick(e: MouseEvent, slug: string) {
+		e.preventDefault();
+		e.stopPropagation();
+		onTagClick?.(slug);
+	}
 
 	function toggleFlip() {
 		if (!interactive) return;
@@ -59,11 +104,18 @@
 </script>
 
 {#if interactive}
-	<button
-		type="button"
+	<!-- Use div when we have filter chips (onNavigate) to avoid invalid nested buttons -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<svelte:element
+		this={onNavigate ? 'div' : 'button'}
 		class="polaroid {className} {shouldBeFlipped ? 'flipped' : ''}"
+		role={onNavigate ? 'button' : undefined}
+		tabindex={onNavigate ? 0 : undefined}
+		type={onNavigate ? undefined : 'button'}
 		aria-pressed={shouldBeFlipped}
-		onclick={toggleFlip}
+		aria-label={onNavigate && albumTitle ? `View gallery: ${albumTitle}` : undefined}
+		onclick={onNavigate ? handleMainClick : toggleFlip}
+		onkeydown={onNavigate ? handleMainKeydown : undefined}
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
@@ -85,13 +137,52 @@
 			</div>
 
 			<div class="polaroid__face polaroid__face--back">
-				{#if albumTitle || albumDescription}
+				{#if albumTitle || albumDescription || imageCount != null || resolvedCategory || resolvedTags.length > 0}
 					<div class="polaroid__back-content">
 						{#if albumTitle}
 							<h3 class="polaroid__album-title">{albumTitle}</h3>
 						{/if}
-						{#if albumDescription}
-							<p class="polaroid__album-description">{albumDescription}</p>
+						{#if albumDescription || imageCount != null || resolvedCategory}
+							<hr class="polaroid__hr" />
+							<p class="polaroid__album-description">
+								{#if albumDescription}{albumDescription}{/if}
+								{#if imageCount != null}
+									{albumDescription ? ' · ' : ''}{imageCount} {imageCount === 1 ? 'photo' : 'photos'}
+								{/if}
+								{#if resolvedCategory?.slug && resolvedCategory?.title}
+									{#if onCategoryClick}
+										<a
+											href="#"
+											class="polaroid__description-link"
+											onclick={(e) => handleCategoryClick(e, resolvedCategory.slug!)}
+										>
+											{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
+										</a>
+									{:else}
+										{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
+									{/if}
+								{/if}
+							</p>
+						{/if}
+						{#if resolvedTags.length > 0}
+							<hr class="polaroid__hr" />
+							<p class="polaroid__tags">
+								{#each resolvedTags as tag, index (tag.id)}
+									{#if tag.slug && tag.title}
+										{#if onTagClick}
+											<a
+												href="#"
+												class="polaroid__description-link"
+												onclick={(e) => handleTagClick(e, tag.slug!)}
+											>
+												{index > 0 ? ', ' : ''}{tag.title}
+											</a>
+										{:else}
+											{index > 0 ? ', ' : ''}{tag.title}
+										{/if}
+									{/if}
+								{/each}
+							</p>
 						{/if}
 					</div>
 				{:else}
@@ -101,7 +192,7 @@
 				{/if}
 			</div>
 		</div>
-	</button>
+	</svelte:element>
 {:else}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
@@ -229,6 +320,22 @@
 		width: 100%;
 		height: 100%;
 		border-radius: 6px;
+	}
+
+	.polaroid__hr {
+		border: none;
+		border-top: 1px solid var(--polaroid-border);
+		margin: 0.75rem 0;
+	}
+
+	.polaroid__description-link {
+		color: inherit;
+		text-decoration: none;
+		cursor: pointer;
+	}
+
+	.polaroid__description-link:hover {
+		text-decoration: underline;
 	}
 
 	.polaroid__caption {
