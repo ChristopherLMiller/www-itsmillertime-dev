@@ -52,20 +52,8 @@ const proxy: RequestHandler = async ({ request, params }) => {
 		responseHeaders.append(key, value);
 	}
 
-	const setCookies = response.headers.getSetCookie();
-	for (const cookie of setCookies) {
-		let rewritten = cookie
-			.replace(/;\s*Domain=[^;]*/gi, '')
-			.replace(/;\s*Path=[^;]*/gi, '')
-			.concat('; Path=/');
-
-		if (dev) {
-			rewritten = rewritten.replace(/^__Secure-/i, '').replace(/^__Host-/i, '');
-			rewritten = rewritten.replace(/;\s*Secure/gi, '');
-			rewritten = rewritten.replace(/SameSite=None/gi, 'SameSite=Lax');
-		}
-
-		responseHeaders.append('Set-Cookie', rewritten);
+	for (const cookie of response.headers.getSetCookie()) {
+		responseHeaders.append('Set-Cookie', cookie);
 	}
 
 	const body = await response.arrayBuffer();
