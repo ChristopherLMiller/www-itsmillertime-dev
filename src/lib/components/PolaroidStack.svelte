@@ -167,6 +167,7 @@
 					hoverFlip={item.isPrimary && hoverFlip}
 					albumTitle={item.isPrimary ? albumTitle : undefined}
 					albumDescription={item.isPrimary ? albumDescription : undefined}
+					flipPortraitAspect={true}
 					{useProxy}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 					imageCount={item.isPrimary ? imageCount : undefined}

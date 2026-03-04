@@ -140,8 +140,8 @@
 				items={galleryImages}
 				idKey="id"
 				minColWidth={400}
-				maxColWidth={800}
-				gap={24}
+				maxColWidth={600}
+				gap={30}
 				animate={false}
 			>
 				{#snippet children({ item })}

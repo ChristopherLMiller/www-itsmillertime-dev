@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth-client';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
 	let error = $state<string | null>(null);
