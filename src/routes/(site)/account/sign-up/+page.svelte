@@ -14,7 +14,7 @@
 
 	$effect(() => {
 		if ($session.data?.user) {
-			window.location.href = '/profile';
+			window.location.href = '/account/profile';
 		}
 	});
 
@@ -57,7 +57,7 @@
 				return;
 			}
 
-			window.location.href = '/profile';
+			window.location.href = '/account/profile';
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
 			loading = false;

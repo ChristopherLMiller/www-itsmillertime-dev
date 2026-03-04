@@ -58,14 +58,14 @@
 			>
 				<div class="dropdown-section account">
 					{#if isLoggedIn}
-						<NavLink navItem={{ title: 'Profile', link: '/profile' }} />
-						<NavLink navItem={{ title: 'Sign Out', link: '/logout' }} />
+						<NavLink navItem={{ title: 'Profile', link: '/account/profile' }} />
+						<NavLink navItem={{ title: 'Sign Out', link: '/account/logout' }} />
 						{#if isAdmin}
 							<NavLink navItem={{ title: 'Admin', link: 'https://cms.itsmillertime.dev/admin' }} />
 						{/if}
 					{:else}
 						<NavLink navItem={{ title: 'Login', link: '/account/login' }} />
-						<NavLink navItem={{ title: 'Sign Up', link: '/sign-up' }} />
+						<NavLink navItem={{ title: 'Sign Up', link: '/account/sign-up' }} />
 					{/if}
 				</div>
 				<div class="dropdown-section hide-on-desktop">

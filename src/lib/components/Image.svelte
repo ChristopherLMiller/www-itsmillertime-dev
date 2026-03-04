@@ -20,7 +20,8 @@
 		gallery = undefined,
 		galleryIndex = 0,
 		useProxy = false,
-		isNsfw = false
+		isNsfw = false,
+		swapPortraitAspect = false
 	}: {
 		image: Media;
 		transitionName?: string;
@@ -34,6 +35,8 @@
 		galleryIndex?: number;
 		useProxy?: boolean;
 		isNsfw?: boolean;
+		/** When true, portrait images (height > width) use a landscape container aspect ratio */
+		swapPortraitAspect?: boolean;
 	} = $props();
 
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
@@ -43,6 +46,7 @@
 
 	// State
 	let isLoaded = $state(false);
+	let isLoadFailed = $state(false);
 	let selectedImage: unknown = $state(undefined);
 	let imgElement: HTMLImageElement | undefined | null = $state(null);
 	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
@@ -50,7 +54,14 @@
 	let currentImageSrc: string | undefined | null = $state('');
 	let currentGalleryIndex = $state(0);
 	let imageTransitionDirection = $state<'left' | 'right'>('right');
-	const aspectRatio = $derived((image?.width && image?.height && image?.width / image.height) || 1);
+	const aspectRatio = $derived.by(() => {
+		if (!image?.width || !image?.height) return 1;
+		const ratio = image.width / image.height;
+		if (swapPortraitAspect && ratio < 1) {
+			return 1 / ratio; // portrait → use landscape aspect
+		}
+		return ratio;
+	});
 
 	// Derived state for current lightbox image
 	const currentLightboxImage = $derived(gallery ? gallery[currentGalleryIndex] : image);
@@ -166,6 +177,7 @@
 			currentImageSrc = bestImage.url;
 			selectedImage = bestImage;
 			isLoaded = false;
+			isLoadFailed = false;
 
 			const fullUrl = getMediaUrl(bestImage.url, useProxy);
 			loadImage(fullUrl)
@@ -176,6 +188,9 @@
 				})
 				.catch((error) => {
 					console.error('Failed to load image:', error);
+					if (bestImage.url === currentImageSrc) {
+						isLoadFailed = true;
+					}
 				});
 		}
 	});
@@ -188,7 +203,7 @@
 	bind:this={containerElement}
 	class="image-container {className} {hasBorder ? 'border' : ''}"
 	class:nsfw-blur={shouldBlur && !nsfwRevealed}
-	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatio > 1 ? aspectRatio : 1 / aspectRatio};"
+	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatio};"
 	style:view-transition-name={transitionName}
 	onmouseenter={() => { if (shouldBlur) nsfwRevealed = true; }}
 	onmouseleave={() => { if (shouldBlur) nsfwRevealed = false; }}
@@ -204,7 +219,7 @@
         top: 0;
         left: 0;
         width: 100%;
-        height: 100%;
+        height: auto;
         object-fit: {objectFit};
         transition: opacity 0.3s ease;
         opacity: {isLoaded ? 0 : 1};
@@ -212,6 +227,13 @@
         filter: blur(5px);
       "
 		/>
+	{/if}
+
+	{#if !isLoaded && !isLoadFailed && selectedImage}
+		<div class="loading-overlay" aria-hidden="true">
+			<div class="loading-spinner"></div>
+			<span>Loading…</span>
+		</div>
 	{/if}
 
 	{#if selectedImage}
@@ -226,7 +248,7 @@
 			loading="lazy"
 			style="
         width: 100%;
-        height: 100%;
+        height: auto;
         object-fit: {objectFit};
         transition: opacity 0.3s ease, filter 0.4s ease;
         opacity: {isLoaded ? 1 : 0};
@@ -234,15 +256,26 @@
       "
 			onload={() => {
 				isLoaded = true;
+				isLoadFailed = false;
+			}}
+			onerror={() => {
+				isLoadFailed = true;
 			}}
 			onclick={hasLightbox ? openLightbox : undefined}
 		/>
 	{/if}
 
+	{#if isLoadFailed}
+		<div class="error-overlay" aria-live="polite">
+			<Icon name="x" size={48} color="white" />
+			<span>Failed to load</span>
+		</div>
+	{/if}
+
 	{#if shouldBlur && !nsfwRevealed}
 		<div class="nsfw-overlay">
 			<Icon name="eye" size={32} color="white" />
-			<span>NSFW</span>
+			<span>Hover to view</span>
 		</div>
 	{/if}
 </div>
@@ -331,6 +364,8 @@
 		filter: blur(24px) brightness(0.6);
 	}
 
+	.loading-overlay,
+	.error-overlay,
 	.nsfw-overlay {
 		position: absolute;
 		inset: 0;
@@ -348,6 +383,29 @@
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+	}
+
+	.loading-overlay {
+		background: rgba(0, 0, 0, 0.4);
+	}
+
+	.loading-spinner {
+		width: 2rem;
+		height: 2rem;
+		border: 3px solid rgba(255, 255, 255, 0.3);
+		border-top-color: white;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.error-overlay {
+		background: rgba(0, 0, 0, 0.6);
 	}
 
 	dialog {

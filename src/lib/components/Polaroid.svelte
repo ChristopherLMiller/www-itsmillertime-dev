@@ -15,6 +15,8 @@
 		useProxy?: boolean;
 		isNsfw?: boolean;
 		adaptiveHeight?: boolean;
+		/** When true, portrait images use a landscape container (for stack layout) */
+		flipPortraitAspect?: boolean;
 		imageCount?: number;
 		category?: GalleryCategory | null;
 		tags?: (GalleryTag | number)[] | null;
@@ -35,6 +37,7 @@
 		useProxy = false,
 		isNsfw = false,
 		adaptiveHeight = false,
+		flipPortraitAspect = false,
 		imageCount,
 		category,
 		tags = [],
@@ -98,9 +101,6 @@
 	}
 
 	const shouldBeFlipped = $derived(hoverFlip ? isHovering : isFlipped);
-	const imageRatio = $derived(
-		media?.width && media?.height ? media.height / media.width : 1.2
-	);
 </script>
 
 {#if interactive}
@@ -119,77 +119,78 @@
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
-		<div class="polaroid__inner" style:padding-top={adaptiveHeight ? `calc(${imageRatio * 100}% + 3.5rem)` : undefined}>
+		<div class="polaroid__inner">
 			<div class="polaroid__face polaroid__face--front">
-				<div class="polaroid__image-wrapper">
+				<div class="polaroid__card">
 					<Image
 						image={media}
 						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
-						className="polaroid__image-component"
-						objectFit="cover"
+						className="polaroid__image"
+						objectFit={adaptiveHeight ? 'contain' : 'cover'}
+						swapPortraitAspect={flipPortraitAspect}
 						{useProxy}
 						{isNsfw}
 					/>
+					{#if displayCaption}
+						<div class="polaroid__caption">{displayCaption}</div>
+					{/if}
 				</div>
-				{#if displayCaption}
-					<div class="polaroid__caption">{displayCaption}</div>
-				{/if}
 			</div>
 
 			<div class="polaroid__face polaroid__face--back">
-				{#if albumTitle || albumDescription || imageCount != null || resolvedCategory || resolvedTags.length > 0}
-					<div class="polaroid__back-content">
-						{#if albumTitle}
-							<h3 class="polaroid__album-title">{albumTitle}</h3>
-						{/if}
-						{#if albumDescription || imageCount != null || resolvedCategory}
-							<hr class="polaroid__hr" />
-							<p class="polaroid__album-description">
-								{#if albumDescription}{albumDescription}{/if}
-								{#if imageCount != null}
-									{albumDescription ? ' · ' : ''}{imageCount} {imageCount === 1 ? 'photo' : 'photos'}
-								{/if}
-								{#if resolvedCategory?.slug && resolvedCategory?.title}
-									{#if onCategoryClick}
-										<a
-											href="#"
-											class="polaroid__description-link"
-											onclick={(e) => handleCategoryClick(e, resolvedCategory.slug!)}
-										>
-											{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
-										</a>
-									{:else}
-										{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
+				<div class="polaroid__card polaroid__card--back">
+					{#if albumTitle || albumDescription || imageCount != null || resolvedCategory || resolvedTags.length > 0}
+						<div class="polaroid__back-content">
+							{#if albumTitle}
+								<h3 class="polaroid__album-title">{albumTitle}</h3>
+							{/if}
+							{#if albumDescription || imageCount != null || resolvedCategory}
+								<hr class="polaroid__hr" />
+								<p class="polaroid__album-description">
+									{#if albumDescription}{albumDescription}{/if}
+									{#if imageCount != null}
+										{albumDescription ? ' · ' : ''}{imageCount} {imageCount === 1 ? 'photo' : 'photos'}
 									{/if}
-								{/if}
-							</p>
-						{/if}
-						{#if resolvedTags.length > 0}
-							<hr class="polaroid__hr" />
-							<p class="polaroid__tags">
-								{#each resolvedTags as tag, index (tag.id)}
-									{#if tag.slug && tag.title}
-										{#if onTagClick}
+									{#if resolvedCategory?.slug && resolvedCategory?.title}
+										{#if onCategoryClick}
 											<a
 												href="#"
 												class="polaroid__description-link"
-												onclick={(e) => handleTagClick(e, tag.slug!)}
+												onclick={(e) => handleCategoryClick(e, resolvedCategory.slug!)}
 											>
-												{index > 0 ? ', ' : ''}{tag.title}
+												{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
 											</a>
 										{:else}
-											{index > 0 ? ', ' : ''}{tag.title}
+											{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
 										{/if}
 									{/if}
-								{/each}
-							</p>
-						{/if}
-					</div>
-				{:else}
-					<p class="polaroid__note">
-						{caption}
-					</p>
-				{/if}
+								</p>
+							{/if}
+							{#if resolvedTags.length > 0}
+								<hr class="polaroid__hr" />
+								<p class="polaroid__tags">
+									{#each resolvedTags as tag, index (tag.id)}
+										{#if tag.slug && tag.title}
+											{#if onTagClick}
+												<a
+													href="#"
+													class="polaroid__description-link"
+													onclick={(e) => handleTagClick(e, tag.slug!)}
+												>
+													{index > 0 ? ', ' : ''}{tag.title}
+												</a>
+											{:else}
+												{index > 0 ? ', ' : ''}{tag.title}
+											{/if}
+										{/if}
+									{/each}
+								</p>
+							{/if}
+						</div>
+					{:else}
+						<p class="polaroid__note">{caption}</p>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</svelte:element>
@@ -200,38 +201,39 @@
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
-		<div class="polaroid__inner" style:padding-top={adaptiveHeight ? `calc(${imageRatio * 100}% + 3.5rem)` : undefined}>
+		<div class="polaroid__inner">
 			<div class="polaroid__face polaroid__face--front">
-				<div class="polaroid__image-wrapper">
+				<div class="polaroid__card">
 					<Image
 						image={media}
 						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
-						className="polaroid__image-component"
-						objectFit="cover"
+						className="polaroid__image"
+						objectFit={adaptiveHeight ? 'contain' : 'cover'}
+						swapPortraitAspect={flipPortraitAspect}
 						{useProxy}
 						{isNsfw}
 					/>
+					{#if displayCaption}
+						<div class="polaroid__caption">{displayCaption}</div>
+					{/if}
 				</div>
-				{#if displayCaption}
-					<div class="polaroid__caption">{displayCaption}</div>
-				{/if}
 			</div>
 
 			<div class="polaroid__face polaroid__face--back">
-				{#if albumTitle || albumDescription}
-					<div class="polaroid__back-content">
-						{#if albumTitle}
-							<h3 class="polaroid__album-title">{albumTitle}</h3>
-						{/if}
-						{#if albumDescription}
-							<p class="polaroid__album-description">{albumDescription}</p>
-						{/if}
-					</div>
-				{:else}
-					<p class="polaroid__note">
-						{caption}
-					</p>
-				{/if}
+				<div class="polaroid__card polaroid__card--back">
+					{#if albumTitle || albumDescription}
+						<div class="polaroid__back-content">
+							{#if albumTitle}
+								<h3 class="polaroid__album-title">{albumTitle}</h3>
+							{/if}
+							{#if albumDescription}
+								<p class="polaroid__album-description">{albumDescription}</p>
+							{/if}
+						</div>
+					{:else}
+						<p class="polaroid__note">{caption}</p>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -275,7 +277,6 @@
 	.polaroid__inner {
 		position: relative;
 		width: 100%;
-		padding-top: 120%;
 		transform-style: preserve-3d;
 		transition: transform 450ms ease;
 	}
@@ -285,41 +286,46 @@
 	}
 
 	.polaroid__face {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		background: var(--polaroid-background);
-		border: 2px solid var(--polaroid-border);
-		border-radius: 8px;
-		padding: 1rem 1rem 2.5rem;
-		box-shadow: 0 0.75rem 1.5rem -1rem var(--polaroid-shadow);
 		backface-visibility: hidden;
 	}
 
-	.polaroid__face--back {
-		transform: rotateY(180deg);
-		align-items: center;
-		text-align: center;
-		padding: 2rem;
-	}
 
-	.polaroid__image-wrapper {
-		position: relative;
-		flex: 1;
-		overflow: hidden;
-		background: #dcd8cf;
-		border-radius: 6px;
+	.polaroid__face--back {
+		position: absolute;
+		inset: 0;
+		transform: rotateY(180deg);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
-	.polaroid__image-wrapper :global(.polaroid__image-component) {
+	.polaroid__card {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+		background: var(--polaroid-background);
+		border: 2px solid var(--polaroid-border);
+		border-radius: 8px;
+		padding: 1rem 1rem 2.5rem;
+		box-shadow: 0 0.75rem 1.5rem -1rem var(--polaroid-shadow);
+	}
+
+	.polaroid__card--back {
 		width: 100%;
 		height: 100%;
+		justify-content: center;
+		text-align: center;
+		padding: 2rem;
+	}
+
+	.polaroid__face--front .polaroid__card {
+		overflow: hidden;
+	}
+
+	.polaroid__card :global(.polaroid__image) {
+		width: 100%;
 		border-radius: 6px;
+		background: #dcd8cf;
 	}
 
 	.polaroid__hr {
@@ -339,7 +345,6 @@
 	}
 
 	.polaroid__caption {
-		margin-top: 1.25rem;
 		text-align: center;
 		font-family: 'Permanent Marker', cursive;
 		font-size: 1.1rem;
@@ -351,6 +356,7 @@
 		font-size: 0.95rem;
 		line-height: 1.5;
 		color: #4a4a47;
+		margin: 0;
 	}
 
 	.polaroid__back-content {
@@ -383,4 +389,3 @@
 		}
 	}
 </style>
-

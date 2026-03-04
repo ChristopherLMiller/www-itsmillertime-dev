@@ -18,7 +18,7 @@
 
 	$effect(() => {
 		if ($session.data?.user) {
-			window.location.href = '/profile';
+			window.location.href = '/account/profile';
 		}
 	});
 
@@ -36,7 +36,7 @@
 		error = null;
 
 		const result = await authClient.signIn.email({
-			callbackURL: '/profile',
+			callbackURL: '/account/profile',
 			email,
 			password,
 		});
@@ -82,7 +82,7 @@
 				return;
 			}
 
-			window.location.href = '/profile';
+			window.location.href = '/account/profile';
 		} catch (err) {
 			console.error('[verifyTOTP] Exception:', err);
 			error = err instanceof Error ? err.message : 'Something went wrong verifying your code.';
@@ -97,7 +97,7 @@
 		const { error: passkeyError } = await authClient.signIn.passkey({
 			fetchOptions: {
 				onSuccess() {
-					goto('/profile');
+					goto('/account/profile');
 				}
 			}
 		});
@@ -119,7 +119,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					provider,
-					callbackURL: `${window.location.origin}/profile`
+					callbackURL: `${window.location.origin}/account/profile`
 				})
 			});
 
