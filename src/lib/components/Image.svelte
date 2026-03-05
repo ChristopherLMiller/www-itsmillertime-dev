@@ -21,7 +21,9 @@
 		galleryIndex = 0,
 		useProxy = false,
 		isNsfw = false,
-		swapPortraitAspect = false
+		swapPortraitAspect = false,
+		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
+		fixedAspectRatio
 	}: {
 		image: Media;
 		transitionName?: string;
@@ -37,6 +39,8 @@
 		isNsfw?: boolean;
 		/** When true, portrait images (height > width) use a landscape container aspect ratio */
 		swapPortraitAspect?: boolean;
+		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
+		fixedAspectRatio?: number;
 	} = $props();
 
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
@@ -55,6 +59,7 @@
 	let currentGalleryIndex = $state(0);
 	let imageTransitionDirection = $state<'left' | 'right'>('right');
 	const aspectRatio = $derived.by(() => {
+		if (fixedAspectRatio != null) return fixedAspectRatio;
 		if (!image?.width || !image?.height) return 1;
 		const ratio = image.width / image.height;
 		if (swapPortraitAspect && ratio < 1) {
@@ -219,7 +224,7 @@
         top: 0;
         left: 0;
         width: 100%;
-        height: auto;
+        height: 100%;
         object-fit: {objectFit};
         transition: opacity 0.3s ease;
         opacity: {isLoaded ? 0 : 1};
@@ -248,7 +253,7 @@
 			loading="lazy"
 			style="
         width: 100%;
-        height: auto;
+        height: 100%;
         object-fit: {objectFit};
         transition: opacity 0.3s ease, filter 0.4s ease;
         opacity: {isLoaded ? 1 : 0};

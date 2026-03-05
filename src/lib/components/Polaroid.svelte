@@ -17,6 +17,10 @@
 		adaptiveHeight?: boolean;
 		/** When true, portrait images use a landscape container (for stack layout) */
 		flipPortraitAspect?: boolean;
+		/** When set, use fixed polaroid aspect ratio instead of image dimensions (image uses cover) */
+		fixedAspectRatio?: number;
+		/** When set, overrides the flip state (e.g. when stack is expanded on touch) */
+		flipped?: boolean;
 		imageCount?: number;
 		category?: GalleryCategory | null;
 		tags?: (GalleryTag | number)[] | null;
@@ -38,6 +42,8 @@
 		isNsfw = false,
 		adaptiveHeight = false,
 		flipPortraitAspect = false,
+		fixedAspectRatio,
+		flipped,
 		imageCount,
 		category,
 		tags = [],
@@ -100,7 +106,7 @@
 		}
 	}
 
-	const shouldBeFlipped = $derived(hoverFlip ? isHovering : isFlipped);
+	const shouldBeFlipped = $derived(flipped ?? (hoverFlip ? isHovering : isFlipped));
 </script>
 
 {#if interactive}
@@ -128,6 +134,7 @@
 						className="polaroid__image"
 						objectFit={adaptiveHeight ? 'contain' : 'cover'}
 						swapPortraitAspect={flipPortraitAspect}
+						fixedAspectRatio={fixedAspectRatio}
 						{useProxy}
 						{isNsfw}
 					/>
@@ -210,6 +217,7 @@
 						className="polaroid__image"
 						objectFit={adaptiveHeight ? 'contain' : 'cover'}
 						swapPortraitAspect={flipPortraitAspect}
+						fixedAspectRatio={fixedAspectRatio}
 						{useProxy}
 						{isNsfw}
 					/>

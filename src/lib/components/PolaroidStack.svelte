@@ -67,6 +67,32 @@
 		isHovering = false;
 	}
 
+	let touchStartTime = 0;
+	const LONG_PRESS_MS = 400;
+
+	function polaroidStackTouch(node: HTMLElement) {
+		function onTouchStart() {
+			touchStartTime = Date.now();
+		}
+		function onTouchEnd(e: TouchEvent) {
+			if (stackMedias.length <= 1) return;
+			const duration = Date.now() - touchStartTime;
+			if (duration >= LONG_PRESS_MS) {
+				hasBeenHovered = true;
+				isHovering = true;
+				e.preventDefault();
+			}
+		}
+		node.addEventListener('touchstart', onTouchStart, { passive: true });
+		node.addEventListener('touchend', onTouchEnd, { passive: false, capture: true });
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', onTouchStart);
+				node.removeEventListener('touchend', onTouchEnd, { capture: true });
+			}
+		};
+	}
+
 	const secondaryMedia = $derived(
 		images
 			.filter((value): value is Media => isMedia(value))
@@ -148,10 +174,25 @@
 			window.removeEventListener('resize', updateViewport);
 		};
 	});
+
+	function handleClickOutside(e: MouseEvent) {
+		const target = e.target as Node;
+		if (container && !container.contains(target)) {
+			isHovering = false;
+		}
+	}
 </script>
 
+<svelte:window onclick={handleClickOutside} />
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div bind:this={container} class="polaroid-stack {className}" onmouseenter={handleMouseEnter} onmouseleave={handleMouseLeave}>
+<div
+		bind:this={container}
+		class="polaroid-stack {className} {isHovering ? 'polaroid-stack--expanded' : ''}"
+		onmouseenter={handleMouseEnter}
+		onmouseleave={handleMouseLeave}
+		use:polaroidStackTouch
+	>
 	{#each stackLayout as item (item.key)}
 		{#if item.isPrimary || hasBeenHovered}
 			<div
@@ -165,9 +206,10 @@
 					className="polaroid-stack__polaroid"
 					enableViewTransition={enableViewTransition}
 					hoverFlip={item.isPrimary && hoverFlip}
+					flipped={item.isPrimary && hoverFlip && isHovering}
 					albumTitle={item.isPrimary ? albumTitle : undefined}
 					albumDescription={item.isPrimary ? albumDescription : undefined}
-					flipPortraitAspect={true}
+					fixedAspectRatio={4 / 3}
 					{useProxy}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 					imageCount={item.isPrimary ? imageCount : undefined}
@@ -192,7 +234,8 @@
 	}
 
 	.polaroid-stack:hover,
-	.polaroid-stack:focus-within {
+	.polaroid-stack:focus-within,
+	.polaroid-stack.polaroid-stack--expanded {
 		z-index: 50;
 	}
 
@@ -213,7 +256,8 @@
 		transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), z-index 200ms ease;
 	}
 
-	.polaroid-stack:hover .polaroid-stack__item:not(.polaroid-stack__item--primary) {
+	.polaroid-stack:hover .polaroid-stack__item:not(.polaroid-stack__item--primary),
+	.polaroid-stack.polaroid-stack--expanded .polaroid-stack__item:not(.polaroid-stack__item--primary) {
 		--translate-x: var(--target-translate-x);
 		--translate-y: var(--target-translate-y);
 		--rotate: var(--target-rotate);
