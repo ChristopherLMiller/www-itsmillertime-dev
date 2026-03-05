@@ -15,6 +15,9 @@
 
 	let currentIndex = $state(0);
 	let isLoaded = $state(false);
+	let touchStartX = $state(0);
+
+	const SWIPE_THRESHOLD = 50;
 
 	const currentImage = $derived(images[currentIndex]);
 	const hasPrevious = $derived(currentIndex > 0);
@@ -90,6 +93,23 @@
 			case 'ArrowRight':
 				next();
 				break;
+		}
+	}
+
+	function handleTouchStart(e: TouchEvent) {
+		touchStartX = e.touches[0].clientX;
+	}
+
+	function handleTouchEnd(e: TouchEvent) {
+		const touchEndX = e.changedTouches[0].clientX;
+		const deltaX = touchStartX - touchEndX;
+
+		if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+
+		if (deltaX > 0) {
+			next();
+		} else {
+			previous();
 		}
 	}
 
@@ -181,6 +201,8 @@
 				class="lightbox__image-container"
 				style:width="{containerDimensions.width}px"
 				style:height="{containerDimensions.height}px"
+				ontouchstart={handleTouchStart}
+				ontouchend={handleTouchEnd}
 			>
 				{#key currentIndex}
 					{#if placeholderSrc && !isLoaded}
