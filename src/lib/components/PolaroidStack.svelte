@@ -17,6 +17,8 @@
 		isNsfw?: boolean;
 		nsfwImageIds?: Set<number>;
 		imageCount?: number;
+		albumId?: number;
+		onHoverExpand?: (albumId: number) => void | Promise<void>;
 		category?: GalleryCategory | null;
 		tags?: (GalleryTag | number)[] | null;
 		onNavigate?: () => void;
@@ -38,6 +40,8 @@
 		isNsfw = false,
 		nsfwImageIds,
 		imageCount,
+		albumId,
+		onHoverExpand,
 		category,
 		tags,
 		onNavigate,
@@ -173,6 +177,13 @@
 		return () => {
 			window.removeEventListener('resize', updateViewport);
 		};
+	});
+
+	// When hovered, fetch full album images if we have albumId and callback
+	$effect(() => {
+		if (hasBeenHovered && albumId != null && onHoverExpand) {
+			onHoverExpand(albumId);
+		}
 	});
 
 	function handleClickOutside(e: MouseEvent) {

@@ -400,21 +400,11 @@
 	}
 
 	.lightbox__nav--prev {
-		left: 1rem;
+		left: 4px;
 	}
 
 	.lightbox__nav--next {
-		right: 1rem;
-	}
-
-	@media (max-width: 768px) {
-		.lightbox__nav--prev {
-			left: 0.5rem;
-		}
-
-		.lightbox__nav--next {
-			right: 0.5rem;
-		}
+		right: 4px;
 	}
 
 	.lightbox__caption {

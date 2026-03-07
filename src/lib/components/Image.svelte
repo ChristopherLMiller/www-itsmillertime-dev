@@ -13,6 +13,7 @@
 		transitionName,
 		hasBorder = false,
 		hasLightbox = false,
+		cursorPointer = false,
 		containerWidth = 0,
 		containerHeight = 0,
 		className = '',
@@ -29,6 +30,8 @@
 		transitionName?: string;
 		hasBorder?: boolean;
 		hasLightbox?: boolean;
+		/** When true, show pointer cursor (e.g. when parent opens lightbox) */
+		cursorPointer?: boolean;
 		containerWidth?: number;
 		containerHeight?: number;
 		className?: string;
@@ -257,7 +260,7 @@
         object-fit: {objectFit};
         transition: opacity 0.3s ease, filter 0.4s ease;
         opacity: {isLoaded ? 1 : 0};
-        cursor: {hasLightbox || shouldBlur ? 'pointer' : 'default'};
+        cursor: {hasLightbox || shouldBlur || cursorPointer ? 'pointer' : 'default'};
       "
 			onload={() => {
 				isLoaded = true;

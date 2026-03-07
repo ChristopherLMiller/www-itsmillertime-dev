@@ -20,6 +20,43 @@
 	let selectedCategory = $state(page.url.searchParams.get('category') || '');
 	let selectedTag = $state(page.url.searchParams.get('tag') || '');
 	let selectedPerPage = $state(Number(page.url.searchParams.get('limit')) || 15);
+	let expandedAlbumImages = $state<
+		Record<number, { images: Media[]; nsfwIds: Set<number> }>
+	>({});
+	const inFlightFetches = new Map<number, Promise<void>>();
+
+	async function fetchAlbumImagesOnHover(albumId: number) {
+		if (expandedAlbumImages[albumId]) return;
+		const existing = inFlightFetches.get(albumId);
+		if (existing) {
+			await existing;
+			return;
+		}
+		const promise = (async () => {
+			try {
+				const res = await fetch(`/api/gallery-album-images/${albumId}`);
+				if (!res.ok) return;
+				const { docs } = await res.json();
+				const rawDocs = docs ?? [];
+				const nsfwIds = new Set<number>(
+					rawDocs
+						.filter((doc: unknown) => isImageNsfw(doc))
+						.map((doc: unknown) => (doc as { id: number }).id)
+				);
+				const filtered = (nsfwPref === 'hide'
+					? rawDocs.filter((doc: unknown) => !isImageNsfw(doc))
+					: rawDocs
+				)
+					.map((doc: unknown) => asMedia(doc))
+					.filter((img: Media | null): img is Media => img !== null);
+				expandedAlbumImages = { ...expandedAlbumImages, [albumId]: { images: filtered, nsfwIds } };
+			} finally {
+				inFlightFetches.delete(albumId);
+			}
+		})();
+		inFlightFetches.set(albumId, promise);
+		await promise;
+	}
 
 	async function handleCategoryChange(event: Event) {
 		const target = event.target as HTMLSelectElement;
@@ -78,6 +115,31 @@
 		document.addEventListener('visibilitychange', handler);
 		return () => document.removeEventListener('visibilitychange', handler);
 	});
+
+	// Preload album images after page load so they're ready on hover (no delay)
+	$effect(() => {
+		if (!browser || filteredGalleries.length === 0) return;
+		const galleriesToPreload = filteredGalleries;
+		const schedulePreload = () => {
+			const run = () => {
+				for (const gallery of galleriesToPreload) {
+					if (asMedia(gallery.meta?.image)) {
+						fetchAlbumImagesOnHover(gallery.id);
+					}
+				}
+			};
+			if (typeof requestIdleCallback !== 'undefined') {
+				requestIdleCallback(run, { timeout: 2000 });
+			} else {
+				setTimeout(run, 100);
+			}
+		};
+		if (document.readyState === 'complete') {
+			schedulePreload();
+		} else {
+			window.addEventListener('load', schedulePreload, { once: true });
+		}
+	});
 </script>
 
 <div class="filters">
@@ -103,15 +165,14 @@
 
 <div class="galleries-grid">
 	{#each filteredGalleries as gallery (gallery.id)}
-		{@const docs = gallery.images?.docs ?? []}
-		{@const stackImages = (nsfwPref === 'hide'
-			? docs.filter((doc) => !isImageNsfw(doc))
-			: docs
-		).map((doc) => asMedia(doc)).filter((img): img is Media => img !== null)}
 		{@const metaImage = asMedia(gallery.meta?.image)}
-		{@const cover = metaImage ?? stackImages[0]}
-		{@const displayImages = stackImages.length > 0 ? stackImages : cover ? [cover] : []}
-		{@const nsfwIds = new Set(docs.filter((doc) => isImageNsfw(doc)).map((doc) => (doc as { id: number }).id))}
+		{@const cover = metaImage}
+		{@const initialDisplayImages = cover ? [cover] : []}
+		{@const expanded = expandedAlbumImages[gallery.id]}
+		{@const displayImages = expanded ? expanded.images : initialDisplayImages}
+		{@const nsfwIds = expanded
+			? expanded.nsfwIds
+			: new Set<number>()}
 		{@const needsProxy = gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
 		{#if cover}
 			{@const categoryObj = typeof gallery.settings?.category === 'object' && gallery.settings?.category !== null ? gallery.settings.category : null}
@@ -123,11 +184,13 @@
 					enableViewTransition={true}
 					hoverFlip={true}
 					albumTitle={gallery.title}
-					albumDescription={gallery.meta?.description}
+					albumDescription={gallery.meta?.description ?? undefined}
 					useProxy={needsProxy}
 					isNsfw={gallery.settings?.isNsfw === true}
 					nsfwImageIds={nsfwIds}
-					imageCount={stackImages.length}
+					imageCount={expanded ? displayImages.length : undefined}
+					albumId={gallery.id}
+					onHoverExpand={fetchAlbumImagesOnHover}
 					category={categoryObj}
 					tags={gallery.settings?.tags ?? undefined}
 					onNavigate={() => goto(`/galleries/${gallery.slug}`)}

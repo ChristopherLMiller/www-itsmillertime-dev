@@ -156,6 +156,7 @@
 							media={item}
 							caption={item.alt || undefined}
 							interactive={false}
+							clickable={true}
 							enableViewTransition={false}
 							adaptiveHeight={true}
 							{useProxy}

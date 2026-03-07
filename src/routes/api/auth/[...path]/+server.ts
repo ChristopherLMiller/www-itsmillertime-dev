@@ -3,17 +3,43 @@ import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
 /**
+ * Rewrites Set-Cookie headers so cookies work when proxying to a different backend.
+ * - Strips Domain so the cookie is set for the current request host (the site)
+ * - In dev (HTTP): strips Secure and __Secure- prefix so browsers accept the cookie
+ */
+function rewriteSetCookie(cookie: string, requestHost: string): string {
+	const [nameValue, ...attrs] = cookie.split('; ').map((s) => s.trim());
+	const [name, ...valueParts] = nameValue.split('=');
+	const value = valueParts.join('=').trim();
+
+	const keep: string[] = [];
+	for (const attr of attrs) {
+		const lower = attr.toLowerCase();
+		if (lower.startsWith('domain=')) continue; // strip Domain - cookie will use request host
+		if (dev && lower === 'secure') continue; // strip Secure in dev (HTTP)
+		keep.push(attr);
+	}
+
+	// In dev, backend may use __Secure-better-auth.*; browser rejects that on HTTP
+	const cookieName = dev && name.startsWith('__Secure-better-auth.')
+		? name.replace('__Secure-', '')
+		: name;
+
+	return [cookieName + '=' + value, ...keep].join('; ');
+}
+
+/**
  * Proxies all /api/auth/* requests to the Payload CMS backend.
  * This avoids CORS issues since the browser only talks to the SvelteKit server.
  *
- * In dev mode, rewrites cookie names to strip the __Secure- prefix (which
- * browsers reject over plain HTTP) and restores it on outgoing requests
- * so the backend sees the original cookie names.
+ * Rewrites Set-Cookie so cookies are set for the site's domain (not the backend).
+ * In dev mode, also strips Secure/__Secure- so cookies work over plain HTTP.
  */
 const proxy: RequestHandler = async ({ request, params }) => {
 	const targetUrl = `${PUBLIC_PAYLOAD_URL}/api/auth/${params.path}`;
 	const url = new URL(request.url);
 	const fullUrl = `${targetUrl}${url.search}`;
+	const requestHost = url.host;
 
 	const headers = new Headers(request.headers);
 	headers.delete('accept-encoding');
@@ -53,7 +79,7 @@ const proxy: RequestHandler = async ({ request, params }) => {
 	}
 
 	for (const cookie of response.headers.getSetCookie()) {
-		responseHeaders.append('Set-Cookie', cookie);
+		responseHeaders.append('Set-Cookie', rewriteSetCookie(cookie, requestHost));
 	}
 
 	const body = await response.arrayBuffer();

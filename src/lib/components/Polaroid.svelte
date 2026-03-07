@@ -8,6 +8,8 @@
 		caption?: string;
 		className?: string;
 		interactive?: boolean;
+		/** When true, show pointer cursor (e.g. when parent opens lightbox) */
+		clickable?: boolean;
 		enableViewTransition?: boolean;
 		hoverFlip?: boolean;
 		albumTitle?: string;
@@ -34,6 +36,7 @@
 		caption,
 		className = '',
 		interactive = true,
+		clickable = false,
 		enableViewTransition = false,
 		hoverFlip = false,
 		albumTitle,
@@ -65,12 +68,12 @@
 	);
 
 	function handleMainClick(e: MouseEvent) {
-		if ((e.target as HTMLElement).closest('a.polaroid__description-link')) return;
+		if ((e.target as HTMLElement).closest('button.polaroid__description-link')) return;
 		onNavigate?.();
 	}
 
 	function handleMainKeydown(e: KeyboardEvent) {
-		if ((e.target as HTMLElement).closest('a.polaroid__description-link')) return;
+		if ((e.target as HTMLElement).closest('button.polaroid__description-link')) return;
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
 			onNavigate?.();
@@ -135,6 +138,7 @@
 						objectFit={adaptiveHeight ? 'contain' : 'cover'}
 						swapPortraitAspect={flipPortraitAspect}
 						fixedAspectRatio={fixedAspectRatio}
+						cursorPointer={!!onNavigate}
 						{useProxy}
 						{isNsfw}
 					/>
@@ -160,13 +164,13 @@
 									{/if}
 									{#if resolvedCategory?.slug && resolvedCategory?.title}
 										{#if onCategoryClick}
-											<a
-												href="#"
+											<button
+												type="button"
 												class="polaroid__description-link"
 												onclick={(e) => handleCategoryClick(e, resolvedCategory.slug!)}
 											>
 												{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
-											</a>
+											</button>
 										{:else}
 											{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
 										{/if}
@@ -179,13 +183,13 @@
 									{#each resolvedTags as tag, index (tag.id)}
 										{#if tag.slug && tag.title}
 											{#if onTagClick}
-												<a
-													href="#"
+												<button
+													type="button"
 													class="polaroid__description-link"
 													onclick={(e) => handleTagClick(e, tag.slug!)}
 												>
 													{index > 0 ? ', ' : ''}{tag.title}
-												</a>
+												</button>
 											{:else}
 												{index > 0 ? ', ' : ''}{tag.title}
 											{/if}
@@ -204,7 +208,7 @@
 {:else}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="polaroid {className} polaroid--static {shouldBeFlipped ? 'flipped' : ''}"
+		class="polaroid {className} polaroid--static {clickable ? 'polaroid--clickable' : ''} {shouldBeFlipped ? 'flipped' : ''}"
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
@@ -218,6 +222,7 @@
 						objectFit={adaptiveHeight ? 'contain' : 'cover'}
 						swapPortraitAspect={flipPortraitAspect}
 						fixedAspectRatio={fixedAspectRatio}
+						cursorPointer={clickable}
 						{useProxy}
 						{isNsfw}
 					/>
@@ -274,6 +279,10 @@
 
 	.polaroid--static {
 		cursor: default;
+	}
+
+	.polaroid--clickable {
+		cursor: pointer;
 	}
 
 	.polaroid--static:hover,
@@ -343,6 +352,10 @@
 	}
 
 	.polaroid__description-link {
+		background: none;
+		border: none;
+		padding: 0;
+		font: inherit;
 		color: inherit;
 		text-decoration: none;
 		cursor: pointer;
