@@ -1,32 +1,79 @@
+<script lang="ts">
+	import pkg from '../../package.json';
+
+	let submitting = $state(false);
+	let success = $state(false);
+	let error = $state<string | null>(null);
+
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		const form = e.target as HTMLFormElement;
+		const formData = new FormData(form);
+
+		submitting = true;
+		error = null;
+
+		try {
+			const res = await fetch('/api/contact', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: formData.get('name'),
+					email: formData.get('email'),
+					message: formData.get('message')
+				})
+			});
+
+			const data = await res.json();
+
+			if (!res.ok) {
+				error = data.error ?? 'Failed to send message';
+				return;
+			}
+
+			success = true;
+			form.reset();
+		} catch (err) {
+			error = 'Failed to send message. Please try again.';
+		} finally {
+			submitting = false;
+		}
+	}
+</script>
+
 <footer>
   <div class="footer-content">
     <div class="block">
       <h6>Contact Me</h6>
       <p>Reach out to me today with any questions or concerns, or anything else I may be able to do for you!</p>
       
-      <form>
+      <form onsubmit={handleSubmit}>
         <div class="input-wrapper">
-          <div class="label-wrapper">
-            <label for="name">Name</label>
-            <div class="error-message" id="name">* Name is required</div>
-          </div>
-          <input type="text" id="name" name="name" required />
+          <label for="contact-name">Name</label>
+          <input type="text" id="contact-name" name="name" required disabled={submitting} />
         </div>
         
         <div class="input-wrapper">
-          <div class="label-wrapper">
-            <label for="email">Email</label>
-            <div class="error-message" id="email">* email is required</div>
-          </div>
-          <input type="text" id="email" name="email" required />
+          <label for="contact-email">Email</label>
+          <input type="email" id="contact-email" name="email" required disabled={submitting} />
         </div>
+
         <div class="input-wrapper">
-          <div class="label-wrapper">
-            <label for="message">Email</label>
-            <div class="error-message" id="name">* Name is required</div>
-          </div>
-          <input type="text" id="name" name="name" required />
+          <label for="contact-message">Message</label>
+          <textarea id="contact-message" name="message" rows="4" required disabled={submitting}></textarea>
         </div>
+
+        {#if error}
+          <p class="form-error" role="alert">{error}</p>
+        {/if}
+
+        {#if success}
+          <p class="form-success">Thanks! Your message has been sent.</p>
+        {/if}
+
+        <button type="submit" class="submit-btn" disabled={submitting}>
+          {submitting ? 'Sending...' : 'Send'}
+        </button>
       </form>
     </div>
     <div class="block">
@@ -48,7 +95,7 @@
     </div>
   </div>
   <div class="bottom-bar">
-    ItsMillerTime | v{PKG.version}
+    ItsMillerTime | v{pkg.version}
   </div>
 </footer>
 
@@ -98,6 +145,80 @@
     p {
       padding-block-end: 1rem;
       line-height: 1em;
+    }
+  }
+
+  .input-wrapper {
+    margin-block-end: 1rem;
+    text-align: left;
+
+    label {
+      display: block;
+      font-size: var(--fs-xs);
+      margin-block-end: 0.25rem;
+      color: var(--color-tertiary-darkest);
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 2px solid var(--color-tertiary-lightest);
+      border-radius: 4px;
+      font-family: var(--font-roboto);
+      font-size: var(--fs-base);
+      background: var(--color-white-lightest);
+      color: var(--color-tertiary-darkest);
+      box-sizing: border-box;
+
+      &:focus {
+        outline: none;
+        border-color: var(--color-primary);
+      }
+
+      &:disabled {
+        opacity: 0.7;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 4rem;
+    }
+  }
+
+  .form-error {
+    color: var(--color-primary-darker);
+    font-size: var(--fs-xs);
+    margin-block-end: 0.5rem;
+  }
+
+  .form-success {
+    color: oklch(0.4 0.15 145);
+    font-size: var(--fs-xs);
+    margin-block-end: 0.5rem;
+  }
+
+  .submit-btn {
+    padding: 0.5rem 1.5rem;
+    border: 2px solid var(--color-primary);
+    border-radius: 4px;
+    background: var(--color-primary);
+    color: var(--color-white-lightest);
+    font-family: var(--font-roboto);
+    font-size: var(--fs-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: var(--color-primary-darker);
+      border-color: var(--color-primary-darker);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
     }
   }
 
