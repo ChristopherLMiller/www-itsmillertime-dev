@@ -1,5 +1,5 @@
 import { dev } from '$app/environment';
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
+import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_API_ENDPOINT_DEV } from '$env/static/public';
 import { PayloadSDK } from '@payloadcms/sdk';
 import type { Config } from '$lib/types/payload-types';
 
@@ -30,16 +30,49 @@ export function createPayloadFetch(
 	};
 }
 
+function createFetchWithDevFallback(
+	baseFetcher: typeof globalThis.fetch,
+	devBase: string,
+	prodBase: string
+): typeof globalThis.fetch {
+	return async (input: RequestInfo | URL, init?: RequestInit) => {
+		try {
+			return await baseFetcher(input, init);
+		} catch (err) {
+			if (!dev) throw err;
+			const url =
+				typeof input === 'string'
+					? input
+					: input instanceof URL
+						? input.toString()
+						: (input as Request).url;
+			if (!url.startsWith(devBase)) throw err;
+			const fallbackUrl = url.replace(devBase, prodBase);
+			return baseFetcher(fallbackUrl, init);
+		}
+	};
+}
+
 export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request) {
-	const fetcher =
+	const baseFetcher =
 		request && fetch ? createPayloadFetch(fetch, request) : (fetch ?? globalThis.fetch);
 
 	const baseInit = { credentials: 'include' as RequestCredentials };
+	const baseURL = dev ? PUBLIC_PAYLOAD_API_ENDPOINT_DEV : PUBLIC_PAYLOAD_API_ENDPOINT;
+
+	const fetcher =
+		dev && PUBLIC_PAYLOAD_API_ENDPOINT_DEV !== PUBLIC_PAYLOAD_API_ENDPOINT
+			? createFetchWithDevFallback(
+					baseFetcher,
+					PUBLIC_PAYLOAD_API_ENDPOINT_DEV,
+					PUBLIC_PAYLOAD_API_ENDPOINT
+				)
+			: baseFetcher;
 
 	// When request is provided (server), create fresh SDK per call
 	if (request) {
 		return new PayloadSDK<Config>({
-			baseURL: PUBLIC_PAYLOAD_API_ENDPOINT,
+			baseURL,
 			fetch: fetcher,
 			baseInit
 		});
@@ -47,7 +80,7 @@ export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request
 
 	if (!sdk) {
 		sdk = new PayloadSDK<Config>({
-			baseURL: PUBLIC_PAYLOAD_API_ENDPOINT,
+			baseURL,
 			fetch: fetcher,
 			baseInit
 		});

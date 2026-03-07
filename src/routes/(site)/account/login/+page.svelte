@@ -4,8 +4,6 @@
 	import { authClient } from '$lib/auth-client';
 	import Panel from '$lib/Panel.svelte';
 
-	const session = authClient.useSession();
-
 	type Step = 'login' | '2fa';
 
 	let step = $state<Step>(($page.url.searchParams.get('step') as Step) || 'login');
@@ -15,12 +13,6 @@
 	let email = $state('');
 	let password = $state('');
 	let totpCode = $state('');
-
-	$effect(() => {
-		if ($session.data?.user) {
-			window.location.href = '/account/profile';
-		}
-	});
 
 	async function signInWithEmail(e: SubmitEvent) {
 		const form = e.currentTarget as HTMLFormElement;
@@ -41,9 +33,14 @@
 			password,
 		});
 
-		if (result.data?.twoFactorRedirect) {
+		if ((result.data as { twoFactorRedirect?: boolean })?.twoFactorRedirect) {
 			step = '2fa';
 			loading = null;
+			return;
+		}
+
+		if (result.data?.user) {
+			window.location.href = '/account/profile';
 			return;
 		}
 

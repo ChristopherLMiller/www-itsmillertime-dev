@@ -1,12 +1,8 @@
 import { getPayloadSDK } from '$lib/payload';
-import type { PageLoad } from './$types';
+import type { PageServerLoad } from './$types';
 
-/**
- * Client-side load: calls Payload CMS directly. credentials: 'include' ensures
- * better-auth session cookies are sent with the cross-origin request.
- */
-export const load: PageLoad = async ({ fetch, url }) => {
-	const sdk = getPayloadSDK(fetch);
+export const load: PageServerLoad = async ({ fetch, request, url }) => {
+	const sdk = getPayloadSDK(fetch, request);
 
 	const [galleriesData, categoriesData, tagsData] = await Promise.all([
 		sdk.find({
@@ -42,9 +38,16 @@ export const load: PageLoad = async ({ fetch, url }) => {
 		})
 	]);
 
-	const { docs: galleries, ...meta } = galleriesData;
+	const { docs: rawGalleries, ...meta } = galleriesData;
 	const { docs: categories } = categoriesData;
 	const { docs: tags } = tagsData;
+
+	// Don't load album images on initial load - only the featured (meta) image.
+	// Images are fetched on hover via /api/gallery-album-images/[albumId]
+	const galleries = rawGalleries.map((g) => ({
+		...g,
+		images: { docs: [], totalDocs: 0 }
+	}));
 
 	return { galleries, meta, categories, tags };
 };

@@ -10,12 +10,6 @@
 	let user = $derived(session?.user);
 	let sess = $derived(session?.session);
 
-	$effect(() => {
-		if (!user) {
-			goto('/account/login');
-		}
-	});
-
 	async function handleSignOut() {
 		signingOut = true;
 		try {
