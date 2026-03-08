@@ -12,6 +12,11 @@ export default defineConfig({
 	define: {
 		PKG: pkg
 	},
+	server: {
+		fs: {
+			allow: [fileURLToPath(new URL('.', import.meta.url))]
+		}
+	},
 	ssr: {
 		noExternal: ['svelte-bricks']
 	}

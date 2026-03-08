@@ -107,10 +107,6 @@
 	});
 </script>
 
-<svelte:head>
-	<title>{data.gallery.title} - Gallery</title>
-</svelte:head>
-
 {#if shouldHideAlbum}
 	<div class="gallery-page">
 		<div class="gallery-header-wrap">

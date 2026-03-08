@@ -1,7 +1,7 @@
 import { getPayloadSDK } from '$lib/payload';
 import { error } from '@sveltejs/kit';
 
-export async function load({ fetch }) {
+export async function load({ fetch, url }) {
 	const pageData = await getPayloadSDK(fetch).find({
 		collection: 'pages',
 		where: {
@@ -24,8 +24,10 @@ export async function load({ fetch }) {
 		throw error(404, 'Page not found');
 	}
 
+	const doc = pageData.docs[0];
+	const meta = doc.meta ? { ...doc.meta, canonicalURL: `${url.origin}/` } : { canonicalURL: `${url.origin}/` };
 	return {
-		page: pageData.docs[0],
-		meta: pageData.docs[0].meta
+		page: doc,
+		meta
 	};
 }

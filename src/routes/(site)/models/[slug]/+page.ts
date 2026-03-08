@@ -1,7 +1,7 @@
 import { getPayloadSDK } from '$lib/payload';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ parent, fetch, params }) => {
+export const load: PageLoad = async ({ parent, fetch, params, url }) => {
 	const modelData = await getPayloadSDK(fetch).find({
 		collection: 'models',
 		where: {
@@ -23,8 +23,10 @@ export const load: PageLoad = async ({ parent, fetch, params }) => {
 		}
 	});
 
+	const doc = modelData.docs[0];
+	const meta = doc.meta ? { ...doc.meta, canonicalURL: `${url.origin}/models/${params.slug}` } : { canonicalURL: `${url.origin}/models/${params.slug}` };
 	return {
-		model: modelData.docs[0],
-		meta: modelData.docs[0].meta
+		model: doc,
+		meta
 	};
 };
