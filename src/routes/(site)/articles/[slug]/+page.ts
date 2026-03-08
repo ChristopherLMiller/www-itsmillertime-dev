@@ -1,8 +1,8 @@
 import { getPayloadSDK } from '$lib/payload';
 import { error } from '@sveltejs/kit';
-import type { PageLoad } from '../$types';
+import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ fetch, params, url }) => {
 	const post = await getPayloadSDK(fetch).find({
 		collection: 'posts',
 		where: {
@@ -12,7 +12,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
 						equals: 'published'
 					},
 					slug: {
-						equals: params.slug
+						equals: (params as { slug: string }).slug
 					}
 				}
 			]
@@ -23,8 +23,11 @@ export const load: PageLoad = async ({ fetch, params }) => {
 		throw error(404, 'Article not found');
 	}
 
+	const doc = post.docs[0];
+	const slug = (params as { slug: string }).slug;
+	const meta = doc.meta ? { ...doc.meta, canonicalURL: `${url.origin}/articles/${slug}` } : { canonicalURL: `${url.origin}/articles/${slug}` };
 	return {
-		article: post.docs[0],
-		meta: post.docs[0].meta
+		article: doc,
+		meta
 	};
 };
