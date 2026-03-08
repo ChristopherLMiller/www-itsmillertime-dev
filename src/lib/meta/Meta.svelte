@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { getMediaUrl } from '$lib/utils/media-url';
+	import { PUBLIC_FACEBOOK_APP_ID } from '$env/static/public';
 
 	let meta = $derived({
 		...page.data.meta
@@ -34,16 +35,36 @@
 		}
 	}
 
-	function getImage(title: string) {
+	function getImage(title: string): { url: string; width?: number; height?: number } {
 		if (meta.image) {
-			const url = meta.image.sizes?.['og']?.url ?? meta.image.url;
-			if (url) return toAbsoluteUrl(url);
+			const og = meta.image.sizes?.['og'];
+			const url = og?.url ?? meta.image.url;
+			if (url) {
+				const width = og?.width ?? meta.image.width;
+				const height = og?.height ?? meta.image.height;
+				// DEBUG: remove once OG image size is confirmed working
+				console.log('[Meta getImage] meta.image:', {
+					hasImage: !!meta.image,
+					hasSizes: !!meta.image.sizes,
+					hasOg: !!og,
+					ogUrl: og?.url,
+					mainUrl: meta.image.url,
+					chosenUrl: url,
+					ogWidth: og?.width,
+					ogHeight: og?.height,
+					mainWidth: meta.image.width,
+					mainHeight: meta.image.height,
+					chosenWidth: width,
+					chosenHeight: height
+				});
+				return { url: toAbsoluteUrl(url), width: width ?? undefined, height: height ?? undefined };
+			}
 		}
 
 		// Generate dynamic OG image with title
 		const titleParts = generateTitle(title).split(' | ');
 		const encodedTitle = encodeURIComponent(titleParts[0]);
-		return `${page.url.origin}/og-image?text=${encodedTitle}`;
+		return { url: `${page.url.origin}/og-image?text=${encodedTitle}` };
 	}
 
 	function generateDescription(description: string) {
@@ -65,7 +86,40 @@
 
 	let pageTitle = $derived(generateTitle(meta?.metaTitle));
 	let pageDescription = $derived(generateDescription(meta?.metaDescription));
-	let pageImage = $derived(toAbsoluteUrl(meta?.metaImage?.url) || getImage(meta?.title));
+
+	// Resolve OG image: prefer metaImage, fall back to getImage (uses meta.image)
+	let pageImageInfo = $derived.by(() => {
+		const img = meta?.metaImage ?? meta?.image;
+		if (img) {
+			const og = img.sizes?.['og'];
+			const url = toAbsoluteUrl(og?.url ?? img.url);
+			if (url) {
+				const width = og?.width ?? img.width;
+				const height = og?.height ?? img.height;
+				// DEBUG: remove once OG image size is confirmed working
+				console.log('[Meta pageImageInfo] from metaImage/image:', {
+					hasMetaImage: !!meta?.metaImage,
+					hasImage: !!meta?.image,
+					hasSizes: !!img.sizes,
+					hasOg: !!og,
+					ogUrl: og?.url,
+					mainUrl: img.url,
+					chosenUrl: url,
+					ogWidth: og?.width,
+					ogHeight: og?.height,
+					mainWidth: img.width,
+					mainHeight: img.height,
+					chosenWidth: width,
+					chosenHeight: height
+				});
+				return { url, width: width ?? undefined, height: height ?? undefined };
+			}
+		}
+		return getImage(meta?.title ?? '');
+	});
+	let pageImage = $derived(pageImageInfo.url);
+	let pageImageWidth = $derived(pageImageInfo.width);
+	let pageImageHeight = $derived(pageImageInfo.height);
 </script>
 
 <svelte:head>
@@ -79,8 +133,15 @@
 
 	<!-- OG -->
 	<meta property="og:type" content="website" />
+	{#if PUBLIC_FACEBOOK_APP_ID}
+		<meta property="fb:app_id" content={PUBLIC_FACEBOOK_APP_ID} />
+	{/if}
 	<meta property="og:title" content={pageTitle} />
 	<meta property="og:image" content={pageImage} />
+	{#if pageImageWidth != null && pageImageHeight != null}
+		<meta property="og:image:width" content={String(pageImageWidth)} />
+		<meta property="og:image:height" content={String(pageImageHeight)} />
+	{/if}
 	<meta property="og:description" content={pageDescription} />
 	{#if meta?.canonicalURL}
 		<meta property="og:url" content={meta?.canonicalURL} />
