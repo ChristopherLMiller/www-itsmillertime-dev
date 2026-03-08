@@ -1,9 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { getMediaUrl } from '$lib/utils/media-url';
 
 	let meta = $derived({
 		...page.data.meta
 	});
+
+	function toAbsoluteUrl(url: string | null | undefined): string {
+		if (!url || typeof url !== 'string') return '';
+		if (url.startsWith('http://') || url.startsWith('https://')) return url;
+		// Relative paths from Payload – use Payload URL as base (image is hosted there)
+		return getMediaUrl(url, false);
+	}
 
 	function generateTitle(title: string) {
 		if (meta.title) {
@@ -28,11 +36,8 @@
 
 	function getImage(title: string) {
 		if (meta.image) {
-			if (meta.image.sizes['og']?.url) {
-				return meta.image.sizes['og'].url;
-			} else {
-				return meta.image.url;
-			}
+			const url = meta.image.sizes?.['og']?.url ?? meta.image.url;
+			if (url) return toAbsoluteUrl(url);
 		}
 
 		// Generate dynamic OG image with title
@@ -60,7 +65,7 @@
 
 	let pageTitle = $derived(generateTitle(meta?.metaTitle));
 	let pageDescription = $derived(generateDescription(meta?.metaDescription));
-	let pageImage = $derived(meta?.metaImage?.url || getImage(meta?.title));
+	let pageImage = $derived(toAbsoluteUrl(meta?.metaImage?.url) || getImage(meta?.title));
 </script>
 
 <svelte:head>
