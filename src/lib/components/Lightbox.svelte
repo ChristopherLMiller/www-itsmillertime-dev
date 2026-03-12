@@ -23,13 +23,8 @@
 	const hasPrevious = $derived(currentIndex > 0);
 	const hasNext = $derived(currentIndex < images.length - 1);
 
-	const imageSrc = $derived(
-		currentImage?.sizes?.xlarge?.url ??
-			currentImage?.sizes?.large?.url ??
-			currentImage?.sizes?.medium?.url ??
-			currentImage?.url ??
-			null
-	);
+	// Use original image URL to avoid AVIF/WebP artifacting in lightbox
+	const imageSrc = $derived(currentImage?.url ?? null);
 
 	const placeholderSrc = $derived(currentImage?.blurhash ?? null);
 
@@ -114,18 +109,12 @@
 	}
 
 
-	// Preload images in the background
+	// Preload original images in the background
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		// Preload all images when component mounts
 		images.forEach((image) => {
-			const src =
-				image?.sizes?.xlarge?.url ??
-				image?.sizes?.large?.url ??
-				image?.sizes?.medium?.url ??
-				image?.url;
-
+			const src = image?.url;
 			if (src) {
 				const img = new Image();
 				img.src = getMediaUrl(src, useProxy);
@@ -281,7 +270,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 2rem;
+		padding: 0.5rem;
 		animation: fadeIn 200ms ease;
 	}
 
@@ -400,11 +389,11 @@
 	}
 
 	.lightbox__nav--prev {
-		left: 4px;
+		left: 0;
 	}
 
 	.lightbox__nav--next {
-		right: 4px;
+		right: 0;
 	}
 
 	.lightbox__caption {
