@@ -6,6 +6,7 @@
 	import Panel from '$lib/Panel.svelte';
 	import Polaroid from '$lib/components/Polaroid.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
+	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 	import type { Media, GalleryImage } from '$lib/types/payload-types';
 
@@ -171,7 +172,20 @@
 			onClose={closeLightbox}
 			onIndexChange={updateUrlForIndex}
 			{useProxy}
-		/>
+		>
+			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad })}
+				<GalleryLightboxContent
+					{image}
+					{index}
+					{total}
+					{imageSrc}
+					{isLoaded}
+					{placeholderSrc}
+					{onImageLoad}
+					gallery={data.gallery}
+				/>
+			{/snippet}
+		</Lightbox>
 {/if}
 
 <style>

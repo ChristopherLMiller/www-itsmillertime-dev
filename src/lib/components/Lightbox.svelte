@@ -1,6 +1,18 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { Media } from '../types/payload-types';
 	import { getMediaUrl } from '$lib/utils/media-url';
+
+	export type LightboxContentArgs = {
+		image: Media | undefined;
+		index: number;
+		total: number;
+		imageSrc: string | null;
+		isLoaded: boolean;
+		placeholderSrc: string | null;
+		getMediaUrl: (path: string, proxy?: boolean) => string;
+		onImageLoad: () => void;
+	};
 
 	type LightboxProps = {
 		images: Media[];
@@ -9,9 +21,11 @@
 		onClose?: () => void;
 		onIndexChange?: (index: number) => void;
 		useProxy?: boolean;
+		/** Custom content to render instead of the default image-only layout. Receives image, index, total, etc. */
+		content?: Snippet<[LightboxContentArgs]>;
 	};
 
-	let { images, initialIndex = 0, open = $bindable(false), onClose, onIndexChange, useProxy = false }: LightboxProps = $props();
+	let { images, initialIndex = 0, open = $bindable(false), onClose, onIndexChange, useProxy = false, content }: LightboxProps = $props();
 
 	let currentIndex = $state(0);
 	let isLoaded = $state(false);
@@ -23,15 +37,21 @@
 	const hasPrevious = $derived(currentIndex > 0);
 	const hasNext = $derived(currentIndex < images.length - 1);
 
-	const imageSrc = $derived(
-		currentImage?.sizes?.xlarge?.url ??
-			currentImage?.sizes?.large?.url ??
-			currentImage?.sizes?.medium?.url ??
-			currentImage?.url ??
-			null
-	);
-
+	// Use original image URL to avoid AVIF/WebP artifacting in lightbox
+	const imageSrc = $derived(currentImage?.url ?? null);
+	const resolvedImageSrc = $derived(imageSrc ? getMediaUrl(imageSrc, useProxy) : null);
 	const placeholderSrc = $derived(currentImage?.blurhash ?? null);
+
+	const contentArgs = $derived({
+		image: currentImage,
+		index: currentIndex,
+		total: images.length,
+		imageSrc: resolvedImageSrc,
+		isLoaded,
+		placeholderSrc,
+		getMediaUrl: (path: string, proxy?: boolean) => getMediaUrl(path, proxy ?? useProxy),
+		onImageLoad: () => (isLoaded = true)
+	});
 
 	const aspectRatio = $derived(
 		currentImage?.width && currentImage?.height
@@ -114,18 +134,12 @@
 	}
 
 
-	// Preload images in the background
+	// Preload original images in the background
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		// Preload all images when component mounts
 		images.forEach((image) => {
-			const src =
-				image?.sizes?.xlarge?.url ??
-				image?.sizes?.large?.url ??
-				image?.sizes?.medium?.url ??
-				image?.url;
-
+			const src = image?.url;
 			if (src) {
 				const img = new Image();
 				img.src = getMediaUrl(src, useProxy);
@@ -199,76 +213,93 @@
 
 			<div
 				class="lightbox__image-container"
-				style:width="{containerDimensions.width}px"
-				style:height="{containerDimensions.height}px"
+				style:width={content ? undefined : `${containerDimensions.width}px`}
+				style:height={content ? undefined : `${containerDimensions.height}px`}
+				class:lightbox__image-container--custom={!!content}
 				ontouchstart={handleTouchStart}
 				ontouchend={handleTouchEnd}
 			>
-				{#key currentIndex}
-					{#if placeholderSrc && !isLoaded}
-						<img
-							class="lightbox__image lightbox__image--placeholder"
-							src={placeholderSrc}
-							alt="Loading placeholder"
-							aria-hidden="true"
-						/>
-					{/if}
+				{#if content}
+					{#key currentIndex}
+						{@render content(contentArgs)}
+					{/key}
+				{:else}
+					{#key currentIndex}
+						{#if placeholderSrc && !isLoaded}
+							<img
+								class="lightbox__image lightbox__image--placeholder"
+								src={placeholderSrc}
+								alt="Loading placeholder"
+								aria-hidden="true"
+							/>
+						{/if}
 
-					{#if imageSrc}
-						<img
-							class="lightbox__image lightbox__image--main"
-							src={getMediaUrl(imageSrc, useProxy)}
-							alt={currentImage?.alt ?? ''}
-							style:opacity={isLoaded ? 1 : 0}
-							onload={() => (isLoaded = true)}
-						/>
-					{/if}
-				{/key}
+						{#if imageSrc}
+							<img
+								class="lightbox__image lightbox__image--main"
+								src={resolvedImageSrc}
+								alt={currentImage?.alt ?? ''}
+								style:opacity={isLoaded ? 1 : 0}
+								onload={() => (isLoaded = true)}
+							/>
+						{/if}
+					{/key}
+				{/if}
 			</div>
 
-			{#if hasPrevious}
-				<button class="lightbox__nav lightbox__nav--prev" onclick={previous} aria-label="Previous image">
-					<svg
-						width="32"
-						height="32"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<polyline points="15 18 9 12 15 6"></polyline>
-					</svg>
-				</button>
-			{/if}
+			<button
+				class="lightbox__nav lightbox__nav--prev"
+				class:lightbox__nav--disabled={!hasPrevious}
+				disabled={!hasPrevious}
+				onclick={previous}
+				aria-label="Previous image"
+			>
+				<svg
+					width="32"
+					height="32"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+			</button>
 
-			{#if hasNext}
-				<button class="lightbox__nav lightbox__nav--next" onclick={next} aria-label="Next image">
-					<svg
-						width="32"
-						height="32"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<polyline points="9 18 15 12 9 6"></polyline>
-					</svg>
-				</button>
-			{/if}
+			<button
+				class="lightbox__nav lightbox__nav--next"
+				class:lightbox__nav--disabled={!hasNext}
+				disabled={!hasNext}
+				onclick={next}
+				aria-label="Next image"
+			>
+				<svg
+					width="32"
+					height="32"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<polyline points="9 18 15 12 9 6"></polyline>
+				</svg>
+			</button>
 
-			{#if currentImage?.title || currentImage?.alt}
-				<div class="lightbox__caption">
-					{currentImage?.title || currentImage?.alt}
+			{#if !content}
+				{#if currentImage?.alt}
+					<div class="lightbox__caption">
+						{currentImage.alt}
+					</div>
+				{/if}
+
+				<div class="lightbox__counter">
+					{currentIndex + 1} / {images.length}
 				</div>
 			{/if}
-
-			<div class="lightbox__counter">
-				{currentIndex + 1} / {images.length}
-			</div>
 		</div>
 	</div>
 {/if}
@@ -281,7 +312,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 2rem;
+		padding: 0.5rem;
 		animation: fadeIn 200ms ease;
 	}
 
@@ -350,6 +381,20 @@
 		justify-content: center;
 	}
 
+	.lightbox__image-container--custom {
+		flex: 1;
+		width: 100%;
+		min-height: 0;
+		align-items: center;
+		justify-content: center;
+		overflow: visible;
+		pointer-events: none;
+	}
+
+	.lightbox__image-container--custom > * {
+		pointer-events: auto;
+	}
+
 	.lightbox__image {
 		display: block;
 		width: 100%;
@@ -376,9 +421,8 @@
 	}
 
 	.lightbox__nav {
-		position: absolute;
-		top: 50%;
-		transform: translateY(-50%);
+		position: fixed;
+		bottom: 0.5rem;
 		background: rgba(0, 0, 0, 0.5);
 		border: 2px solid rgba(255, 255, 255, 0.3);
 		color: white;
@@ -399,12 +443,18 @@
 		border-color: rgba(255, 255, 255, 0.5);
 	}
 
+	.lightbox__nav--disabled {
+		opacity: 0.2;
+		cursor: default;
+		pointer-events: none;
+	}
+
 	.lightbox__nav--prev {
-		left: 4px;
+		left: 0.5rem;
 	}
 
 	.lightbox__nav--next {
-		right: 4px;
+		right: 0.5rem;
 	}
 
 	.lightbox__caption {
