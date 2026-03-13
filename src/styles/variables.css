@@ -59,6 +59,7 @@
 	--box-shadow-inset-3: inset 0 -10px 0 var(--color-primary-darker);
 
 	/* Fonts */
+	--font-crimson-text: 'Crimson Text', Georgia, serif;
 	--font-special-elite: 'Special Elite', serif;
 	--font-permanent-marker: 'Permanent Marker', serif;
 	--font-oswald: 'Oswald', serif;

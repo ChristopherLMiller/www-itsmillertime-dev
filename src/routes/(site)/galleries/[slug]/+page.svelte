@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Masonry from 'svelte-bricks';
 	import Panel from '$lib/Panel.svelte';
+	import GalleryAlbumHeader from '$lib/components/GalleryAlbumHeader.svelte';
 	import Polaroid from '$lib/components/Polaroid.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
@@ -26,20 +27,21 @@
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
 
-	function extractGalleryMedia(doc: unknown): GalleryMedia | null {
+	function extractGalleryMedia(doc: unknown): (GalleryMedia & { galleryImageId?: number }) | null {
 		if (typeof doc !== 'object' || doc === null) return null;
 
 		const imageDoc = doc as Partial<GalleryImage>;
 		const docIsNsfw = imageDoc.settings?.isNsfw === true || albumIsNsfw;
+		const galleryImageId = imageDoc.id;
 
 		if ('url' in imageDoc && 'id' in imageDoc) {
-			return { ...(imageDoc as Media), isNsfw: docIsNsfw };
+			return { ...(imageDoc as Media), isNsfw: docIsNsfw, galleryImageId };
 		}
 
 		if ('image' in imageDoc) {
 			const candidate = (imageDoc as { image?: unknown }).image;
 			if (typeof candidate === 'object' && candidate !== null && 'id' in candidate) {
-				return { ...(candidate as Media), isNsfw: docIsNsfw };
+				return { ...(candidate as Media), isNsfw: docIsNsfw, galleryImageId };
 			}
 		}
 
@@ -49,7 +51,7 @@
 	const allGalleryImages = $derived(
 		(data.gallery.images?.docs ?? [])
 			.map((doc) => extractGalleryMedia(doc))
-			.filter((media): media is GalleryMedia => Boolean(media))
+			.filter((media): media is GalleryMedia & { galleryImageId?: number } => Boolean(media))
 	);
 
 	const galleryImages = $derived(
@@ -57,8 +59,6 @@
 			? allGalleryImages.filter((m) => !m.isNsfw)
 			: allGalleryImages
 	);
-
-	const descriptionText = $derived(lexicalToPlainText(data.gallery.content));
 
 	function openLightboxForItem(item: GalleryMedia) {
 		const idx = galleryImages.findIndex((m) => m.id === item.id);
@@ -121,16 +121,7 @@
 	</div>
 {:else}
 	<div class="gallery-page">
-		<div class="gallery-header-wrap">
-			<Panel hasBorder hasPadding>
-				<header class="gallery-header">
-					<h1>{data.gallery.title}</h1>
-					{#if descriptionText}
-						<p class="gallery-description">{descriptionText}</p>
-					{/if}
-				</header>
-			</Panel>
-		</div>
+		<GalleryAlbumHeader gallery={data.gallery} imageCount={galleryImages.length} />
 
 		<div class="gallery-grid">
 			<Masonry
@@ -151,7 +142,7 @@
 					>
 						<Polaroid
 							media={item}
-							caption={item.alt || undefined}
+							caption={item.caption ? (lexicalToPlainText(item.caption).trim() || undefined) : undefined}
 							interactive={false}
 							clickable={true}
 							enableViewTransition={false}
@@ -173,7 +164,7 @@
 			onIndexChange={updateUrlForIndex}
 			{useProxy}
 		>
-			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad })}
+			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad, onClose, onPrevious, onNext, hasPrevious, hasNext, galleryImageId })}
 				<GalleryLightboxContent
 					{image}
 					{index}
@@ -182,7 +173,13 @@
 					{isLoaded}
 					{placeholderSrc}
 					{onImageLoad}
+					{onClose}
+					{onPrevious}
+					{onNext}
+					{hasPrevious}
+					{hasNext}
 					gallery={data.gallery}
+					{galleryImageId}
 				/>
 			{/snippet}
 		</Lightbox>
@@ -216,16 +213,6 @@
 		color: var(--color-tertiary);
 		font-family: var(--font-roboto);
 		font-size: var(--fs-base);
-	}
-
-	.gallery-description {
-		max-width: 42ch;
-		margin: 0 auto;
-		font-family: var(--font-roboto);
-		font-size: var(--fs-base);
-		line-height: 1.7;
-		color: var(--color-tertiary-darkest);
-		letter-spacing: 0.01em;
 	}
 
 	.gallery-grid__item {
