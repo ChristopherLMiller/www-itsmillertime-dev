@@ -55,7 +55,7 @@
 		onTagClick
 	}: PolaroidProps = $props();
 
-	const displayCaption = $derived(caption ?? media?.alt ?? '');
+	const displayCaption = $derived(caption ?? '');
 
 	let isFlipped = $state(false);
 	let isHovering = $state(false);
@@ -142,9 +142,7 @@
 						{useProxy}
 						{isNsfw}
 					/>
-					{#if displayCaption}
-						<div class="polaroid__caption">{displayCaption}</div>
-					{/if}
+					<div class="polaroid__caption">{displayCaption}</div>
 				</div>
 			</div>
 
@@ -226,9 +224,7 @@
 						{useProxy}
 						{isNsfw}
 					/>
-					{#if displayCaption}
-						<div class="polaroid__caption">{displayCaption}</div>
-					{/if}
+					<div class="polaroid__caption">{displayCaption}</div>
 				</div>
 			</div>
 
@@ -371,6 +367,7 @@
 		font-size: 1.1rem;
 		color: #2f2b25;
 		letter-spacing: 0.04em;
+		min-height: 1.5em;
 	}
 
 	.polaroid__note {

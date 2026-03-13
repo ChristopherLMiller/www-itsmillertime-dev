@@ -12,10 +12,16 @@
 		placeholderSrc: string | null;
 		getMediaUrl: (path: string, proxy?: boolean) => string;
 		onImageLoad: () => void;
+		onClose: () => void;
+		onPrevious: () => void;
+		onNext: () => void;
+		hasPrevious: boolean;
+		hasNext: boolean;
+		galleryImageId?: number;
 	};
 
 	type LightboxProps = {
-		images: Media[];
+		images: (Media & { galleryImageId?: number })[];
 		initialIndex?: number;
 		open?: boolean;
 		onClose?: () => void;
@@ -50,7 +56,13 @@
 		isLoaded,
 		placeholderSrc,
 		getMediaUrl: (path: string, proxy?: boolean) => getMediaUrl(path, proxy ?? useProxy),
-		onImageLoad: () => (isLoaded = true)
+		onImageLoad: () => (isLoaded = true),
+		onClose: close,
+		onPrevious: previous,
+		onNext: next,
+		hasPrevious,
+		hasNext,
+		galleryImageId: currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined
 	});
 
 	const aspectRatio = $derived(
@@ -187,29 +199,31 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<div class="lightbox" role="presentation">
+	<div class="lightbox" class:lightbox--custom={!!content} role="presentation">
 		<button
 			type="button"
 			class="lightbox__backdrop"
 			aria-label="Close lightbox"
 			onclick={close}
 		></button>
-		<div class="lightbox__content">
-			<button class="lightbox__close" onclick={close} aria-label="Close lightbox">
-				<svg
-					width="24"
-					height="24"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<line x1="18" y1="6" x2="6" y2="18"></line>
-					<line x1="6" y1="6" x2="18" y2="18"></line>
-				</svg>
-			</button>
+		<div class="lightbox__content" class:lightbox__content--custom={!!content}>
+			{#if !content}
+				<button class="lightbox__close" onclick={close} aria-label="Close lightbox">
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+			{/if}
 
 			<div
 				class="lightbox__image-container"
@@ -247,47 +261,49 @@
 				{/if}
 			</div>
 
-			<button
-				class="lightbox__nav lightbox__nav--prev"
-				class:lightbox__nav--disabled={!hasPrevious}
-				disabled={!hasPrevious}
-				onclick={previous}
-				aria-label="Previous image"
-			>
-				<svg
-					width="32"
-					height="32"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
+			{#if !content}
+				<button
+					class="lightbox__nav lightbox__nav--prev"
+					class:lightbox__nav--disabled={!hasPrevious}
+					disabled={!hasPrevious}
+					onclick={previous}
+					aria-label="Previous image"
 				>
-					<polyline points="15 18 9 12 15 6"></polyline>
-				</svg>
-			</button>
+					<svg
+						width="32"
+						height="32"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<polyline points="15 18 9 12 15 6"></polyline>
+					</svg>
+				</button>
 
-			<button
-				class="lightbox__nav lightbox__nav--next"
-				class:lightbox__nav--disabled={!hasNext}
-				disabled={!hasNext}
-				onclick={next}
-				aria-label="Next image"
-			>
-				<svg
-					width="32"
-					height="32"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
+				<button
+					class="lightbox__nav lightbox__nav--next"
+					class:lightbox__nav--disabled={!hasNext}
+					disabled={!hasNext}
+					onclick={next}
+					aria-label="Next image"
 				>
-					<polyline points="9 18 15 12 9 6"></polyline>
-				</svg>
-			</button>
+					<svg
+						width="32"
+						height="32"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<polyline points="9 18 15 12 9 6"></polyline>
+					</svg>
+				</button>
+			{/if}
 
 			{#if !content}
 				{#if currentImage?.alt}
@@ -314,6 +330,10 @@
 		justify-content: center;
 		padding: 0.5rem;
 		animation: fadeIn 200ms ease;
+	}
+
+	.lightbox--custom {
+		padding: 0;
 	}
 
 	.lightbox__backdrop {
@@ -381,12 +401,18 @@
 		justify-content: center;
 	}
 
+	.lightbox__content--custom {
+		width: 100%;
+		height: 100%;
+		padding: 0;
+	}
+
 	.lightbox__image-container--custom {
 		flex: 1;
 		width: 100%;
 		min-height: 0;
-		align-items: center;
-		justify-content: center;
+		align-items: stretch;
+		justify-content: stretch;
 		overflow: visible;
 		pointer-events: none;
 	}
