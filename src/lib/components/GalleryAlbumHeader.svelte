@@ -79,21 +79,6 @@
 </div>
 
 <style>
-	.album-header__back {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		color: var(--color-secondary);
-		font-family: var(--font-special-elite);
-		font-size: 1rem;
-		text-decoration: none;
-		margin-bottom: 2rem;
-	}
-
-	.album-header__back:hover {
-		text-decoration: underline;
-	}
-
 	.album-header {
 		max-width: 900px;
 		margin: 0 auto 3rem auto;

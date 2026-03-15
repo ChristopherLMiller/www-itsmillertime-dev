@@ -23,6 +23,8 @@
 		/** When set, overrides the flip state (e.g. when stack is expanded on touch) */
 		flipped?: boolean;
 		onNavigate?: () => void;
+		/** When true, image loads eagerly (for above-the-fold) */
+		priority?: boolean;
 	};
 
 	const {
@@ -40,7 +42,8 @@
 		adaptiveHeight = false,
 		fixedAspectRatio,
 		flipped,
-		onNavigate
+		onNavigate,
+		priority = false
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? '');
@@ -111,9 +114,10 @@
 							cursorPointer={!!onNavigate}
 							{useProxy}
 							{isNsfw}
+							{priority}
 						/>
 					{/if}
-					<div class="polaroid__caption">{displayCaption}</div>
+					<div class="polaroid__caption"><p>{displayCaption}</p></div>
 				</div>
 			</div>
 
@@ -157,9 +161,10 @@
 							cursorPointer={clickable}
 							{useProxy}
 							{isNsfw}
+							{priority}
 						/>
 					{/if}
-					<div class="polaroid__caption">{displayCaption}</div>
+					<div class="polaroid__caption"><p>{displayCaption}</p></div>
 				</div>
 			</div>
 
@@ -269,6 +274,7 @@
 
 	.polaroid__face--front .polaroid__card {
 		overflow: hidden;
+		min-width: 0;
 	}
 
 	.polaroid__card :global(.polaroid__image) {
@@ -290,6 +296,12 @@
 		color: #2f2b25;
 		letter-spacing: 0.04em;
 		min-height: 1.5em;
+		/* Single-line clamp with ellipsis (modern CSS) */
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		min-width: 0;
 	}
 
 	.polaroid__note {

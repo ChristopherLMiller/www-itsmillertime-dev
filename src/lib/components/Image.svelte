@@ -7,6 +7,9 @@
 	import Icon from './Icon.svelte';
 	import { getMediaUrl } from '$lib/utils/media-url';
 
+	// Only these sizes for srcset (excludes square, og, etc.)
+	const SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
+
 	// Props
 	let {
 		image,
@@ -14,8 +17,6 @@
 		hasBorder = false,
 		hasLightbox = false,
 		cursorPointer = false,
-		containerWidth = 0,
-		containerHeight = 0,
 		className = '',
 		objectFit = 'cover',
 		gallery = undefined,
@@ -23,7 +24,11 @@
 		useProxy = false,
 		isNsfw = false,
 		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
-		fixedAspectRatio
+		fixedAspectRatio,
+		/** HTML sizes attribute for srcset. Default suits gallery grid (400-600px columns). */
+		sizes = '(min-width: 1200px) 600px, (min-width: 768px) 50vw, 100vw',
+		/** When true, use loading="eager" and fetchpriority="high" for above-the-fold images */
+		priority = false
 	}: {
 		image: Media;
 		transitionName?: string;
@@ -31,8 +36,6 @@
 		hasLightbox?: boolean;
 		/** When true, show pointer cursor (e.g. when parent opens lightbox) */
 		cursorPointer?: boolean;
-		containerWidth?: number;
-		containerHeight?: number;
 		className?: string;
 		objectFit?: string;
 		gallery?: Media[];
@@ -41,23 +44,22 @@
 		isNsfw?: boolean;
 		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
 		fixedAspectRatio?: number;
+		/** HTML sizes attribute for responsive image selection */
+		sizes?: string;
+		/** When true, use loading="eager" and fetchpriority="high" for above-the-fold images */
+		priority?: boolean;
 	} = $props();
 
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHide = $derived(isNsfw && nsfwPref === 'hide');
 	const shouldBlur = $derived(isNsfw && nsfwPref === 'blur');
 	let nsfwRevealed = $state(false);
-
-	// State
 	let isLoaded = $state(false);
 	let isLoadFailed = $state(false);
-	let selectedImage: unknown = $state(undefined);
-	let imgElement: HTMLImageElement | undefined | null = $state(null);
 	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
-	let containerElement: HTMLDivElement | undefined = $state(undefined);
-	let currentImageSrc: string | undefined | null = $state('');
 	let currentGalleryIndex = $state(0);
 	let imageTransitionDirection = $state<'left' | 'right'>('right');
+
 	const aspectRatioStyle = $derived.by(() => {
 		if (fixedAspectRatio != null) return String(fixedAspectRatio);
 		const thumb = image?.sizes?.thumbnail;
@@ -66,49 +68,35 @@
 		return `${image.width} / ${image.height}`;
 	});
 
-	// Derived state for current lightbox image
+	// Build srcset from available sizes: "url1 400w, url2 800w, ..."
+	const srcset = $derived.by(() => {
+		const s = image?.sizes;
+		if (!s) return '';
+		const entries = SIZE_KEYS.map((key) => {
+			const size = s[key];
+			if (!size?.url || size.width == null) return null;
+			return `${getMediaUrl(size.url, useProxy)} ${size.width}w`;
+		}).filter((x): x is string => x != null);
+		return entries.join(', ');
+	});
+
+	// Fallback src (required; browser uses this if no srcset match)
+	const src = $derived.by(() => {
+		const s = image?.sizes;
+		// Prefer largest available, then original url
+		for (const key of [...SIZE_KEYS].reverse()) {
+			const size = s?.[key];
+			if (size?.url) return getMediaUrl(size.url, useProxy);
+		}
+		if (image?.url) return getMediaUrl(image.url, useProxy);
+		return '';
+	});
+
 	const currentLightboxImage = $derived(gallery ? gallery[currentGalleryIndex] : image);
-	const hasGallery = $derived(gallery && gallery.length > 1);
+	const hasGallery = $derived(gallery != null && gallery.length > 1);
 	const canGoPrev = $derived(hasGallery && currentGalleryIndex > 0);
-	const canGoNext = $derived(hasGallery && currentGalleryIndex < gallery!.length - 1);
+	const canGoNext = $derived(hasGallery && currentGalleryIndex < (gallery?.length ?? 0) - 1);
 
-	// Function to select the best image based on container size
-	function selectBestImage(targetWidth: number, targetHeight: number) {
-		if (!image.sizes) return;
-
-		const desiredSizesToUse = ['small', 'medium', 'large', 'xlarge', 'thumbnail'];
-		const filteredSizes = desiredSizesToUse.reduce((acc, size) => {
-			if (image.sizes[size]) {
-				acc[size] = image.sizes[size];
-			}
-			return acc;
-		}, {});
-
-		// Sort images by how well they match the target dimensions
-		const scored = Object.values(filteredSizes).map((img) => {
-			const widthDiff = img.width && Math.abs(img.width - targetWidth);
-			const heightDiff = img.height && Math.abs(img.height - targetHeight);
-			const score = widthDiff && heightDiff ? widthDiff + heightDiff : 9999;
-			return { ...img, score };
-		});
-
-		// Return the image with the lowest score (best match)
-		return scored.sort((a, b) => a.score - b.score)[0];
-	}
-
-	// Function to load the selected image
-	async function loadImage(imageSrc: string) {
-		const filename = imageSrc.split('/').pop();
-
-		return new Promise((resolve, reject) => {
-			const img = new Image();
-			img.onload = () => resolve(img);
-			img.onerror = reject;
-			img.src = imageSrc;
-		});
-	}
-
-	// Gallery navigation functions
 	function openLightbox() {
 		if (!lightboxDialog) return;
 		currentGalleryIndex = galleryIndex;
@@ -138,7 +126,6 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (!lightboxDialog?.open) return;
-
 		switch (e.key) {
 			case 'Escape':
 				closeLightbox();
@@ -154,203 +141,165 @@
 		}
 	}
 
-	// Custom transition to combine fade and scale
-	function fadeScale(node, params) {
+	function fadeScale(
+		node: Element,
+		params?: { duration?: number; delay?: number; easing?: (t: number) => number }
+	) {
 		return {
-			css: (t, u) => {
-				const fadeStyle = fade(node, params).css(t, u);
-				const scaleStyle = scale(node, { ...params, start: 0.95 }).css(t, u);
-				return fadeStyle + scaleStyle;
+			css: (t: number, u: number) => {
+				const fadeRet = fade(node, params);
+				const scaleRet = scale(node, { ...params, start: 0.95 });
+				return (fadeRet.css?.(t, u) ?? '') + (scaleRet.css?.(t, u) ?? '');
 			}
 		};
 	}
-
-	// Effect to handle image selection and loading
-	$effect(() => {
-		if (image.sizes && !Object.keys(image.sizes).length) return;
-
-		const width = containerWidth || containerElement?.offsetWidth || 300;
-		const height = containerHeight || containerElement?.offsetHeight || 200;
-
-		// Select appropriate image
-		const bestImage = selectBestImage(width, height);
-
-		// Only update if we have a new image source
-		if (bestImage && bestImage.url !== currentImageSrc) {
-			currentImageSrc = bestImage.url;
-			selectedImage = bestImage;
-			isLoaded = false;
-			isLoadFailed = false;
-
-			const fullUrl = getMediaUrl(bestImage.url, useProxy);
-			loadImage(fullUrl)
-				.then(() => {
-					if (bestImage.url === currentImageSrc) {
-						isLoaded = true;
-					}
-				})
-				.catch((error) => {
-					console.error('Failed to load image:', error);
-					if (bestImage.url === currentImageSrc) {
-						isLoadFailed = true;
-					}
-				});
-		}
-	});
 </script>
 
 {#if !shouldHide}
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<div
-	bind:this={containerElement}
-	class="image-container {className} {hasBorder ? 'border' : ''}"
-	class:nsfw-blur={shouldBlur && !nsfwRevealed}
-	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatioStyle};"
-	style:view-transition-name={transitionName}
-	onmouseenter={() => { if (shouldBlur) nsfwRevealed = true; }}
-	onmouseleave={() => { if (shouldBlur) nsfwRevealed = false; }}
-	onclick={() => { if (shouldBlur && !nsfwRevealed) nsfwRevealed = true; }}
->
-	{#if image?.blurhash}
-		<img
-			src={image.blurhash}
-			alt="Loading placeholder"
-			class="placeholder-image"
-			style="
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: {objectFit};
-        transition: opacity 0.3s ease;
-        opacity: {isLoaded ? 0 : 1};
-        pointer-events: none;
-        filter: blur(5px);
-      "
-		/>
-	{/if}
-
-	{#if !isLoaded && !isLoadFailed && selectedImage}
-		<div class="loading-overlay" aria-hidden="true">
-			<div class="loading-spinner"></div>
-			<span>Loading…</span>
-		</div>
-	{/if}
-
-	{#if selectedImage}
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<img
-			bind:this={imgElement}
-			src={getMediaUrl(selectedImage.url, useProxy)}
-			alt={image.alt}
-			width={selectedImage.width}
-			height={selectedImage.height}
-			loading="lazy"
-			style="
-        width: 100%;
-        height: 100%;
-        object-fit: {objectFit};
-        transition: opacity 0.3s ease, filter 0.4s ease;
-        opacity: {isLoaded ? 1 : 0};
-        cursor: {hasLightbox || shouldBlur || cursorPointer ? 'pointer' : 'default'};
-      "
-			onload={() => {
-				isLoaded = true;
-				isLoadFailed = false;
-			}}
-			onerror={() => {
-				isLoadFailed = true;
-			}}
-			onclick={hasLightbox ? openLightbox : undefined}
-		/>
-	{/if}
-
-	{#if isLoadFailed}
-		<div class="error-overlay" aria-live="polite">
-			<Icon name="x" size={48} color="white" />
-			<span>Failed to load</span>
-		</div>
-	{/if}
-
-	{#if shouldBlur && !nsfwRevealed}
-		<div class="nsfw-overlay">
-			<Icon name="eye" size={32} color="white" />
-			<span>Hover to view</span>
-		</div>
-	{/if}
-</div>
-{#if hasLightbox}
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-	<dialog
-		bind:this={lightboxDialog}
-		class="lightbox"
-		transition:fadeScale={{ duration: 400, easing: quintOut }}
-		onclick={(e) => {
-			// Close if the user clicked the backdrop
-			if (e.target === lightboxDialog) {
-				closeLightbox();
-			}
-		}}
-		onkeydown={handleKeydown}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<div
+		class="image-container {className} {hasBorder ? 'border' : ''}"
+		class:nsfw-blur={shouldBlur && !nsfwRevealed}
+		style="position: relative; overflow: hidden; aspect-ratio: {aspectRatioStyle};"
+		style:view-transition-name={transitionName}
+		onmouseenter={() => { if (shouldBlur) nsfwRevealed = true; }}
+		onmouseleave={() => { if (shouldBlur) nsfwRevealed = false; }}
+		onclick={() => { if (shouldBlur && !nsfwRevealed) nsfwRevealed = true; }}
 	>
-		<button class="close-button" onclick={closeLightbox} aria-label="Close lightbox" type="button">
-			<Icon name="x" size={32} />
-		</button>
+		{#if image?.blurhash}
+			<img
+				src={image.blurhash}
+				alt="Loading placeholder"
+				class="placeholder-image"
+				style="
+					position: absolute;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+					object-fit: {objectFit};
+					transition: opacity 0.3s ease;
+					opacity: {isLoaded ? 0 : 1};
+					pointer-events: none;
+					filter: blur(5px);
+				"
+			/>
+		{/if}
 
-		<div class="lightbox-contents">
-			<div class="image-wrapper">
-				{#key currentGalleryIndex}
-					<img
-						src={getMediaUrl(currentLightboxImage.url, useProxy)}
-						alt={currentLightboxImage.alt}
-						class="lightbox-image"
-						in:fly={{
-							x: imageTransitionDirection === 'right' ? 100 : -100,
-							duration: 300,
-							easing: quintOut
-						}}
-						out:fly={{
-							x: imageTransitionDirection === 'right' ? -100 : 100,
-							duration: 300,
-							easing: quintOut
-						}}
-					/>
-				{/key}
+		{#if src}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<img
+				src={src}
+				srcset={srcset || undefined}
+				sizes={sizes}
+				alt={image.alt ?? ''}
+				width={image.width ?? undefined}
+				height={image.height ?? undefined}
+				loading={priority ? 'eager' : 'lazy'}
+				fetchpriority={priority ? 'high' : undefined}
+				decoding="async"
+				style="
+					width: 100%;
+					height: 100%;
+					object-fit: {objectFit};
+					transition: opacity 0.3s ease, filter 0.4s ease;
+					opacity: {isLoaded ? 1 : 0};
+					cursor: {hasLightbox || shouldBlur || cursorPointer ? 'pointer' : 'default'};
+				"
+				onload={() => {
+					isLoaded = true;
+					isLoadFailed = false;
+				}}
+				onerror={() => {
+					isLoadFailed = true;
+				}}
+				onclick={hasLightbox ? openLightbox : undefined}
+			/>
+		{/if}
+
+		{#if isLoadFailed}
+			<div class="error-overlay" aria-live="polite">
+				<Icon name="x" size={48} color="white" />
+				<span>Failed to load</span>
+			</div>
+		{/if}
+
+		{#if shouldBlur && !nsfwRevealed}
+			<div class="nsfw-overlay">
+				<Icon name="eye" size={32} color="white" />
+				<span>Hover to view</span>
+			</div>
+		{/if}
+	</div>
+
+	{#if hasLightbox}
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<dialog
+			bind:this={lightboxDialog}
+			class="lightbox"
+			transition:fadeScale={{ duration: 400, easing: quintOut }}
+			onclick={(e) => {
+				if (e.target === lightboxDialog) closeLightbox();
+			}}
+			onkeydown={handleKeydown}
+		>
+			<button class="close-button" onclick={closeLightbox} aria-label="Close lightbox" type="button">
+				<Icon name="x" size={32} />
+			</button>
+
+			<div class="lightbox-contents">
+				<div class="image-wrapper">
+					{#key currentGalleryIndex}
+						<img
+							src={currentLightboxImage?.url ? getMediaUrl(currentLightboxImage.url, useProxy) : ''}
+							alt={currentLightboxImage?.alt ?? ''}
+							class="lightbox-image"
+							in:fly={{
+								x: imageTransitionDirection === 'right' ? 100 : -100,
+								duration: 300,
+								easing: quintOut
+							}}
+							out:fly={{
+								x: imageTransitionDirection === 'right' ? -100 : 100,
+								duration: 300,
+								easing: quintOut
+							}}
+						/>
+					{/key}
+				</div>
+
+				{#if hasGallery && gallery}
+					<div class="gallery-counter">
+						{currentGalleryIndex + 1} / {gallery.length}
+					</div>
+				{/if}
 			</div>
 
-			{#if hasGallery}
-				<div class="gallery-counter">
-					{currentGalleryIndex + 1} / {gallery.length}
-				</div>
+			{#if canGoPrev}
+				<button
+					class="nav-button nav-button--prev"
+					onclick={goToPrevImage}
+					aria-label="Previous image"
+					type="button"
+				>
+					<Icon name="chevron-left" size={48} />
+				</button>
 			{/if}
-		</div>
 
-		{#if canGoPrev}
-			<button
-				class="nav-button nav-button--prev"
-				onclick={goToPrevImage}
-				aria-label="Previous image"
-				type="button"
-			>
-				<Icon name="chevron-left" size={48} />
-			</button>
-		{/if}
-
-		{#if canGoNext}
-			<button
-				class="nav-button nav-button--next"
-				onclick={goToNextImage}
-				aria-label="Next image"
-				type="button"
-			>
-				<Icon name="chevron-right" size={48} />
-			</button>
-		{/if}
-	</dialog>
-{/if}
+			{#if canGoNext}
+				<button
+					class="nav-button nav-button--next"
+					onclick={goToNextImage}
+					aria-label="Next image"
+					type="button"
+				>
+					<Icon name="chevron-right" size={48} />
+				</button>
+			{/if}
+		</dialog>
+	{/if}
 {/if}
 
 <style>
@@ -367,7 +316,6 @@
 		filter: blur(24px) brightness(0.6);
 	}
 
-	.loading-overlay,
 	.error-overlay,
 	.nsfw-overlay {
 		position: absolute;
@@ -386,25 +334,6 @@
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-	}
-
-	.loading-overlay {
-		background: rgba(0, 0, 0, 0.4);
-	}
-
-	.loading-spinner {
-		width: 2rem;
-		height: 2rem;
-		border: 3px solid rgba(255, 255, 255, 0.3);
-		border-top-color: white;
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 
 	.error-overlay {
@@ -468,16 +397,16 @@
 		justify-content: center;
 		transition: all 0.2s ease;
 		backdrop-filter: blur(10px);
+	}
 
-		&:hover {
-			background: rgba(255, 255, 255, 0.2);
-			border-color: rgba(255, 255, 255, 0.5);
-			transform: scale(1.05);
-		}
+	.close-button:hover {
+		background: rgba(255, 255, 255, 0.2);
+		border-color: rgba(255, 255, 255, 0.5);
+		transform: scale(1.05);
+	}
 
-		&:active {
-			transform: scale(0.95);
-		}
+	.close-button:active {
+		transform: scale(0.95);
 	}
 
 	.nav-button {
@@ -496,16 +425,16 @@
 		justify-content: center;
 		transition: all 0.2s ease;
 		backdrop-filter: blur(10px);
+	}
 
-		&:hover {
-			background: rgba(255, 255, 255, 0.2);
-			border-color: rgba(255, 255, 255, 0.5);
-			transform: translateY(-50%) scale(1.05);
-		}
+	.nav-button:hover {
+		background: rgba(255, 255, 255, 0.2);
+		border-color: rgba(255, 255, 255, 0.5);
+		transform: translateY(-50%) scale(1.05);
+	}
 
-		&:active {
-			transform: translateY(-50%) scale(0.95);
-		}
+	.nav-button:active {
+		transform: translateY(-50%) scale(0.95);
 	}
 
 	.nav-button--prev {
@@ -531,7 +460,6 @@
 		border: 1px solid rgba(255, 255, 255, 0.2);
 	}
 
-	/* Responsive adjustments */
 	@media (max-width: 768px) {
 		.lightbox-contents {
 			padding: 3rem 1rem;

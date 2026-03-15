@@ -148,17 +148,37 @@
 	}
 
 
-	// Preload original images in the background
+	// Preload images: first 6 (above-the-fold) immediately, rest after a tick
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		images.forEach((image) => {
+		const priority = images.slice(0, 6);
+		const rest = images.slice(6);
+
+		priority.forEach((image) => {
 			const src = image?.url;
 			if (src) {
 				const img = new Image();
 				img.src = getMediaUrl(src, useProxy);
 			}
 		});
+
+		if (rest.length > 0) {
+			const loadRest = () => {
+				rest.forEach((image) => {
+					const src = image?.url;
+					if (src) {
+						const img = new Image();
+						img.src = getMediaUrl(src, useProxy);
+					}
+				});
+			};
+			if ('requestIdleCallback' in window) {
+				requestIdleCallback(loadRest, { timeout: 500 });
+			} else {
+				setTimeout(loadRest, 0);
+			}
+		}
 	});
 
 	// Reset to initial index when initialIndex changes
