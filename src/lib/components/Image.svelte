@@ -22,7 +22,6 @@
 		galleryIndex = 0,
 		useProxy = false,
 		isNsfw = false,
-		swapPortraitAspect = false,
 		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
 		fixedAspectRatio
 	}: {
@@ -40,8 +39,6 @@
 		galleryIndex?: number;
 		useProxy?: boolean;
 		isNsfw?: boolean;
-		/** When true, portrait images (height > width) use a landscape container aspect ratio */
-		swapPortraitAspect?: boolean;
 		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
 		fixedAspectRatio?: number;
 	} = $props();
@@ -61,14 +58,12 @@
 	let currentImageSrc: string | undefined | null = $state('');
 	let currentGalleryIndex = $state(0);
 	let imageTransitionDirection = $state<'left' | 'right'>('right');
-	const aspectRatio = $derived.by(() => {
-		if (fixedAspectRatio != null) return fixedAspectRatio;
-		if (!image?.width || !image?.height) return 1;
-		const ratio = image.width / image.height;
-		if (swapPortraitAspect && ratio < 1) {
-			return 1 / ratio; // portrait → use landscape aspect
-		}
-		return ratio;
+	const aspectRatioStyle = $derived.by(() => {
+		if (fixedAspectRatio != null) return String(fixedAspectRatio);
+		const thumb = image?.sizes?.thumbnail;
+		if (thumb?.width && thumb?.height) return `${thumb.width} / ${thumb.height}`;
+		if (!image?.width || !image?.height) return '1';
+		return `${image.width} / ${image.height}`;
 	});
 
 	// Derived state for current lightbox image
@@ -211,7 +206,7 @@
 	bind:this={containerElement}
 	class="image-container {className} {hasBorder ? 'border' : ''}"
 	class:nsfw-blur={shouldBlur && !nsfwRevealed}
-	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatio};"
+	style="position: relative; overflow: hidden; aspect-ratio: {aspectRatioStyle};"
 	style:view-transition-name={transitionName}
 	onmouseenter={() => { if (shouldBlur) nsfwRevealed = true; }}
 	onmouseleave={() => { if (shouldBlur) nsfwRevealed = false; }}

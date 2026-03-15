@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import FilmStrip from '$lib/components/FilmStrip.svelte';
 	import Paginator from '$lib/Paginator.svelte';
 	import PolaroidStack from '$lib/components/PolaroidStack.svelte';
 	import type { Media } from '$lib/types/payload-types';
@@ -17,7 +18,7 @@
 
 	const perPageOptions = [6, 12, 15, 24, 48];
 
-	let selectedCategory = $state(page.url.searchParams.get('category') || '');
+	const selectedCategory = $derived(page.url.searchParams.get('category') || '');
 	let selectedTag = $state(page.url.searchParams.get('tag') || '');
 	let selectedPerPage = $state(Number(page.url.searchParams.get('limit')) || 15);
 	let expandedAlbumImages = $state<
@@ -60,7 +61,10 @@
 
 	async function handleCategoryChange(event: Event) {
 		const target = event.target as HTMLSelectElement;
-		const slug = target.value;
+		await selectCategory(target.value);
+	}
+
+	async function selectCategory(slug: string) {
 		const url = new URL(window.location.href);
 		if (slug) {
 			url.searchParams.set('category', slug);
@@ -69,6 +73,18 @@
 		}
 		url.searchParams.set('page', '1');
 		await goto(url.toString(), { keepFocus: true, noScroll: false });
+	}
+
+	function getCategoryHref(slug: string): string {
+		const url = new URL(page.url);
+		if (slug) {
+			url.searchParams.set('category', slug);
+		} else {
+			url.searchParams.delete('category');
+		}
+		url.searchParams.set('page', '1');
+		url.searchParams.delete('tag');
+		return url.pathname + url.search;
 	}
 
 	async function handleTagChange(event: Event) {
@@ -142,26 +158,40 @@
 	});
 </script>
 
-<div class="filters">
-	<div class="filter-group">
-		<label for="category-filter">Category</label>
-		<select id="category-filter" class="filter-select" bind:value={selectedCategory} onchange={handleCategoryChange}>
-			<option value="">All Categories</option>
-			{#each data.categories as category (category.id)}
-				<option value={category.slug}>{category.title}</option>
-			{/each}
-		</select>
+{#if data.categories.length > 0}
+	<div class="film-strip-wrapper">
+		<FilmStrip
+			categories={data.categories}
+			selectedSlug={selectedCategory}
+			getHref={getCategoryHref}
+		/>
 	</div>
-	<div class="filter-group">
-		<label for="tag-filter">Tag</label>
-		<select id="tag-filter" class="filter-select" bind:value={selectedTag} onchange={handleTagChange}>
-			<option value="">All Tags</option>
-			{#each data.tags as tag (tag.id)}
-				<option value={tag.slug}>{tag.title}</option>
-			{/each}
-		</select>
+{/if}
+
+<header class="gallery-header">
+	<h1 class="gallery-header__title">Galleries</h1>
+	<div class="gallery-header__filters">
+		<span class="gallery-header__filter-label">Filter by</span>
+		<div class="filter-group">
+			<label for="category-filter">Category</label>
+			<select id="category-filter" class="filter-select" value={selectedCategory} onchange={handleCategoryChange}>
+				<option value="">All Categories</option>
+				{#each data.categories as category (category.id)}
+					<option value={category.slug}>{category.title}</option>
+				{/each}
+			</select>
+		</div>
+		<div class="filter-group">
+			<label for="tag-filter">Tag</label>
+			<select id="tag-filter" class="filter-select" bind:value={selectedTag} onchange={handleTagChange}>
+				<option value="">All Tags</option>
+				{#each data.tags as tag (tag.id)}
+					<option value={tag.slug}>{tag.title}</option>
+				{/each}
+			</select>
+		</div>
 	</div>
-</div>
+</header>
 
 <div class="galleries-grid">
 	{#each filteredGalleries as gallery (gallery.id)}
@@ -175,7 +205,6 @@
 			: new Set<number>()}
 		{@const needsProxy = gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
 		{#if cover}
-			{@const categoryObj = typeof gallery.settings?.category === 'object' && gallery.settings?.category !== null ? gallery.settings.category : null}
 			<div class="gallery-link">
 				<PolaroidStack
 					primary={cover}
@@ -188,26 +217,9 @@
 					useProxy={needsProxy}
 					isNsfw={gallery.settings?.isNsfw === true}
 					nsfwImageIds={nsfwIds}
-					imageCount={expanded ? displayImages.length : undefined}
 					albumId={gallery.id}
 					onHoverExpand={fetchAlbumImagesOnHover}
-					category={categoryObj}
-					tags={gallery.settings?.tags ?? undefined}
 					onNavigate={() => goto(`/galleries/${gallery.slug}`)}
-					onCategoryClick={(slug) => {
-						const url = new URL(page.url);
-						url.searchParams.set('category', slug);
-						url.searchParams.delete('tag');
-						url.searchParams.set('page', '1');
-						goto(url.toString(), { keepFocus: true });
-					}}
-					onTagClick={(slug) => {
-						const url = new URL(page.url);
-						url.searchParams.set('tag', slug);
-						url.searchParams.delete('category');
-						url.searchParams.set('page', '1');
-						goto(url.toString(), { keepFocus: true });
-					}}
 				/>
 			</div>
 		{/if}
@@ -232,15 +244,45 @@
 </div>
 
 <style lang="postcss">
-	.filters {
+	.film-strip-wrapper {
+		max-width: 1400px;
+		margin: 0 auto;
+		padding: 1.5rem 1rem 0;
+	}
+
+	.gallery-header {
+		max-width: 1400px;
+		margin: 0 auto;
+		padding: 2rem 1rem 1.5rem;
+		border-bottom: 1px solid var(--color-tertiary-lighter);
+	}
+
+	.gallery-header__title {
+		font-family: var(--font-permanent-marker), cursive;
+		font-size: var(--fs-xl);
+		font-weight: 400;
+		color: var(--color-primary);
+		text-align: center;
+		margin: 0 0 1.25rem;
+		letter-spacing: 0.02em;
+	}
+
+	.gallery-header__filters {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 1.5rem;
 		justify-content: center;
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: 1.5rem 1rem;
-		border-bottom: 1px solid var(--color-tertiary-lighter);
+		align-items: flex-end;
+	}
+
+	.gallery-header__filter-label {
+		font-family: Garamond, serif;
+		font-size: var(--fs-xs);
+		color: var(--color-tertiary);
+		text-transform: uppercase;
+		letter-spacing: 1px;
+		font-weight: 600;
+		padding-bottom: 0.25rem;
 	}
 
 	.filter-group {
