@@ -48,10 +48,12 @@
 	const shouldBlur = $derived(isNsfw && nsfwPref === 'blur');
 	let nsfwRevealed = $state(false);
 
+	type ImageSize = { url?: string | null; width?: number | null; height?: number | null };
+
 	// State
 	let isLoaded = $state(false);
 	let isLoadFailed = $state(false);
-	let selectedImage: unknown = $state(undefined);
+	let selectedImage: ImageSize | undefined = $state(undefined);
 	let imgElement: HTMLImageElement | undefined | null = $state(null);
 	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
 	let containerElement: HTMLDivElement | undefined = $state(undefined);
@@ -72,27 +74,45 @@
 	const canGoPrev = $derived(hasGallery && currentGalleryIndex > 0);
 	const canGoNext = $derived(hasGallery && currentGalleryIndex < gallery!.length - 1);
 
-	// Function to select the best image based on container size
+	// Function to select the best image based on container size (avoids full resolution for performance)
 	function selectBestImage(targetWidth: number, targetHeight: number) {
-		if (!image.sizes) return;
+		const sizes = image.sizes;
+		if (!sizes) return undefined;
 
-		const desiredSizesToUse = ['small', 'medium', 'large', 'xlarge', 'thumbnail'];
-		const filteredSizes = desiredSizesToUse.reduce((acc, size) => {
-			if (image.sizes[size]) {
-				acc[size] = image.sizes[size];
-			}
-			return acc;
-		}, {});
+		const desiredSizesToUse = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
+		const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio ?? 1, 2) : 1;
+		const maxWidth = targetWidth * dpr;
+		const maxHeight = targetHeight * dpr;
 
-		// Sort images by how well they match the target dimensions
-		const scored = Object.values(filteredSizes).map((img) => {
-			const widthDiff = img.width && Math.abs(img.width - targetWidth);
-			const heightDiff = img.height && Math.abs(img.height - targetHeight);
-			const score = widthDiff && heightDiff ? widthDiff + heightDiff : 9999;
+		const candidates = desiredSizesToUse
+			.map((size) => sizes[size])
+			.filter((img): img is NonNullable<typeof img> => {
+				if (!img?.url) return false;
+				const w = img.width ?? 0;
+				const h = img.height ?? 0;
+				// Prefer sizes at or below 2x display size to avoid loading huge images
+				return w <= maxWidth * 2 && h <= maxHeight * 2;
+			});
+
+		if (candidates.length === 0) {
+			// Fallback: use smallest available size if all are oversized
+			const fallbacks = desiredSizesToUse
+				.map((size) => sizes[size])
+				.filter((img): img is NonNullable<typeof img> => !!img?.url);
+			if (fallbacks.length === 0) return undefined;
+			return fallbacks.sort((a, b) => (a.width ?? 0) - (b.width ?? 0))[0];
+		}
+
+		// Pick closest match to target (prefer not to upscale)
+		const scored = candidates.map((img) => {
+			const w = img.width ?? 0;
+			const h = img.height ?? 0;
+			const widthDiff = Math.abs(w - maxWidth);
+			const heightDiff = Math.abs(h - maxHeight);
+			const score = widthDiff + heightDiff;
 			return { ...img, score };
 		});
 
-		// Return the image with the lowest score (best match)
 		return scored.sort((a, b) => a.score - b.score)[0];
 	}
 
@@ -155,11 +175,16 @@
 	}
 
 	// Custom transition to combine fade and scale
-	function fadeScale(node, params) {
+	function fadeScale(
+		node: Element,
+		params?: { duration?: number; delay?: number; easing?: (t: number) => number }
+	) {
 		return {
-			css: (t, u) => {
-				const fadeStyle = fade(node, params).css(t, u);
-				const scaleStyle = scale(node, { ...params, start: 0.95 }).css(t, u);
+			css: (t: number, u: number) => {
+				const fadeRet = fade(node, params);
+				const scaleRet = scale(node, { ...params, start: 0.95 });
+				const fadeStyle = fadeRet.css?.(t, u) ?? '';
+				const scaleStyle = scaleRet.css?.(t, u) ?? '';
 				return fadeStyle + scaleStyle;
 			}
 		};
@@ -167,13 +192,15 @@
 
 	// Effect to handle image selection and loading
 	$effect(() => {
-		if (image.sizes && !Object.keys(image.sizes).length) return;
-
 		const width = containerWidth || containerElement?.offsetWidth || 300;
 		const height = containerHeight || containerElement?.offsetHeight || 200;
 
-		// Select appropriate image
-		const bestImage = selectBestImage(width, height);
+		// Select appropriate image from sizes, or fall back to top-level url (e.g. when Payload select returns minimal sizes)
+		const bestImage =
+			selectBestImage(width, height) ??
+			(image?.url
+				? { url: image.url, width: image.width ?? undefined, height: image.height ?? undefined }
+				: undefined);
 
 		// Only update if we have a new image source
 		if (bestImage && bestImage.url !== currentImageSrc) {
@@ -239,15 +266,15 @@
 		</div>
 	{/if}
 
-	{#if selectedImage}
+	{#if selectedImage?.url}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<img
 			bind:this={imgElement}
 			src={getMediaUrl(selectedImage.url, useProxy)}
 			alt={image.alt}
-			width={selectedImage.width}
-			height={selectedImage.height}
+			width={selectedImage.width ?? undefined}
+			height={selectedImage.height ?? undefined}
 			loading="lazy"
 			style="
         width: 100%;
@@ -321,7 +348,7 @@
 				{/key}
 			</div>
 
-			{#if hasGallery}
+			{#if hasGallery && gallery}
 				<div class="gallery-counter">
 					{currentGalleryIndex + 1} / {gallery.length}
 				</div>
