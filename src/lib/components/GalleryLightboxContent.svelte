@@ -3,7 +3,9 @@
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import type { GalleryAlbum, Media } from '$lib/types/payload-types';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
+	import { isVideoMedia } from '$lib/utils/media-url';
 	import ExifIcon from '$lib/components/ExifIcon.svelte';
+	import GalleryMediaPlayer from '$lib/components/GalleryMediaPlayer.svelte';
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -24,7 +26,8 @@
 		hasPrevious,
 		hasNext,
 		gallery,
-		galleryImageId
+		galleryImageId,
+		useProxy
 	}: {
 		image: Media | undefined;
 		index: number;
@@ -40,7 +43,10 @@
 		hasNext: boolean;
 		gallery: GalleryAlbum;
 		galleryImageId?: number;
+		useProxy?: boolean;
 	} = $props();
+
+	const isVideo = $derived(image ? isVideoMedia(image) : false);
 
 	// Caption (Lexical) or alt as fallback
 	const captionText = $derived(
@@ -179,33 +185,30 @@
 			<div
 				class="gallery-lightbox__image-frame"
 				style:aspect-ratio={imageAspectRatio}
-				onclick={(e) => {
-					if (e.target instanceof Element && e.target.closest('img.gallery-lightbox__image')) {
-						e.stopPropagation();
-					} else {
-						onClose();
-					}
-				}}
 				role="presentation"
 			>
-				{#if placeholderSrc && !isLoaded}
-					<img
-						class="gallery-lightbox__placeholder"
-						src={placeholderSrc}
-						alt="Loading"
-						aria-hidden="true"
-					/>
-				{/if}
-				{#if imageSrc}
-					<img
-						class="gallery-lightbox__image"
-						src={imageSrc}
-						alt={image?.alt ?? ''}
-						width={image?.width}
-						height={image?.height}
-						style:opacity={isLoaded ? 1 : 0}
-						onload={onImageLoad}
-					/>
+				{#if isVideo && image}
+					<GalleryMediaPlayer media={image} useProxy={useProxy ?? false} className="gallery-lightbox__video" />
+				{:else}
+					{#if placeholderSrc && !isLoaded}
+						<img
+							class="gallery-lightbox__placeholder"
+							src={placeholderSrc}
+							alt="Loading"
+							aria-hidden="true"
+						/>
+					{/if}
+					{#if imageSrc}
+						<img
+							class="gallery-lightbox__image"
+							src={imageSrc}
+							alt={image?.alt ?? ''}
+							width={image?.width}
+							height={image?.height}
+							style:opacity={isLoaded ? 1 : 0}
+							onload={onImageLoad}
+						/>
+					{/if}
 				{/if}
 			</div>
 
@@ -324,6 +327,13 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
+		pointer-events: none;
+	}
+
+	.gallery-lightbox__backdrop,
+	.gallery-lightbox__close,
+	.gallery-lightbox__nav,
+	.gallery-lightbox__info {
 		pointer-events: auto;
 	}
 
@@ -412,6 +422,13 @@
 		max-height: 100%;
 		overflow: hidden;
 		z-index: 1;
+		pointer-events: none;
+	}
+
+	.gallery-lightbox__image-frame .gallery-media-player,
+	.gallery-lightbox__image-frame .gallery-lightbox__image,
+	.gallery-lightbox__image-frame .gallery-lightbox__placeholder {
+		pointer-events: auto;
 	}
 
 	.gallery-lightbox__counter {
@@ -446,6 +463,13 @@
 		object-fit: contain;
 		object-position: center;
 		transition: opacity 300ms ease;
+	}
+
+	.gallery-lightbox__video {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
 	}
 
 	/* Thin border between image and info */

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import Image from './Image.svelte';
+	import GalleryMediaPlayer from './GalleryMediaPlayer.svelte';
+	import { isVideoMedia } from '../utils/media-url';
 	import type { Media } from '../types/payload-types';
-	import type { GalleryCategory, GalleryTag } from '../types/payload-types';
 
 	type PolaroidProps = {
 		media: Media;
@@ -17,18 +18,11 @@
 		useProxy?: boolean;
 		isNsfw?: boolean;
 		adaptiveHeight?: boolean;
-		/** When true, portrait images use a landscape container (for stack layout) */
-		flipPortraitAspect?: boolean;
 		/** When set, use fixed polaroid aspect ratio instead of image dimensions (image uses cover) */
 		fixedAspectRatio?: number;
 		/** When set, overrides the flip state (e.g. when stack is expanded on touch) */
 		flipped?: boolean;
-		imageCount?: number;
-		category?: GalleryCategory | null;
-		tags?: (GalleryTag | number)[] | null;
 		onNavigate?: () => void;
-		onCategoryClick?: (slug: string) => void;
-		onTagClick?: (slug: string) => void;
 	};
 
 	const {
@@ -44,52 +38,26 @@
 		useProxy = false,
 		isNsfw = false,
 		adaptiveHeight = false,
-		flipPortraitAspect = false,
 		fixedAspectRatio,
 		flipped,
-		imageCount,
-		category,
-		tags = [],
-		onNavigate,
-		onCategoryClick,
-		onTagClick
+		onNavigate
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? '');
+	const isVideo = $derived(isVideoMedia(media));
 
 	let isFlipped = $state(false);
 	let isHovering = $state(false);
 
-	const resolvedCategory = $derived(
-		typeof category === 'object' && category !== null && 'slug' in category ? category : null
-	);
-	const resolvedTags = $derived(
-		(tags ?? []).filter((t): t is GalleryTag => typeof t === 'object' && t !== null && 'slug' in t)
-	);
-
 	function handleMainClick(e: MouseEvent) {
-		if ((e.target as HTMLElement).closest('button.polaroid__description-link')) return;
 		onNavigate?.();
 	}
 
 	function handleMainKeydown(e: KeyboardEvent) {
-		if ((e.target as HTMLElement).closest('button.polaroid__description-link')) return;
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
 			onNavigate?.();
 		}
-	}
-
-	function handleCategoryClick(e: MouseEvent, slug: string) {
-		e.preventDefault();
-		e.stopPropagation();
-		onCategoryClick?.(slug);
-	}
-
-	function handleTagClick(e: MouseEvent, slug: string) {
-		e.preventDefault();
-		e.stopPropagation();
-		onTagClick?.(slug);
 	}
 
 	function toggleFlip() {
@@ -131,69 +99,33 @@
 		<div class="polaroid__inner">
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__card">
-					<Image
-						image={media}
-						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
-						className="polaroid__image"
-						objectFit={adaptiveHeight ? 'contain' : 'cover'}
-						swapPortraitAspect={flipPortraitAspect}
-						fixedAspectRatio={fixedAspectRatio}
-						cursorPointer={!!onNavigate}
-						{useProxy}
-						{isNsfw}
-					/>
+					{#if isVideo}
+						<GalleryMediaPlayer media={media} {useProxy} className="polaroid__image" />
+					{:else}
+						<Image
+							image={media}
+							transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
+							className="polaroid__image"
+							objectFit={adaptiveHeight ? 'contain' : 'cover'}
+							fixedAspectRatio={fixedAspectRatio}
+							cursorPointer={!!onNavigate}
+							{useProxy}
+							{isNsfw}
+						/>
+					{/if}
 					<div class="polaroid__caption">{displayCaption}</div>
 				</div>
 			</div>
 
 			<div class="polaroid__face polaroid__face--back">
 				<div class="polaroid__card polaroid__card--back">
-					{#if albumTitle || albumDescription || imageCount != null || resolvedCategory || resolvedTags.length > 0}
+					{#if albumTitle || albumDescription}
 						<div class="polaroid__back-content">
 							{#if albumTitle}
 								<h3 class="polaroid__album-title">{albumTitle}</h3>
 							{/if}
-							{#if albumDescription || imageCount != null || resolvedCategory}
-								<hr class="polaroid__hr" />
-								<p class="polaroid__album-description">
-									{#if albumDescription}{albumDescription}{/if}
-									{#if imageCount != null}
-										{albumDescription ? ' · ' : ''}{imageCount} {imageCount === 1 ? 'photo' : 'photos'}
-									{/if}
-									{#if resolvedCategory?.slug && resolvedCategory?.title}
-										{#if onCategoryClick}
-											<button
-												type="button"
-												class="polaroid__description-link"
-												onclick={(e) => handleCategoryClick(e, resolvedCategory.slug!)}
-											>
-												{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
-											</button>
-										{:else}
-											{(albumDescription || imageCount != null) ? ' · ' : ''}{resolvedCategory.title}
-										{/if}
-									{/if}
-								</p>
-							{/if}
-							{#if resolvedTags.length > 0}
-								<hr class="polaroid__hr" />
-								<p class="polaroid__tags">
-									{#each resolvedTags as tag, index (tag.id)}
-										{#if tag.slug && tag.title}
-											{#if onTagClick}
-												<button
-													type="button"
-													class="polaroid__description-link"
-													onclick={(e) => handleTagClick(e, tag.slug!)}
-												>
-													{index > 0 ? ', ' : ''}{tag.title}
-												</button>
-											{:else}
-												{index > 0 ? ', ' : ''}{tag.title}
-											{/if}
-										{/if}
-									{/each}
-								</p>
+							{#if albumDescription}
+								<p class="polaroid__album-description">{albumDescription}</p>
 							{/if}
 						</div>
 					{:else}
@@ -213,17 +145,20 @@
 		<div class="polaroid__inner">
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__card">
-					<Image
-						image={media}
-						transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
-						className="polaroid__image"
-						objectFit={adaptiveHeight ? 'contain' : 'cover'}
-						swapPortraitAspect={flipPortraitAspect}
-						fixedAspectRatio={fixedAspectRatio}
-						cursorPointer={clickable}
-						{useProxy}
-						{isNsfw}
-					/>
+					{#if isVideo}
+						<GalleryMediaPlayer media={media} {useProxy} className="polaroid__image" />
+					{:else}
+						<Image
+							image={media}
+							transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
+							className="polaroid__image"
+							objectFit={adaptiveHeight ? 'contain' : 'cover'}
+							fixedAspectRatio={fixedAspectRatio}
+							cursorPointer={clickable}
+							{useProxy}
+							{isNsfw}
+						/>
+					{/if}
 					<div class="polaroid__caption">{displayCaption}</div>
 				</div>
 			</div>
@@ -328,7 +263,8 @@
 		height: 100%;
 		justify-content: center;
 		text-align: center;
-		padding: 2rem;
+		padding: 1rem;
+		overflow: auto;
 	}
 
 	.polaroid__face--front .polaroid__card {
@@ -344,21 +280,7 @@
 	.polaroid__hr {
 		border: none;
 		border-top: 1px solid var(--polaroid-border);
-		margin: 0.75rem 0;
-	}
-
-	.polaroid__description-link {
-		background: none;
-		border: none;
-		padding: 0;
-		font: inherit;
-		color: inherit;
-		text-decoration: none;
-		cursor: pointer;
-	}
-
-	.polaroid__description-link:hover {
-		text-decoration: underline;
+		margin: 0.5rem 0;
 	}
 
 	.polaroid__caption {
@@ -371,33 +293,38 @@
 	}
 
 	.polaroid__note {
-		font-size: 0.95rem;
-		line-height: 1.5;
+		font-family: var(--font-permanent-marker), cursive;
+		font-size: var(--fs-xs);
+		line-height: 1.4;
 		color: #4a4a47;
 		margin: 0;
+		overflow-wrap: break-word;
 	}
 
 	.polaroid__back-content {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.5rem;
 		text-align: center;
+		min-height: 0;
 	}
 
 	.polaroid__album-title {
-		font-family: 'Permanent Marker', cursive;
-		font-size: 1.25rem;
+		font-family: var(--font-permanent-marker), cursive;
+		font-size: var(--fs-base);
 		color: #2f2b25;
 		margin: 0;
 		letter-spacing: 0.04em;
 	}
 
 	.polaroid__album-description {
-		font-family: 'Permanent Marker', cursive;
-		font-size: 0.9rem;
-		line-height: 1.6;
+		font-family: var(--font-crimson-text);
+		font-style: italic;
+		font-size: var(--fs-xs);
+		line-height: 1.5;
 		color: #4a4a47;
 		margin: 0;
+		overflow-wrap: break-word;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

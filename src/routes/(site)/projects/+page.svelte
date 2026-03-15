@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Lexical from '$lib/Lexical.svelte';
 	import type { PageData } from './$types';
 	import type { Project, Media, ProjectsCategory, ProjectsTechnology } from '$lib/types/payload-types';
 
@@ -127,7 +128,13 @@
 					
 					<div class="report-body">
 						<span class="field-label">SUMMARY:</span>
-						<p>{project.shortDescription}</p>
+						{#if project.content?.root?.children?.length}
+							<div class="report-content">
+								<Lexical data={project.content} />
+							</div>
+						{:else}
+							<p>{project.shortDescription}</p>
+						{/if}
 					</div>
 				</div>
 				
@@ -350,6 +357,21 @@
 			line-height: 1.5;
 			padding-left: 0.5rem;
 			border-left: 2px solid #999;
+		}
+
+		.report-content {
+			padding-left: 0.5rem;
+			border-left: 2px solid #999;
+			color: #333;
+			line-height: 1.5;
+		}
+
+		.report-content :global(p) {
+			margin: 0 0 0.5rem;
+		}
+
+		.report-content :global(p:last-child) {
+			margin-bottom: 0;
 		}
 	}
 
