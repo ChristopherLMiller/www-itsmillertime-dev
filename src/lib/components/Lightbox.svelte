@@ -18,6 +18,7 @@
 		hasPrevious: boolean;
 		hasNext: boolean;
 		galleryImageId?: number;
+		useProxy?: boolean;
 	};
 
 	type LightboxProps = {
@@ -62,7 +63,8 @@
 		onNext: next,
 		hasPrevious,
 		hasNext,
-		galleryImageId: currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined
+		galleryImageId: currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined,
+		useProxy
 	});
 
 	const aspectRatio = $derived(
@@ -417,8 +419,9 @@
 		pointer-events: none;
 	}
 
+	/* Custom content uses pointer-events: none so backdrop clicks pass through; interactive parts opt-in via their own styles */
 	.lightbox__image-container--custom > * {
-		pointer-events: auto;
+		pointer-events: none;
 	}
 
 	.lightbox__image {

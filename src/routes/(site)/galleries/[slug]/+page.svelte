@@ -164,7 +164,7 @@
 			onIndexChange={updateUrlForIndex}
 			{useProxy}
 		>
-			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad, onClose, onPrevious, onNext, hasPrevious, hasNext, galleryImageId })}
+			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad, onClose, onPrevious, onNext, hasPrevious, hasNext, galleryImageId, useProxy })}
 				<GalleryLightboxContent
 					{image}
 					{index}
@@ -180,6 +180,7 @@
 					{hasNext}
 					gallery={data.gallery}
 					{galleryImageId}
+					{useProxy}
 				/>
 			{/snippet}
 		</Lightbox>
