@@ -42,21 +42,6 @@
 			if (url) {
 				const width = og?.width ?? meta.image.width;
 				const height = og?.height ?? meta.image.height;
-				// DEBUG: remove once OG image size is confirmed working
-				console.log('[Meta getImage] meta.image:', {
-					hasImage: !!meta.image,
-					hasSizes: !!meta.image.sizes,
-					hasOg: !!og,
-					ogUrl: og?.url,
-					mainUrl: meta.image.url,
-					chosenUrl: url,
-					ogWidth: og?.width,
-					ogHeight: og?.height,
-					mainWidth: meta.image.width,
-					mainHeight: meta.image.height,
-					chosenWidth: width,
-					chosenHeight: height
-				});
 				return { url: toAbsoluteUrl(url), width: width ?? undefined, height: height ?? undefined };
 			}
 		}

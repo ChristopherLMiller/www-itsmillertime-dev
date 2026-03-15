@@ -9,7 +9,7 @@
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
-	import type { Media, GalleryImage } from '$lib/types/payload-types';
+	import type { GalleryAlbum, Media, GalleryImage } from '$lib/types/payload-types';
 
 	type GalleryMedia = Media & { isNsfw: boolean };
 
@@ -121,7 +121,7 @@
 	</div>
 {:else}
 	<div class="gallery-page">
-		<GalleryAlbumHeader gallery={data.gallery} imageCount={galleryImages.length} />
+		<GalleryAlbumHeader gallery={data.gallery as GalleryAlbum} imageCount={galleryImages.length} />
 
 		<div class="gallery-grid">
 			<Masonry
@@ -178,7 +178,7 @@
 					{onNext}
 					{hasPrevious}
 					{hasNext}
-					gallery={data.gallery}
+					gallery={data.gallery as GalleryAlbum}
 					{galleryImageId}
 					{useProxy}
 				/>

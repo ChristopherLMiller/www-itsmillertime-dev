@@ -10,7 +10,35 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 			sort: '-createdAt',
 			limit: Number(url.searchParams.get('limit')) || 15,
 			page: Number(url.searchParams.get('page')) || 1,
-			depth: 2,
+			depth: 1,
+			select: {
+				id: true,
+				slug: true,
+				title: true,
+				settings: {
+					isNsfw: true,
+					visibility: true
+				},
+				meta: {
+					description: true,
+					image: {
+						id: true,
+						url: true,
+						alt: true,
+						blurhash: true,
+						mimeType: true,
+						width: true,
+						height: true,
+						sizes: {
+							thumbnail: { url: true, width: true, height: true },
+							small: { url: true, width: true, height: true },
+							medium: { url: true, width: true, height: true },
+							large: { url: true, width: true, height: true },
+							xlarge: { url: true, width: true, height: true }
+						}
+					}
+				}
+			},
 			where: {
 				and: [
 					{
@@ -29,12 +57,14 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 		sdk.find({
 			collection: 'gallery-categories',
 			limit: 100,
-			sort: 'title'
+			sort: 'title',
+			select: { id: true, slug: true, title: true }
 		}),
 		sdk.find({
 			collection: 'gallery-tags',
 			limit: 100,
-			sort: 'title'
+			sort: 'title',
+			select: { id: true, slug: true, title: true }
 		})
 	]);
 

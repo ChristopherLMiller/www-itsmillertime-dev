@@ -44,8 +44,15 @@
 	const hasPrevious = $derived(currentIndex > 0);
 	const hasNext = $derived(currentIndex < images.length - 1);
 
-	// Use original image URL to avoid AVIF/WebP artifacting in lightbox
-	const imageSrc = $derived(currentImage?.url ?? null);
+	// Prefer size cascade for performance; AVIF/WebP compression may cause artifacting—revisit if needed
+	const imageSrc = $derived(
+		currentImage?.sizes?.xlarge?.url ??
+			currentImage?.sizes?.large?.url ??
+			currentImage?.sizes?.medium?.url ??
+			currentImage?.url ??
+			null
+	);
+	//const imageSrc = $derived(currentImage?.url ?? null);
 	const resolvedImageSrc = $derived(imageSrc ? getMediaUrl(imageSrc, useProxy) : null);
 	const placeholderSrc = $derived(currentImage?.blurhash ?? null);
 
@@ -148,12 +155,16 @@
 	}
 
 
-	// Preload original images in the background
+	// Preload images in the background (size cascade for performance)
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
 		images.forEach((image) => {
-			const src = image?.url;
+			const src =
+				image?.sizes?.xlarge?.url ??
+				image?.sizes?.large?.url ??
+				image?.sizes?.medium?.url ??
+				image?.url;
 			if (src) {
 				const img = new Image();
 				img.src = getMediaUrl(src, useProxy);
