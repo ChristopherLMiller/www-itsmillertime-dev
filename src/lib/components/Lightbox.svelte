@@ -44,15 +44,8 @@
 	const hasPrevious = $derived(currentIndex > 0);
 	const hasNext = $derived(currentIndex < images.length - 1);
 
-	// Prefer size cascade for performance; AVIF/WebP compression may cause artifacting—revisit if needed
-	const imageSrc = $derived(
-		currentImage?.sizes?.xlarge?.url ??
-			currentImage?.sizes?.large?.url ??
-			currentImage?.sizes?.medium?.url ??
-			currentImage?.url ??
-			null
-	);
-	//const imageSrc = $derived(currentImage?.url ?? null);
+	// Use original image URL to avoid AVIF/WebP artifacting in lightbox
+	const imageSrc = $derived(currentImage?.url ?? null);
 	const resolvedImageSrc = $derived(imageSrc ? getMediaUrl(imageSrc, useProxy) : null);
 	const placeholderSrc = $derived(currentImage?.blurhash ?? null);
 
@@ -155,21 +148,37 @@
 	}
 
 
-	// Preload images in the background (size cascade for performance)
+	// Preload images: first 6 (above-the-fold) immediately, rest after a tick
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		images.forEach((image) => {
-			const src =
-				image?.sizes?.xlarge?.url ??
-				image?.sizes?.large?.url ??
-				image?.sizes?.medium?.url ??
-				image?.url;
+		const priority = images.slice(0, 6);
+		const rest = images.slice(6);
+
+		priority.forEach((image) => {
+			const src = image?.url;
 			if (src) {
 				const img = new Image();
 				img.src = getMediaUrl(src, useProxy);
 			}
 		});
+
+		if (rest.length > 0) {
+			const loadRest = () => {
+				rest.forEach((image) => {
+					const src = image?.url;
+					if (src) {
+						const img = new Image();
+						img.src = getMediaUrl(src, useProxy);
+					}
+				});
+			};
+			if ('requestIdleCallback' in window) {
+				requestIdleCallback(loadRest, { timeout: 500 });
+			} else {
+				setTimeout(loadRest, 0);
+			}
+		}
 	});
 
 	// Reset to initial index when initialIndex changes

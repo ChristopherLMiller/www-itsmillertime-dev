@@ -205,6 +205,7 @@
 							alt={image?.alt ?? ''}
 							width={image?.width}
 							height={image?.height}
+							fetchpriority="high"
 							style:opacity={isLoaded ? 1 : 0}
 							onload={onImageLoad}
 						/>
@@ -425,7 +426,7 @@
 		pointer-events: none;
 	}
 
-	.gallery-lightbox__image-frame .gallery-media-player,
+	.gallery-lightbox__image-frame :global(.gallery-media-player),
 	.gallery-lightbox__image-frame .gallery-lightbox__image,
 	.gallery-lightbox__image-frame .gallery-lightbox__placeholder {
 		pointer-events: auto;
@@ -465,7 +466,7 @@
 		transition: opacity 300ms ease;
 	}
 
-	.gallery-lightbox__video {
+	.gallery-lightbox__image-frame :global(.gallery-lightbox__video) {
 		position: absolute;
 		inset: 0;
 		width: 100%;

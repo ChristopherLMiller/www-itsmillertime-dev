@@ -42,6 +42,7 @@
 			if (url) {
 				const width = og?.width ?? meta.image.width;
 				const height = og?.height ?? meta.image.height;
+				// DEBUG: remove once OG image size is confirmed working
 				return { url: toAbsoluteUrl(url), width: width ?? undefined, height: height ?? undefined };
 			}
 		}
@@ -81,22 +82,6 @@
 			if (url) {
 				const width = og?.width ?? img.width;
 				const height = og?.height ?? img.height;
-				// DEBUG: remove once OG image size is confirmed working
-				console.log('[Meta pageImageInfo] from metaImage/image:', {
-					hasMetaImage: !!meta?.metaImage,
-					hasImage: !!meta?.image,
-					hasSizes: !!img.sizes,
-					hasOg: !!og,
-					ogUrl: og?.url,
-					mainUrl: img.url,
-					chosenUrl: url,
-					ogWidth: og?.width,
-					ogHeight: og?.height,
-					mainWidth: img.width,
-					mainHeight: img.height,
-					chosenWidth: width,
-					chosenHeight: height
-				});
 				return { url, width: width ?? undefined, height: height ?? undefined };
 			}
 		}

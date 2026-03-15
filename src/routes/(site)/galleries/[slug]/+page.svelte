@@ -133,7 +133,8 @@
 				animate={false}
 			>
 				{#snippet children({ item })}
-				{@const rotation = ((((item.id * 9301 + 49297) % 233280) / 233280) * 10 - 5).toFixed(1)}
+				{@const idx = galleryImages.findIndex((g) => g.id === item.id)}
+				{@const rotation = ((((item.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
 					<button
 						class="gallery-grid__item"
 						style:--rotation="{rotation}deg"
@@ -149,6 +150,7 @@
 							adaptiveHeight={true}
 							{useProxy}
 							isNsfw={item.isNsfw}
+							priority={idx >= 0 && idx < 6}
 						/>
 					</button>
 				{/snippet}
@@ -230,11 +232,13 @@
 		width: 100%;
 		transform: rotate(var(--rotation, 0deg));
 		cursor: pointer;
+		transition: transform 250ms ease, box-shadow 250ms ease;
 	}
 
 	.gallery-grid__item:hover :global(.polaroid),
 	.gallery-grid__item:focus-visible :global(.polaroid) {
-		transform: rotate(0deg) scale(1.02);
+		transform: rotate(0deg) scale(1.15);
+		box-shadow: 0 1.5rem 3rem -0.5rem rgba(0, 0, 0, 0.45), 0 0.75rem 1.5rem -0.25rem rgba(0, 0, 0, 0.3);
 		z-index: 10;
 	}
 
