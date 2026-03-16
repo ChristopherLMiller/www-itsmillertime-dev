@@ -6,10 +6,8 @@
 	import Icon from './Icon.svelte';
 	import { getMediaUrl } from '$lib/utils/media-url';
 
-	// AVIF variants (small, medium, large, xlarge)
-	const AVIF_KEYS = ['small', 'medium', 'large', 'xlarge'] as const;
-	// JPEG variants used in srcset (thumbnail; original image.url is the <img> src fallback)
-	const JPEG_KEYS = ['thumbnail'] as const;
+	// All size keys to inspect — mimeType on each entry determines which <source> it belongs to
+	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
 
 	// Props
 	let {
@@ -69,32 +67,24 @@
 		return `${image.width} / ${image.height}`;
 	});
 
-	// AVIF srcset: small, medium, large, xlarge
-	const avifSrcset = $derived.by(() => {
+	// Build srcsets per MIME type using the mimeType field on each size entry.
+	// The original image URL is intentionally excluded — it belongs only on the <img src>
+	// fallback so the browser never picks a 6000px+ original via srcset.
+	const { avifSrcset, jpegSrcset } = $derived.by(() => {
 		const s = image?.sizes;
-		if (!s) return '';
-		const entries = AVIF_KEYS.map((key) => {
-			const size = s[key];
-			if (!size?.url || size.width == null) return null;
-			return `${getMediaUrl(size.url, useProxy)} ${size.width}w`;
-		}).filter((x): x is string => x != null);
-		return entries.join(', ');
-	});
-
-	// JPEG srcset: thumbnail (+ original image if it has a declared width)
-	const jpegSrcset = $derived.by(() => {
-		const s = image?.sizes;
-		const entries: string[] = [];
-		for (const key of JPEG_KEYS) {
+		const avif: string[] = [];
+		const jpeg: string[] = [];
+		for (const key of ALL_SIZE_KEYS) {
 			const size = s?.[key];
-			if (size?.url && size.width != null) {
-				entries.push(`${getMediaUrl(size.url, useProxy)} ${size.width}w`);
+			if (!size?.url || size.width == null) continue;
+			const entry = `${getMediaUrl(size.url, useProxy)} ${size.width}w`;
+			if (size.mimeType === 'image/avif') {
+				avif.push(entry);
+			} else {
+				jpeg.push(entry);
 			}
 		}
-		if (image?.url && image.width != null) {
-			entries.push(`${getMediaUrl(image.url, useProxy)} ${image.width}w`);
-		}
-		return entries.join(', ');
+		return { avifSrcset: avif.join(', '), jpegSrcset: jpeg.join(', ') };
 	});
 
 	// Fallback src for the <img> tag — always the original JPEG
@@ -199,12 +189,8 @@
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<picture class="main-picture">
-				{#if avifSrcset}
-					<source type="image/avif" srcset={avifSrcset} {sizes} />
-				{/if}
-				{#if jpegSrcset}
-					<source type="image/jpeg" srcset={jpegSrcset} {sizes} />
-				{/if}
+				<source type="image/avif" srcset={avifSrcset || undefined} {sizes} />
+				<source type="image/jpeg" srcset={jpegSrcset || undefined} {sizes} />
 				<img
 					src={src}
 					alt={image.alt ?? ''}
