@@ -9,6 +9,23 @@
 	// All size keys to inspect — mimeType on each entry determines which <source> it belongs to
 	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
 
+	function buildSrcsets(img: Media | null | undefined) {
+		const s = img?.sizes;
+		const avif: string[] = [];
+		const jpeg: string[] = [];
+		for (const key of ALL_SIZE_KEYS) {
+			const size = s?.[key];
+			if (!size?.url || size.width == null) continue;
+			const entry = `${getMediaUrl(size.url, useProxy)} ${size.width}w`;
+			if (size.mimeType === 'image/avif') {
+				avif.push(entry);
+			} else {
+				jpeg.push(entry);
+			}
+		}
+		return { avifSrcset: avif.join(', '), jpegSrcset: jpeg.join(', ') };
+	}
+
 	// Props
 	let {
 		image,
@@ -67,25 +84,10 @@
 		return `${image.width} / ${image.height}`;
 	});
 
-	// Build srcsets per MIME type using the mimeType field on each size entry.
-	// The original image URL is intentionally excluded — it belongs only on the <img src>
-	// fallback so the browser never picks a 6000px+ original via srcset.
-	const { avifSrcset, jpegSrcset } = $derived.by(() => {
-		const s = image?.sizes;
-		const avif: string[] = [];
-		const jpeg: string[] = [];
-		for (const key of ALL_SIZE_KEYS) {
-			const size = s?.[key];
-			if (!size?.url || size.width == null) continue;
-			const entry = `${getMediaUrl(size.url, useProxy)} ${size.width}w`;
-			if (size.mimeType === 'image/avif') {
-				avif.push(entry);
-			} else {
-				jpeg.push(entry);
-			}
-		}
-		return { avifSrcset: avif.join(', '), jpegSrcset: jpeg.join(', ') };
-	});
+	// Build srcsets for the main card image. The original image URL is intentionally excluded
+	// from all srcsets — it belongs only on the <img src> fallback so the browser never picks
+	// a huge original via srcset.
+	const { avifSrcset, jpegSrcset } = $derived(buildSrcsets(image));
 
 	// Fallback src for the <img> tag — always the original JPEG
 	const src = $derived(image?.url ? getMediaUrl(image.url, useProxy) : '');
@@ -94,6 +96,9 @@
 	const hasGallery = $derived(gallery != null && gallery.length > 1);
 	const canGoPrev = $derived(hasGallery && currentGalleryIndex > 0);
 	const canGoNext = $derived(hasGallery && currentGalleryIndex < (gallery?.length ?? 0) - 1);
+
+	// Lightbox srcsets track the current gallery image (changes as user navigates)
+	const lightboxSrcsets = $derived(buildSrcsets(currentLightboxImage));
 
 	function openLightbox() {
 		if (!lightboxDialog) return;
@@ -250,10 +255,8 @@
 			<div class="lightbox-contents">
 				<div class="image-wrapper">
 					{#key currentGalleryIndex}
-						<img
-							src={currentLightboxImage?.url ? getMediaUrl(currentLightboxImage.url, useProxy) : ''}
-							alt={currentLightboxImage?.alt ?? ''}
-							class="lightbox-image"
+						<picture
+							class="lightbox-picture"
 							in:fly={{
 								x: imageTransitionDirection === 'right' ? 100 : -100,
 								duration: 300,
@@ -264,7 +267,15 @@
 								duration: 300,
 								easing: quintOut
 							}}
-						/>
+						>
+							<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
+							<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
+							<img
+								src={currentLightboxImage?.url ? getMediaUrl(currentLightboxImage.url, useProxy) : ''}
+								alt={currentLightboxImage?.alt ?? ''}
+								class="lightbox-image"
+							/>
+						</picture>
 					{/key}
 				</div>
 
@@ -383,8 +394,15 @@
 			align-items: center;
 		}
 
-		.lightbox-image {
+		.lightbox-picture {
 			position: absolute;
+			display: block;
+			max-width: 100%;
+			max-height: 100%;
+		}
+
+		.lightbox-image {
+			display: block;
 			max-width: 100%;
 			max-height: 100%;
 			object-fit: contain;
