@@ -1,4 +1,3 @@
-<!-- ImageWithBlurhash.svelte -->
 <script lang="ts">
 	import { fade, scale, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
@@ -7,8 +6,10 @@
 	import Icon from './Icon.svelte';
 	import { getMediaUrl } from '$lib/utils/media-url';
 
-	// Only these sizes for srcset (excludes square, og, etc.)
-	const SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
+	// AVIF variants (small, medium, large, xlarge)
+	const AVIF_KEYS = ['small', 'medium', 'large', 'xlarge'] as const;
+	// JPEG variants used in srcset (thumbnail; original image.url is the <img> src fallback)
+	const JPEG_KEYS = ['thumbnail'] as const;
 
 	// Props
 	let {
@@ -25,7 +26,7 @@
 		isNsfw = false,
 		/** When set, use this fixed aspect ratio (width/height) instead of image dimensions */
 		fixedAspectRatio,
-		/** HTML sizes attribute for srcset. Default suits gallery grid (400-600px columns). */
+		/** HTML sizes attribute for source selection. Default suits gallery grid (400-600px columns). */
 		sizes = '(min-width: 1200px) 600px, (min-width: 768px) 50vw, 100vw',
 		/** When true, use loading="eager" and fetchpriority="high" for above-the-fold images */
 		priority = false
@@ -68,11 +69,11 @@
 		return `${image.width} / ${image.height}`;
 	});
 
-	// Build srcset from available sizes: "url1 400w, url2 800w, ..."
-	const srcset = $derived.by(() => {
+	// AVIF srcset: small, medium, large, xlarge
+	const avifSrcset = $derived.by(() => {
 		const s = image?.sizes;
 		if (!s) return '';
-		const entries = SIZE_KEYS.map((key) => {
+		const entries = AVIF_KEYS.map((key) => {
 			const size = s[key];
 			if (!size?.url || size.width == null) return null;
 			return `${getMediaUrl(size.url, useProxy)} ${size.width}w`;
@@ -80,17 +81,24 @@
 		return entries.join(', ');
 	});
 
-	// Fallback src (required; browser uses this if no srcset match)
-	const src = $derived.by(() => {
+	// JPEG srcset: thumbnail (+ original image if it has a declared width)
+	const jpegSrcset = $derived.by(() => {
 		const s = image?.sizes;
-		// Prefer largest available, then original url
-		for (const key of [...SIZE_KEYS].reverse()) {
+		const entries: string[] = [];
+		for (const key of JPEG_KEYS) {
 			const size = s?.[key];
-			if (size?.url) return getMediaUrl(size.url, useProxy);
+			if (size?.url && size.width != null) {
+				entries.push(`${getMediaUrl(size.url, useProxy)} ${size.width}w`);
+			}
 		}
-		if (image?.url) return getMediaUrl(image.url, useProxy);
-		return '';
+		if (image?.url && image.width != null) {
+			entries.push(`${getMediaUrl(image.url, useProxy)} ${image.width}w`);
+		}
+		return entries.join(', ');
 	});
+
+	// Fallback src for the <img> tag — always the original JPEG
+	const src = $derived(image?.url ? getMediaUrl(image.url, useProxy) : '');
 
 	const currentLightboxImage = $derived(gallery ? gallery[currentGalleryIndex] : image);
 	const hasGallery = $derived(gallery != null && gallery.length > 1);
@@ -190,33 +198,37 @@
 		{#if src}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<img
-				src={src}
-				srcset={srcset || undefined}
-				sizes={sizes}
-				alt={image.alt ?? ''}
-				width={image.width ?? undefined}
-				height={image.height ?? undefined}
-				loading={priority ? 'eager' : 'lazy'}
-				fetchpriority={priority ? 'high' : undefined}
-				decoding="async"
-				style="
-					width: 100%;
-					height: 100%;
-					object-fit: {objectFit};
-					transition: opacity 0.3s ease, filter 0.4s ease;
-					opacity: {isLoaded ? 1 : 0};
-					cursor: {hasLightbox || shouldBlur || cursorPointer ? 'pointer' : 'default'};
-				"
-				onload={() => {
-					isLoaded = true;
-					isLoadFailed = false;
-				}}
-				onerror={() => {
-					isLoadFailed = true;
-				}}
-				onclick={hasLightbox ? openLightbox : undefined}
-			/>
+			<picture class="main-picture">
+				{#if avifSrcset}
+					<source type="image/avif" srcset={avifSrcset} {sizes} />
+				{/if}
+				{#if jpegSrcset}
+					<source type="image/jpeg" srcset={jpegSrcset} {sizes} />
+				{/if}
+				<img
+					src={src}
+					alt={image.alt ?? ''}
+					width={image.width ?? undefined}
+					height={image.height ?? undefined}
+					loading={priority ? 'eager' : 'lazy'}
+					fetchpriority={priority ? 'high' : undefined}
+					decoding="async"
+					class="main-image"
+					style="
+						object-fit: {objectFit};
+						opacity: {isLoaded ? 1 : 0};
+						cursor: {hasLightbox || shouldBlur || cursorPointer ? 'pointer' : 'default'};
+					"
+					onload={() => {
+						isLoaded = true;
+						isLoadFailed = false;
+					}}
+					onerror={() => {
+						isLoadFailed = true;
+					}}
+					onclick={hasLightbox ? openLightbox : undefined}
+				/>
+			</picture>
 		{/if}
 
 		{#if isLoadFailed}
@@ -312,7 +324,20 @@
 		}
 	}
 
-	.image-container.nsfw-blur :global(img:not(.placeholder-image)) {
+	.main-picture {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.main-image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		transition: opacity 0.3s ease, filter 0.4s ease;
+	}
+
+	.image-container.nsfw-blur :global(.main-image) {
 		filter: blur(24px) brightness(0.6);
 	}
 
