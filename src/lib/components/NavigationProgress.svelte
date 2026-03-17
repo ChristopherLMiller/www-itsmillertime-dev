@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
+	import { isSilentRefresh } from '$lib/stores/silentRefresh';
 
 	let progress = $state(0);
 	let isVisible = $state(false);
 	let intervalId: ReturnType<typeof setInterval> | null = null;
 
 	beforeNavigate(() => {
+		// Don't show the loading bar for silent background refreshes.
+		if (get(isSilentRefresh)) return;
+
 		isVisible = true;
 		progress = 0;
 
@@ -19,6 +24,8 @@
 	});
 
 	afterNavigate(() => {
+		if (!isVisible) return;
+
 		progress = 100;
 		isVisible = false;
 		setTimeout(() => {
