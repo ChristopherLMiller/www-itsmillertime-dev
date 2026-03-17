@@ -45,6 +45,7 @@
 				crossorigin
 			></youtube-video>
 		{:else}
+			<!-- svelte-ignore a11y_media_has_caption -->
 			<video slot="media" src={videoUrl} crossorigin playsinline></video>
 		{/if}
 		<media-loading-indicator slot="centered-chrome" noautohide></media-loading-indicator>

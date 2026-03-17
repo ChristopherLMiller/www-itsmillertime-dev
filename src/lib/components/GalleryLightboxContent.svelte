@@ -4,8 +4,27 @@
 	import type { GalleryAlbum, Media } from '$lib/types/payload-types';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 	import { isVideoMedia } from '$lib/utils/media-url';
+	import { getMediaUrl } from '$lib/utils/media-url';
 	import ExifIcon from '$lib/components/ExifIcon.svelte';
 	import GalleryMediaPlayer from '$lib/components/GalleryMediaPlayer.svelte';
+
+	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
+	function buildSrcsets(img: Media | undefined, proxy: boolean) {
+		const s = img?.sizes;
+		const avif: string[] = [];
+		const jpeg: string[] = [];
+		for (const key of ALL_SIZE_KEYS) {
+			const size = s?.[key];
+			if (!size?.url || size.width == null) continue;
+			const entry = `${getMediaUrl(size.url, proxy)} ${size.width}w`;
+			if (size.mimeType === 'image/avif') {
+				avif.push(entry);
+			} else {
+				jpeg.push(entry);
+			}
+		}
+		return { avifSrcset: avif.join(', '), jpegSrcset: jpeg.join(', ') };
+	}
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -38,7 +57,7 @@
 		onImageLoad: () => void;
 		onClose: () => void;
 		onPrevious: () => void;
-		onNext: () => void;
+		onNext: () => void | Promise<void>;
 		hasPrevious: boolean;
 		hasNext: boolean;
 		gallery: GalleryAlbum;
@@ -47,6 +66,20 @@
 	} = $props();
 
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
+	const resolvedImageSrc = $derived(imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null));
+	const lightboxSrcsets = $derived(buildSrcsets(image, useProxy ?? false));
+	const resolvedPlaceholderSrc = $derived.by(() => {
+		if (placeholderSrc) return placeholderSrc;
+		if (!image?.sizes) return null;
+
+		const fallbackSize =
+			image.sizes.thumbnail?.url ??
+			image.sizes.small?.url ??
+			image.sizes.medium?.url ??
+			null;
+
+		return fallbackSize ? getMediaUrl(fallbackSize, useProxy ?? false) : null;
+	});
 
 	// Caption (Lexical) or alt as fallback
 	const captionText = $derived(
@@ -190,25 +223,35 @@
 				{#if isVideo && image}
 					<GalleryMediaPlayer media={image} useProxy={useProxy ?? false} className="gallery-lightbox__video" />
 				{:else}
-					{#if placeholderSrc && !isLoaded}
+					{#if !isLoaded}
+						<div class="gallery-lightbox__loading-backdrop" aria-hidden="true"></div>
+					{/if}
+					{#if resolvedPlaceholderSrc && !isLoaded}
 						<img
 							class="gallery-lightbox__placeholder"
-							src={placeholderSrc}
+							src={resolvedPlaceholderSrc}
 							alt="Loading"
 							aria-hidden="true"
 						/>
 					{/if}
-					{#if imageSrc}
-						<img
-							class="gallery-lightbox__image"
-							src={imageSrc}
-							alt={image?.alt ?? ''}
-							width={image?.width}
-							height={image?.height}
-							fetchpriority="high"
-							style:opacity={isLoaded ? 1 : 0}
-							onload={onImageLoad}
-						/>
+					{#if resolvedImageSrc}
+						<picture
+							class="gallery-lightbox__picture"
+						>
+							<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
+							<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
+							<img
+								class="gallery-lightbox__image"
+								src={resolvedImageSrc ?? ''}
+								alt={image?.alt ?? ''}
+								width={image?.width}
+								height={image?.height}
+								fetchpriority="high"
+								decoding="async"
+								style:opacity={isLoaded ? 1 : 0}
+								onload={onImageLoad}
+							/>
+						</picture>
 					{/if}
 				{/if}
 			</div>
@@ -258,7 +301,7 @@
 				<h3 class="gallery-lightbox__section-title">Camera Settings</h3>
 				{#if cameraSettings.length > 0}
 					<div class="gallery-lightbox__meta-grid">
-						{#each cameraSettings as { label, value, icon }}
+						{#each cameraSettings as { label, value, icon } (`${label}-${icon}-${value}`)}
 							<div class="gallery-lightbox__meta-item">
 								<div class="gallery-lightbox__meta-icon">
 									<ExifIcon {icon} />
@@ -447,6 +490,13 @@
 		pointer-events: none;
 	}
 
+	.gallery-lightbox__loading-backdrop {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(180deg, rgba(20, 20, 20, 0.75), rgba(10, 10, 10, 0.9));
+		z-index: 1;
+	}
+
 	.gallery-lightbox__placeholder {
 		position: absolute;
 		inset: 0;
@@ -454,7 +504,18 @@
 		height: 100%;
 		object-fit: contain;
 		filter: blur(20px);
-		opacity: 0.8;
+		opacity: 0.85;
+		z-index: 2;
+	}
+
+	.gallery-lightbox__picture {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		z-index: 3;
+		animation: imageFadeIn 180ms ease;
 	}
 
 	.gallery-lightbox__image {
@@ -485,6 +546,25 @@
 		border-left: 1px solid var(--color-tertiary-lighter);
 		color: var(--color-white-lightest);
 		font-family: var(--font-special-elite);
+		animation: infoPanelFade 180ms ease;
+	}
+
+	@keyframes infoPanelFade {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@keyframes imageFadeIn {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.gallery-lightbox__section {
@@ -597,4 +677,5 @@
 			border-top: 1px solid var(--color-tertiary-lighter);
 		}
 	}
+
 </style>

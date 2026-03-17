@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { GalleryCategory } from '$lib/types/payload-types';
+	type CategoryItem = { id: number; slug?: string | null; title: string };
 
 	type FilmStripProps = {
-		categories: GalleryCategory[];
+		categories: CategoryItem[];
 		selectedSlug: string;
 		getHref: (slug: string) => string;
 	};

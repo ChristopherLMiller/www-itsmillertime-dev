@@ -10,7 +10,31 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 			sort: '-createdAt',
 			limit: Number(url.searchParams.get('limit')) || 15,
 			page: Number(url.searchParams.get('page')) || 1,
-			depth: 2,
+			depth: 1,
+			select: {
+				id: true,
+				slug: true,
+				title: true,
+				settings: {
+					isNsfw: true,
+					visibility: true
+				},
+				meta: {
+					description: true,
+					image: {
+						id: true,
+						url: true,
+						thumbnailURL: true,
+						alt: true,
+						blurhash: true,
+						width: true,
+						height: true,
+						sizes: {
+							thumbnail: { url: true, width: true, height: true }
+						}
+					}
+				}
+			},
 			where: {
 				and: [
 					{
@@ -29,12 +53,14 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 		sdk.find({
 			collection: 'gallery-categories',
 			limit: 100,
-			sort: 'title'
+			sort: 'title',
+			select: { id: true, slug: true, title: true }
 		}),
 		sdk.find({
 			collection: 'gallery-tags',
 			limit: 100,
-			sort: 'title'
+			sort: 'title',
+			select: { id: true, slug: true, title: true }
 		})
 	]);
 
@@ -42,12 +68,9 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 	const { docs: categories } = categoriesData;
 	const { docs: tags } = tagsData;
 
-	// Don't load album images on initial load - only the featured (meta) image.
-	// Images are fetched on hover via /api/gallery-album-images/[albumId]
-	const galleries = rawGalleries.map((g) => ({
-		...g,
-		images: { docs: [], totalDocs: 0 }
-	}));
+	// Initial load only includes gallery metadata and the featured (SEO meta) image.
+	// Polaroid stack images are fetched on hover via /api/gallery-album-images/[albumId].
+	const galleries = rawGalleries;
 
 	return { galleries, meta, categories, tags };
 };
