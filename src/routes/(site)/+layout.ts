@@ -11,16 +11,16 @@ export interface LayoutCacheData {
 export const load: LayoutLoad = async ({ fetch, data, depends }) => {
 	depends('app:layout');
 
-	// On the client, serve from localStorage immediately if fresh enough.
-	// A background refresh (triggered in +layout.svelte) will update the cache
-	// silently if the entry is stale.
+	// On the client, serve from IndexedDB immediately if an entry exists.
+	// A single getEntry() call retrieves both the data and its timestamp so we
+	// can determine freshness without a second IDB round-trip.
 	if (browser) {
-		const cached = browserCache.get<LayoutCacheData>(LAYOUT_CACHE_KEY);
-		if (cached) {
-			const isFresh = browserCache.isFresh(LAYOUT_CACHE_KEY, LAYOUT_STALE_THRESHOLD_S);
+		const entry = await browserCache.getEntry<LayoutCacheData>(LAYOUT_CACHE_KEY);
+		if (entry) {
+			const isFresh = Date.now() - entry.cachedAt < LAYOUT_STALE_THRESHOLD_S * 1000;
 			return {
-				navigation: cached.navigation,
-				siteMeta: cached.siteMeta,
+				navigation: entry.data.navigation,
+				siteMeta: entry.data.siteMeta,
 				session: data.session,
 				_isFromCache: true,
 				_cacheIsFresh: isFresh
@@ -31,7 +31,7 @@ export const load: LayoutLoad = async ({ fetch, data, depends }) => {
 	// Fetch from the server-side cached endpoint.
 	// On the server, SvelteKit's enhanced fetch routes this to the local handler
 	// which applies Redis-backed stale-while-revalidate caching.
-	// On the client (cache miss), this goes over the network to the same endpoint.
+	// On the client (IDB cache miss), this goes over the network to the same endpoint.
 	const res = await fetch('/api/layout-data');
 	if (!res.ok) {
 		throw new Error(`Failed to load layout data: ${res.status}`);

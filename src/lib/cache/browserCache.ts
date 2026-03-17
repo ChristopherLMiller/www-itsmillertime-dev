@@ -1,72 +1,132 @@
 /**
- * Browser-side localStorage cache with TTL and stale-while-revalidate support.
+ * Browser-side IndexedDB cache with TTL and stale-while-revalidate support.
  *
- * All entries are versioned so a schema change automatically invalidates old cache.
+ * All entries carry a schemaVersion so bumping SCHEMA_VERSION automatically
+ * invalidates every previously cached entry without needing a DB migration.
  */
 
-const CACHE_VERSION = 1;
-const KEY_PREFIX = 'swr:';
+const DB_NAME = 'swr-cache';
+const STORE_NAME = 'entries';
+const IDB_VERSION = 1;
+const SCHEMA_VERSION = 1;
 
-interface CacheEntry<T> {
+interface IDBCacheEntry<T> {
+	key: string;
 	data: T;
 	cachedAt: number; // Unix timestamp (ms)
-	version: number;
+	schemaVersion: number;
 }
 
-function storageKey(key: string): string {
-	return `${KEY_PREFIX}${key}`;
+export interface CacheEntryMeta<T> {
+	data: T;
+	cachedAt: number;
+}
+
+// Lazily opened – reused for the lifetime of the page.
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function openDatabase(): Promise<IDBDatabase> {
+	return new Promise((resolve, reject) => {
+		const req = indexedDB.open(DB_NAME, IDB_VERSION);
+
+		req.onupgradeneeded = (event) => {
+			const db = (event.target as IDBOpenDBRequest).result;
+			if (!db.objectStoreNames.contains(STORE_NAME)) {
+				db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+			}
+		};
+
+		req.onsuccess = () => resolve(req.result);
+		req.onerror = () => reject(req.error);
+	});
+}
+
+function getDB(): Promise<IDBDatabase> {
+	if (!dbPromise) {
+		dbPromise = openDatabase().catch((err) => {
+			// Reset so the next call retries instead of re-throwing the same rejected promise.
+			dbPromise = null;
+			throw err;
+		});
+	}
+	return dbPromise;
 }
 
 export const browserCache = {
-	get<T>(key: string): T | null {
-		if (typeof window === 'undefined') return null;
+	/**
+	 * Returns the cached value, or null if the entry is missing or schema-stale.
+	 */
+	async get<T>(key: string): Promise<T | null> {
+		const entry = await this.getEntry<T>(key);
+		return entry ? entry.data : null;
+	},
+
+	/**
+	 * Returns the full entry (data + cachedAt) so the caller can check freshness
+	 * without a second round-trip to IDB. Returns null on miss or schema mismatch.
+	 */
+	async getEntry<T>(key: string): Promise<CacheEntryMeta<T> | null> {
 		try {
-			const raw = localStorage.getItem(storageKey(key));
-			if (!raw) return null;
-			const entry: CacheEntry<T> = JSON.parse(raw);
-			if (entry.version !== CACHE_VERSION) {
-				localStorage.removeItem(storageKey(key));
-				return null;
-			}
-			return entry.data;
+			const db = await getDB();
+			return new Promise((resolve, reject) => {
+				const tx = db.transaction(STORE_NAME, 'readonly');
+				const req = tx.objectStore(STORE_NAME).get(key);
+				req.onsuccess = () => {
+					const row = req.result as IDBCacheEntry<T> | undefined;
+					if (!row || row.schemaVersion !== SCHEMA_VERSION) {
+						resolve(null);
+						return;
+					}
+					resolve({ data: row.data, cachedAt: row.cachedAt });
+				};
+				req.onerror = () => reject(req.error);
+			});
 		} catch {
 			return null;
 		}
 	},
 
-	set<T>(key: string, data: T): void {
-		if (typeof window === 'undefined') return;
+	async set<T>(key: string, data: T): Promise<void> {
 		try {
-			const entry: CacheEntry<T> = {
-				data,
-				cachedAt: Date.now(),
-				version: CACHE_VERSION
-			};
-			localStorage.setItem(storageKey(key), JSON.stringify(entry));
+			const db = await getDB();
+			return new Promise((resolve, reject) => {
+				const tx = db.transaction(STORE_NAME, 'readwrite');
+				const entry: IDBCacheEntry<T> = {
+					key,
+					data,
+					cachedAt: Date.now(),
+					schemaVersion: SCHEMA_VERSION
+				};
+				const req = tx.objectStore(STORE_NAME).put(entry);
+				req.onsuccess = () => resolve();
+				req.onerror = () => reject(req.error);
+			});
 		} catch {
-			// localStorage may be full or unavailable (private browsing, etc.)
+			// IDB may be unavailable (e.g. Firefox private mode, storage quota exceeded).
+		}
+	},
+
+	async clear(key: string): Promise<void> {
+		try {
+			const db = await getDB();
+			return new Promise((resolve, reject) => {
+				const tx = db.transaction(STORE_NAME, 'readwrite');
+				const req = tx.objectStore(STORE_NAME).delete(key);
+				req.onsuccess = () => resolve();
+				req.onerror = () => reject(req.error);
+			});
+		} catch {
+			// Silently ignore – if IDB is unavailable the cache is effectively empty anyway.
 		}
 	},
 
 	/**
-	 * Returns true if the cached entry exists AND is younger than maxAgeSeconds.
+	 * Returns true when the cached entry exists AND is younger than maxAgeSeconds.
 	 */
-	isFresh(key: string, maxAgeSeconds: number): boolean {
-		if (typeof window === 'undefined') return false;
-		try {
-			const raw = localStorage.getItem(storageKey(key));
-			if (!raw) return false;
-			const entry: CacheEntry<unknown> = JSON.parse(raw);
-			if (entry.version !== CACHE_VERSION) return false;
-			return Date.now() - entry.cachedAt < maxAgeSeconds * 1000;
-		} catch {
-			return false;
-		}
-	},
-
-	clear(key: string): void {
-		if (typeof window === 'undefined') return;
-		localStorage.removeItem(storageKey(key));
+	async isFresh(key: string, maxAgeSeconds: number): Promise<boolean> {
+		const entry = await this.getEntry(key);
+		if (!entry) return false;
+		return Date.now() - entry.cachedAt < maxAgeSeconds * 1000;
 	}
 };
 

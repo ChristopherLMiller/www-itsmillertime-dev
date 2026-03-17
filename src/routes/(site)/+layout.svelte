@@ -17,10 +17,10 @@
 	// Guard against concurrent background refreshes.
 	let isRefreshing = $state(false);
 
-	// Persist fresh layout data to localStorage so subsequent client-side loads are instant.
+	// Persist fresh layout data to IndexedDB so subsequent client-side loads are instant.
 	$effect(() => {
 		if (browser && !data._isFromCache) {
-			browserCache.set(LAYOUT_CACHE_KEY, {
+			void browserCache.set(LAYOUT_CACHE_KEY, {
 				navigation: data.navigation,
 				siteMeta: data.siteMeta
 			});
@@ -28,21 +28,25 @@
 	});
 
 	// When we served stale cached data, trigger a silent background refresh.
-	// This re-runs the layout load, which will fetch fresh data (cache was cleared)
-	// and update the UI without any visible loading indicator.
+	// Clears the IDB entry first so the next load() call fetches fresh data,
+	// then calls invalidate() with the progress bar suppressed.
 	$effect(() => {
 		if (!browser || !data._isFromCache || data._cacheIsFresh || isRefreshing) return;
 
 		isRefreshing = true;
 
-		// Clear the stale entry so the next load() call fetches fresh data.
-		browserCache.clear(LAYOUT_CACHE_KEY);
+		async function doSilentRefresh() {
+			await browserCache.clear(LAYOUT_CACHE_KEY);
+			isSilentRefresh.set(true);
+			try {
+				await invalidate('app:layout');
+			} finally {
+				isSilentRefresh.set(false);
+				isRefreshing = false;
+			}
+		}
 
-		isSilentRefresh.set(true);
-		invalidate('app:layout').finally(() => {
-			isSilentRefresh.set(false);
-			isRefreshing = false;
-		});
+		void doSilentRefresh();
 	});
 
 	onNavigate(async (navigation) => {
