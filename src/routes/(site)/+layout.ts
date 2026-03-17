@@ -1,34 +1,48 @@
+import { browser } from '$app/environment';
+import { browserCache, LAYOUT_CACHE_KEY, LAYOUT_STALE_THRESHOLD_S } from '$lib/cache/browserCache';
+import type { SiteMeta, SiteNavigation } from '$lib/types/payload-types';
 import type { LayoutLoad } from './$types';
-import { getPayloadSDK } from '$lib/payload';
 
-export const load: LayoutLoad = async ({ fetch, data }) => {
-	const sdk = getPayloadSDK(fetch);
+export interface LayoutCacheData {
+	navigation: SiteNavigation;
+	siteMeta: SiteMeta;
+}
 
-	const [nav, siteMeta] = await Promise.all([
-		sdk.findGlobal({
-			slug: 'site-navigation',
-			depth: 1,
-			draft: true
-		}),
-		sdk.findGlobal({
-			slug: 'site-meta',
-			depth: 1
-		})
-	]);
+export const load: LayoutLoad = async ({ fetch, data, depends }) => {
+	depends('app:layout');
 
-	const navigation = {
-		...nav,
-		navItems: nav.navItems
-			? [...nav.navItems]
-					.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-					.map((item) => ({
-						...item,
-						childNodes: item.childNodes
-							? [...item.childNodes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-							: item.childNodes
-					}))
-			: nav.navItems
+	// On the client, serve from IndexedDB immediately if an entry exists.
+	// A single getEntry() call retrieves both the data and its timestamp so we
+	// can determine freshness without a second IDB round-trip.
+	if (browser) {
+		const entry = await browserCache.getEntry<LayoutCacheData>(LAYOUT_CACHE_KEY);
+		if (entry) {
+			const isFresh = Date.now() - entry.cachedAt < LAYOUT_STALE_THRESHOLD_S * 1000;
+			return {
+				navigation: entry.data.navigation,
+				siteMeta: entry.data.siteMeta,
+				session: data.session,
+				_isFromCache: true,
+				_cacheIsFresh: isFresh
+			};
+		}
+	}
+
+	// Fetch from the server-side cached endpoint.
+	// On the server, SvelteKit's enhanced fetch routes this to the local handler
+	// which applies Redis-backed stale-while-revalidate caching.
+	// On the client (IDB cache miss), this goes over the network to the same endpoint.
+	const res = await fetch('/api/layout-data');
+	if (!res.ok) {
+		throw new Error(`Failed to load layout data: ${res.status}`);
+	}
+	const { navigation, siteMeta } = (await res.json()) as LayoutCacheData;
+
+	return {
+		navigation,
+		siteMeta,
+		session: data.session,
+		_isFromCache: false,
+		_cacheIsFresh: true
 	};
-
-	return { navigation, siteMeta, session: data.session };
 };

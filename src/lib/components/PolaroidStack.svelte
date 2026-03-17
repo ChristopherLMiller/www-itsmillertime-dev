@@ -46,6 +46,7 @@
 	let viewportHeight = $state(initialViewportHeight);
 	let hasBeenHovered = $state(false);
 	let isHovering = $state(false);
+	let expandedItemKeys = $state<Set<string>>(new Set());
 
 	function isMedia(value: unknown): value is Media {
 		return typeof value === 'object' && value !== null && 'id' in value;
@@ -152,6 +153,31 @@
 		});
 	});
 
+	const secondaryKeysSignature = $derived(
+		stackLayout
+			.filter((item) => !item.isPrimary)
+			.map((item) => item.key)
+			.join('|')
+	);
+
+	$effect(() => {
+		if (!isHovering) {
+			expandedItemKeys = new Set();
+			return;
+		}
+
+		if (!secondaryKeysSignature) return;
+
+		// Force a collapsed frame first, then expand on the next frame so
+		// newly loaded items always animate outward instead of popping.
+		expandedItemKeys = new Set();
+		const frame = requestAnimationFrame(() => {
+			expandedItemKeys = new Set(secondaryKeysSignature.split('|'));
+		});
+
+		return () => cancelAnimationFrame(frame);
+	});
+
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
@@ -196,7 +222,7 @@
 	{#each stackLayout as item (item.key)}
 		{#if item.isPrimary || hasBeenHovered}
 			<div
-				class="polaroid-stack__item {item.isPrimary ? 'polaroid-stack__item--primary' : ''}"
+				class="polaroid-stack__item {item.isPrimary ? 'polaroid-stack__item--primary' : ''} {expandedItemKeys.has(item.key) ? 'polaroid-stack__item--expanded' : ''}"
 				style={`z-index: ${item.zIndex}; --target-translate-x: ${item.translateX}px; --target-translate-y: ${item.translateY}px; --target-rotate: ${item.rotate}deg;`}
 			>
 				<Polaroid
@@ -248,20 +274,25 @@
 		--translate-y: 0px;
 		--rotate: 0deg;
 		transform: translate3d(var(--translate-x), var(--translate-y), 0) rotate(var(--rotate));
-		transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), z-index 200ms ease;
+		opacity: 0;
+		transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease, z-index 200ms ease;
 	}
 
-	.polaroid-stack:hover .polaroid-stack__item:not(.polaroid-stack__item--primary),
-	.polaroid-stack.polaroid-stack--expanded .polaroid-stack__item:not(.polaroid-stack__item--primary) {
+	.polaroid-stack:hover .polaroid-stack__item--expanded:not(.polaroid-stack__item--primary),
+	.polaroid-stack.polaroid-stack--expanded
+		.polaroid-stack__item--expanded:not(.polaroid-stack__item--primary) {
 		--translate-x: var(--target-translate-x);
 		--translate-y: var(--target-translate-y);
 		--rotate: var(--target-rotate);
+		opacity: 1;
 	}
 
 	.polaroid-stack__item--primary {
 		position: relative;
 		pointer-events: auto;
 		transform: none;
+		opacity: 1;
+		z-index: 1000 !important;
 	}
 
 	.polaroid-stack__item--primary ~ .polaroid-stack__item {

@@ -24,17 +24,13 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 					image: {
 						id: true,
 						url: true,
+						thumbnailURL: true,
 						alt: true,
 						blurhash: true,
-						mimeType: true,
 						width: true,
 						height: true,
 						sizes: {
-							thumbnail: { url: true, width: true, height: true },
-							small: { url: true, width: true, height: true },
-							medium: { url: true, width: true, height: true },
-							large: { url: true, width: true, height: true },
-							xlarge: { url: true, width: true, height: true }
+							thumbnail: { url: true, width: true, height: true }
 						}
 					}
 				}
@@ -72,12 +68,9 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 	const { docs: categories } = categoriesData;
 	const { docs: tags } = tagsData;
 
-	// Don't load album images on initial load - only the featured (meta) image.
-	// Images are fetched on hover via /api/gallery-album-images/[albumId]
-	const galleries = rawGalleries.map((g) => ({
-		...g,
-		images: { docs: [], totalDocs: 0 }
-	}));
+	// Initial load only includes gallery metadata and the featured (SEO meta) image.
+	// Polaroid stack images are fetched on hover via /api/gallery-album-images/[albumId].
+	const galleries = rawGalleries;
 
 	return { galleries, meta, categories, tags };
 };

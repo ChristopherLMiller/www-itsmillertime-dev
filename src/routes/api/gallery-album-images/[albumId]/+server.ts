@@ -3,9 +3,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * Fetches all images for a gallery album.
- * First does a count query, then fetches that many images.
- * Used when hovering an album on the galleries landing page to load the full stack.
+ * Fetches a lightweight preview payload for a gallery album.
+ * Used on hover to populate the polaroid stack with just enough image data to render.
  */
 export const GET: RequestHandler = async ({ params, fetch, request }) => {
 	const albumId = Number(params.albumId);
@@ -15,26 +14,6 @@ export const GET: RequestHandler = async ({ params, fetch, request }) => {
 
 	const sdk = getPayloadSDK(fetch, request);
 
-	// First fetch with limit 1 to get totalDocs (count)
-	const countResult = await sdk.find({
-		collection: 'gallery-images',
-		where: {
-			albums: {
-				contains: albumId
-			}
-		},
-		limit: 1,
-		page: 1,
-		depth: 1
-	});
-
-	const totalDocs = countResult.totalDocs ?? 0;
-
-	if (totalDocs === 0) {
-		return json({ docs: [], totalDocs: 0 });
-	}
-
-	// Fetch all images with the count as limit
 	const imagesResult = await sdk.find({
 		collection: 'gallery-images',
 		where: {
@@ -42,13 +21,31 @@ export const GET: RequestHandler = async ({ params, fetch, request }) => {
 				contains: albumId
 			}
 		},
-		limit: totalDocs,
+		sort: '-createdAt',
+		limit: 10,
 		page: 1,
-		depth: 1
+		depth: 0
 	});
 
+	const docs = (imagesResult.docs ?? []).map((doc) => ({
+		thumbnailURL: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
+		id: doc.id,
+		blurhash: doc.blurhash ?? null,
+		width: doc.sizes?.thumbnail?.width ?? doc.width ?? null,
+		height: doc.sizes?.thumbnail?.height ?? doc.height ?? null,
+		// Image.svelte reads `image.url` and `image.sizes.*`; keep both aligned to thumbnail.
+		url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '',
+		sizes: {
+			thumbnail: {
+				url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
+				width: doc.sizes?.thumbnail?.width ?? null,
+				height: doc.sizes?.thumbnail?.height ?? null
+			}
+		}
+	}));
+
 	return json({
-		docs: imagesResult.docs,
+		docs,
 		totalDocs: imagesResult.totalDocs
 	});
 };
