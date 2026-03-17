@@ -14,7 +14,7 @@
 		onImageLoad: () => void;
 		onClose: () => void;
 		onPrevious: () => void;
-		onNext: () => void;
+		onNext: () => void | Promise<void>;
 		hasPrevious: boolean;
 		hasNext: boolean;
 		galleryImageId?: number;
@@ -23,36 +23,53 @@
 
 	type LightboxProps = {
 		images: (Media & { galleryImageId?: number })[];
+		totalCount?: number;
 		initialIndex?: number;
 		open?: boolean;
 		onClose?: () => void;
 		onIndexChange?: (index: number) => void;
+		canLoadMore?: boolean;
+		onRequestMore?: () => Promise<void> | void;
 		useProxy?: boolean;
 		/** Custom content to render instead of the default image-only layout. Receives image, index, total, etc. */
 		content?: Snippet<[LightboxContentArgs]>;
 	};
 
-	let { images, initialIndex = 0, open = $bindable(false), onClose, onIndexChange, useProxy = false, content }: LightboxProps = $props();
+	let {
+		images,
+		totalCount,
+		initialIndex = 0,
+		open = $bindable(false),
+		onClose,
+		onIndexChange,
+		canLoadMore = false,
+		onRequestMore,
+		useProxy = false,
+		content
+	}: LightboxProps = $props();
 
 	let currentIndex = $state(0);
 	let isLoaded = $state(false);
 	let touchStartX = $state(0);
+	let isRequestingMore = $state(false);
 
 	const SWIPE_THRESHOLD = 50;
 
 	const currentImage = $derived(images[currentIndex]);
 	const hasPrevious = $derived(currentIndex > 0);
-	const hasNext = $derived(currentIndex < images.length - 1);
+	const hasNext = $derived(currentIndex < images.length - 1 || canLoadMore);
 
 	// Use original image URL to avoid AVIF/WebP artifacting in lightbox
 	const imageSrc = $derived(currentImage?.url ?? null);
 	const resolvedImageSrc = $derived(imageSrc ? getMediaUrl(imageSrc, useProxy) : null);
 	const placeholderSrc = $derived(currentImage?.blurhash ?? null);
 
+	const displayTotal = $derived(totalCount ?? images.length);
+
 	const contentArgs = $derived({
 		image: currentImage,
 		index: currentIndex,
-		total: images.length,
+		total: displayTotal,
 		imageSrc: resolvedImageSrc,
 		isLoaded,
 		placeholderSrc,
@@ -106,8 +123,26 @@
 		}
 	}
 
-	function next() {
-		if (hasNext) {
+	async function next() {
+		if (currentIndex < images.length - 1) {
+			currentIndex++;
+			isLoaded = false;
+			onIndexChange?.(currentIndex);
+			return;
+		}
+
+		if (!canLoadMore || isRequestingMore || !onRequestMore) return;
+
+		isRequestingMore = true;
+		const previousLength = images.length;
+		try {
+			await onRequestMore();
+		} finally {
+			isRequestingMore = false;
+		}
+
+		// Advance only when new images were successfully appended.
+		if (images.length > previousLength && currentIndex < images.length - 1) {
 			currentIndex++;
 			isLoaded = false;
 			onIndexChange?.(currentIndex);
@@ -148,37 +183,22 @@
 	}
 
 
-	// Preload images: first 6 (above-the-fold) immediately, rest after a tick
+	function preloadByIndex(index: number) {
+		const image = images[index];
+		const src = image?.url;
+		if (!src) return;
+		const img = new Image();
+		img.src = getMediaUrl(src, useProxy);
+	}
+
+	// Only preload when lightbox is open: current image + immediate neighbors.
 	$effect(() => {
 		if (typeof window === 'undefined') return;
+		if (!open) return;
 
-		const priority = images.slice(0, 6);
-		const rest = images.slice(6);
-
-		priority.forEach((image) => {
-			const src = image?.url;
-			if (src) {
-				const img = new Image();
-				img.src = getMediaUrl(src, useProxy);
-			}
-		});
-
-		if (rest.length > 0) {
-			const loadRest = () => {
-				rest.forEach((image) => {
-					const src = image?.url;
-					if (src) {
-						const img = new Image();
-						img.src = getMediaUrl(src, useProxy);
-					}
-				});
-			};
-			if ('requestIdleCallback' in window) {
-				requestIdleCallback(loadRest, { timeout: 500 });
-			} else {
-				setTimeout(loadRest, 0);
-			}
-		}
+		preloadByIndex(currentIndex);
+		if (currentIndex > 0) preloadByIndex(currentIndex - 1);
+		if (currentIndex < images.length - 1) preloadByIndex(currentIndex + 1);
 	});
 
 	// Reset to initial index when initialIndex changes
@@ -186,8 +206,20 @@
 		currentIndex = initialIndex;
 	});
 
+	// Re-seed the displayed index on each open so reopening never sticks to the prior image.
+	$effect(() => {
+		if (!open) return;
+		currentIndex = initialIndex;
+		isLoaded = false;
+	});
+
 	// Check if current image is cached and update loaded state
 	$effect(() => {
+		if (!open) {
+			isLoaded = false;
+			return;
+		}
+
 		if (imageSrc && typeof window !== 'undefined') {
 			const img = new Image();
 			img.src = getMediaUrl(imageSrc, useProxy);
@@ -249,6 +281,7 @@
 
 			<div
 				class="lightbox__image-container"
+				role="presentation"
 				style:width={content ? undefined : `${containerDimensions.width}px`}
 				style:height={content ? undefined : `${containerDimensions.height}px`}
 				class:lightbox__image-container--custom={!!content}
@@ -335,7 +368,7 @@
 				{/if}
 
 				<div class="lightbox__counter">
-					{currentIndex + 1} / {images.length}
+					{currentIndex + 1} / {displayTotal}
 				</div>
 			{/if}
 		</div>

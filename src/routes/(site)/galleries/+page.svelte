@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import FilmStrip from '$lib/components/FilmStrip.svelte';
 	import Paginator from '$lib/Paginator.svelte';
 	import PolaroidStack from '$lib/components/PolaroidStack.svelte';
 	import type { Media } from '$lib/types/payload-types';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	const { data } = $props();
 
@@ -24,18 +25,25 @@
 	let expandedAlbumImages = $state<
 		Record<number, { images: Media[]; nsfwIds: Set<number> }>
 	>({});
-	const inFlightFetches = new Map<number, Promise<void>>();
+	const inFlightFetches = new SvelteMap<number, Promise<void>>();
+	const preloadControllers = new SvelteMap<number, AbortController>();
 
-	async function fetchAlbumImagesOnHover(albumId: number) {
+	function cancelPendingPreloads() {
+		for (const controller of preloadControllers.values()) controller.abort();
+		preloadControllers.clear();
+	}
+
+	async function fetchAlbumImagesOnHover(albumId: number, signal?: AbortSignal) {
 		if (expandedAlbumImages[albumId]) return;
 		const existing = inFlightFetches.get(albumId);
 		if (existing) {
 			await existing;
 			return;
 		}
+		if (signal?.aborted) return;
 		const promise = (async () => {
 			try {
-				const res = await fetch(`/api/gallery-album-images/${albumId}`);
+				const res = await fetch(`/api/gallery-album-images/${albumId}`, signal ? { signal } : undefined);
 				if (!res.ok) return;
 				const { docs } = await res.json();
 				const rawDocs = docs ?? [];
@@ -50,13 +58,48 @@
 				)
 					.map((doc: unknown) => asMedia(doc))
 					.filter((img: Media | null): img is Media => img !== null);
-				expandedAlbumImages = { ...expandedAlbumImages, [albumId]: { images: filtered, nsfwIds } };
+				if (!signal?.aborted) {
+					expandedAlbumImages = { ...expandedAlbumImages, [albumId]: { images: filtered, nsfwIds } };
+				}
+			} catch (error) {
+				if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
 			} finally {
 				inFlightFetches.delete(albumId);
 			}
 		})();
 		inFlightFetches.set(albumId, promise);
 		await promise;
+	}
+
+	async function preloadAlbumImagesInBackground() {
+		const ids = filteredGalleries
+			.filter((gallery) => asMedia(gallery.meta?.image))
+			.map((gallery) => gallery.id)
+			.filter((id) => !expandedAlbumImages[id]);
+
+		if (ids.length === 0) return;
+
+		const concurrency = 2;
+		let cursor = 0;
+
+		const worker = async () => {
+			while (cursor < ids.length) {
+				const albumId = ids[cursor++];
+				if (expandedAlbumImages[albumId] || inFlightFetches.has(albumId)) continue;
+
+				const controller = new AbortController();
+				preloadControllers.set(albumId, controller);
+				try {
+					await fetchAlbumImagesOnHover(albumId, controller.signal);
+				} catch {
+					// Ignore preload failures; hover can still fetch interactively.
+				} finally {
+					preloadControllers.delete(albumId);
+				}
+			}
+		};
+
+		await Promise.all(Array.from({ length: concurrency }, worker));
 	}
 
 	async function handleCategoryChange(event: Event) {
@@ -132,30 +175,38 @@
 		return () => document.removeEventListener('visibilitychange', handler);
 	});
 
-	// Preload album images after page load so they're ready on hover (no delay)
 	$effect(() => {
 		if (!browser || filteredGalleries.length === 0) return;
-		const galleriesToPreload = filteredGalleries;
-		const schedulePreload = () => {
-			const run = () => {
-				for (const gallery of galleriesToPreload) {
-					if (asMedia(gallery.meta?.image)) {
-						fetchAlbumImagesOnHover(gallery.id);
-					}
-				}
-			};
-			if (typeof requestIdleCallback !== 'undefined') {
-				requestIdleCallback(run, { timeout: 2000 });
-			} else {
-				setTimeout(run, 100);
-			}
+
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		let cancelled = false;
+
+		const startPreload = () => {
+			if (cancelled) return;
+			void preloadAlbumImagesInBackground();
 		};
-		if (document.readyState === 'complete') {
-			schedulePreload();
+
+		// Kick off as soon as the DOM is ready to avoid hover-delay pop.
+		if (document.readyState !== 'loading') {
+			timeoutId = setTimeout(startPreload, 0);
 		} else {
-			window.addEventListener('load', schedulePreload, { once: true });
+			document.addEventListener('DOMContentLoaded', startPreload, { once: true });
 		}
+
+		return () => {
+			cancelled = true;
+			if (timeoutId !== null) clearTimeout(timeoutId);
+			document.removeEventListener('DOMContentLoaded', startPreload);
+			cancelPendingPreloads();
+		};
 	});
+
+	if (browser) {
+		beforeNavigate(() => {
+			cancelPendingPreloads();
+		});
+	}
+
 </script>
 
 {#if data.categories.length > 0}

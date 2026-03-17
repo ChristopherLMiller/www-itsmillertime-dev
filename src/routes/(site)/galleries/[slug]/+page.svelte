@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import Masonry from 'svelte-bricks';
 	import Panel from '$lib/Panel.svelte';
@@ -12,6 +12,8 @@
 	import type { GalleryAlbum, Media, GalleryImage } from '$lib/types/payload-types';
 
 	type GalleryMedia = Media & { isNsfw: boolean };
+	const IMAGE_BATCH_SIZE = 30;
+	const LOAD_AHEAD_PX = 2400;
 
 	const { data } = $props();
 
@@ -26,6 +28,12 @@
 
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
+	let loadedImageDocs = $state<unknown[]>([]);
+	let loadedPage = $state<number>(1);
+	let hasNextPage = $state<boolean>(false);
+	let isLoadingMore = $state(false);
+	let infiniteLoadError = $state<string | null>(null);
+	let loadMoreSentinel = $state<HTMLDivElement | null>(null);
 
 	function extractGalleryMedia(doc: unknown): (GalleryMedia & { galleryImageId?: number }) | null {
 		if (typeof doc !== 'object' || doc === null) return null;
@@ -49,7 +57,7 @@
 	}
 
 	const allGalleryImages = $derived(
-		(data.gallery.images?.docs ?? [])
+		loadedImageDocs
 			.map((doc) => extractGalleryMedia(doc))
 			.filter((media): media is GalleryMedia & { galleryImageId?: number } => Boolean(media))
 	);
@@ -59,6 +67,11 @@
 			? allGalleryImages.filter((m) => !m.isNsfw)
 			: allGalleryImages
 	);
+	const totalImageCount = $derived(
+		typeof data.gallery.images?.totalDocs === 'number'
+			? data.gallery.images.totalDocs
+			: galleryImages.length
+	);
 
 	function openLightboxForItem(item: GalleryMedia) {
 		const idx = galleryImages.findIndex((m) => m.id === item.id);
@@ -67,13 +80,13 @@
 		lightboxOpen = true;
 		const url = new URL(window.location.href);
 		url.searchParams.set('selected', String(item.id));
-		window.history.replaceState(null, '', url.toString());
+		replaceState(url, page.state);
 	}
 
 	function closeLightbox() {
 		const url = new URL(window.location.href);
 		url.searchParams.delete('selected');
-		window.history.replaceState(null, '', url.toString());
+		replaceState(url, page.state);
 	}
 
 	function updateUrlForIndex(index: number) {
@@ -81,7 +94,31 @@
 		if (media?.id != null && typeof window !== 'undefined') {
 			const url = new URL(window.location.href);
 			url.searchParams.set('selected', String(media.id));
-			window.history.replaceState(null, '', url.toString());
+			replaceState(url, page.state);
+		}
+	}
+
+	async function loadNextImagePage() {
+		if (!browser || isLoadingMore || !hasNextPage) return;
+		isLoadingMore = true;
+		infiniteLoadError = null;
+
+		try {
+			const nextPage = loadedPage + 1;
+			const res = await fetch(
+				`/api/gallery-album-images/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}`
+			);
+			if (!res.ok) throw new Error(`Failed to load page ${nextPage}`);
+
+			const payload = await res.json();
+			const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
+			loadedImageDocs = [...loadedImageDocs, ...nextDocs];
+			loadedPage = Number(payload?.page ?? nextPage);
+			hasNextPage = Boolean(payload?.hasNextPage);
+		} catch {
+			infiniteLoadError = 'Could not load more images. Scroll again to retry.';
+		} finally {
+			isLoadingMore = false;
 		}
 	}
 
@@ -92,9 +129,21 @@
 		const id = parseInt(selected, 10);
 		if (Number.isNaN(id)) return;
 		const idx = galleryImages.findIndex((m) => m.id === id);
-		if (idx === -1) return;
+		if (idx === -1) {
+			if (hasNextPage && !isLoadingMore) void loadNextImagePage();
+			return;
+		}
 		lightboxIndex = idx;
 		lightboxOpen = true;
+	});
+
+	// Keep client pagination state aligned with server data across route/data updates.
+	$effect(() => {
+		loadedImageDocs = data.gallery.images?.docs ?? [];
+		loadedPage = data.gallery.images?.page ?? 1;
+		hasNextPage = data.gallery.images?.hasNextPage ?? false;
+		isLoadingMore = false;
+		infiniteLoadError = null;
 	});
 
 	// Refresh data when returning to the tab (e.g. after uploading elsewhere)
@@ -105,6 +154,23 @@
 		};
 		document.addEventListener('visibilitychange', handler);
 		return () => document.removeEventListener('visibilitychange', handler);
+	});
+
+	$effect(() => {
+		if (!browser || !loadMoreSentinel) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					void loadNextImagePage();
+				}
+			},
+			{ rootMargin: `${LOAD_AHEAD_PX}px 0px` }
+		);
+
+		observer.observe(loadMoreSentinel);
+
+		return () => observer.disconnect();
 	});
 </script>
 
@@ -121,7 +187,7 @@
 	</div>
 {:else}
 	<div class="gallery-page">
-		<GalleryAlbumHeader gallery={data.gallery as GalleryAlbum} imageCount={galleryImages.length} />
+		<GalleryAlbumHeader gallery={data.gallery as GalleryAlbum} imageCount={totalImageCount} />
 
 		<div class="gallery-grid">
 			<Masonry
@@ -156,14 +222,31 @@
 				{/snippet}
 			</Masonry>
 		</div>
+
+		{#if hasNextPage}
+			<div class="gallery-load-more" bind:this={loadMoreSentinel} aria-hidden="true">
+				{#if isLoadingMore}
+					Loading more images...
+				{:else}
+					&nbsp;
+				{/if}
+			</div>
+		{/if}
+
+		{#if infiniteLoadError}
+			<p class="gallery-load-error">{infiniteLoadError}</p>
+		{/if}
 	</div>
 
 	<Lightbox
 			images={galleryImages}
+			totalCount={totalImageCount}
 			initialIndex={lightboxIndex}
 			bind:open={lightboxOpen}
 			onClose={closeLightbox}
 			onIndexChange={updateUrlForIndex}
+			canLoadMore={hasNextPage}
+			onRequestMore={loadNextImagePage}
 			{useProxy}
 		>
 			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad, onClose, onPrevious, onNext, hasPrevious, hasNext, galleryImageId, useProxy })}
@@ -244,5 +327,22 @@
 
 	.gallery-grid__item:focus-visible {
 		outline: none;
+	}
+
+	.gallery-load-more {
+		height: 2rem;
+		display: grid;
+		place-items: center;
+		color: var(--color-tertiary);
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+	}
+
+	.gallery-load-error {
+		margin: 0.5rem 0 0;
+		text-align: center;
+		color: #b00020;
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
 	}
 </style>
