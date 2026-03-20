@@ -1,28 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page } from '$app/stores';
 	import { authClient } from '$lib/auth-client';
 	import Panel from '$lib/Panel.svelte';
 
 	type Step = 'login' | '2fa';
 
-	const initialStep = page.url.searchParams.get('step');
-	let step = $state<Step>(initialStep === '2fa' ? '2fa' : 'login');
+	let step = $state<Step>(($page.url.searchParams.get('step') as Step) || 'login');
 	let loading = $state<string | null>(null);
 	let error = $state<string | null>(null);
 
 	let email = $state('');
 	let password = $state('');
 	let totpCode = $state('');
-
-	const SIGN_IN_TIMEOUT_MS = 45_000;
-
-	function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-		return Promise.race([
-			promise,
-			new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms))
-		]);
-	}
 
 	async function signInWithEmail(e: SubmitEvent) {
 		const form = e.currentTarget as HTMLFormElement;
@@ -37,39 +27,33 @@
 		loading = 'email';
 		error = null;
 
-		try {
-			const result = await withTimeout(
-				authClient.signIn.email({
-					callbackURL: '/account/profile',
-					email,
-					password
-				}),
-				SIGN_IN_TIMEOUT_MS,
-				'Sign in timed out. Check your connection and try again.'
-			);
+		const result = await authClient.signIn.email({
+			callbackURL: '/account/profile',
+			email,
+			password,
+		});
 
-			if ((result.data as { twoFactorRedirect?: boolean })?.twoFactorRedirect) {
-				step = '2fa';
-				return;
-			}
-
-			if (result.data?.user) {
-				window.location.href = '/account/profile';
-				return;
-			}
-
-			if (result.error) {
-				if (result.error.status === 302 || result.error.message?.toLowerCase().includes('two factor')) {
-					step = '2fa';
-					return;
-				}
-				error = result.error.message ?? 'Invalid email or password.';
-			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Sign in failed.';
-		} finally {
+		if ((result.data as { twoFactorRedirect?: boolean })?.twoFactorRedirect) {
+			step = '2fa';
 			loading = null;
+			return;
 		}
+
+		if (result.data?.user) {
+			window.location.href = '/account/profile';
+			return;
+		}
+
+		if (result.error) {
+			if (result.error.status === 302 || result.error.message?.toLowerCase().includes('two factor')) {
+				step = '2fa';
+				loading = null;
+				return;
+			}
+			error = result.error.message ?? 'Invalid email or password.';
+		}
+
+		loading = null;
 	}
 
 	async function verifyTOTP(e: SubmitEvent) {
@@ -85,16 +69,13 @@
 		error = null;
 
 		try {
-			const result = await withTimeout(
-				authClient.twoFactor.verifyTotp({
-					code: totpCode
-				}),
-				SIGN_IN_TIMEOUT_MS,
-				'Verification timed out. Try again.'
-			);
+			const result = await authClient.twoFactor.verifyTotp({
+				code: totpCode
+			});
 
 			if (result.error) {
 				error = result.error.message ?? 'Invalid verification code.';
+				loading = null;
 				return;
 			}
 
@@ -102,7 +83,6 @@
 		} catch (err) {
 			console.error('[verifyTOTP] Exception:', err);
 			error = err instanceof Error ? err.message : 'Something went wrong verifying your code.';
-		} finally {
 			loading = null;
 		}
 	}
@@ -111,35 +91,24 @@
 		loading = 'passkey';
 		error = null;
 
-		try {
-			const { error: passkeyError } = await withTimeout(
-				authClient.signIn.passkey({
-					fetchOptions: {
-						onSuccess() {
-							goto('/account/profile');
-						}
-					}
-				}),
-				SIGN_IN_TIMEOUT_MS,
-				'Passkey sign-in timed out.'
-			);
-
-			if (passkeyError) {
-				error = passkeyError.message ?? 'Passkey authentication failed.';
+		const { error: passkeyError } = await authClient.signIn.passkey({
+			fetchOptions: {
+				onSuccess() {
+					goto('/account/profile');
+				}
 			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Passkey authentication failed.';
-		} finally {
-			loading = null;
+		});
+
+		if (passkeyError) {
+			error = passkeyError.message ?? 'Passkey authentication failed.';
 		}
+
+		loading = null;
 	}
 
 	async function signInWith(provider: 'github' | 'discord') {
 		loading = provider;
 		error = null;
-
-		const ac = new AbortController();
-		const timeout = setTimeout(() => ac.abort(), SIGN_IN_TIMEOUT_MS);
 
 		try {
 			const res = await fetch('/api/auth/sign-in/social', {
@@ -148,28 +117,19 @@
 				body: JSON.stringify({
 					provider,
 					callbackURL: `${window.location.origin}/account/profile`
-				}),
-				signal: ac.signal
+				})
 			});
 
 			const data = await res.json();
 
 			if (data.url) {
 				window.location.href = data.url;
-				return;
-			}
-			if (data.error) {
+			} else if (data.error) {
 				error = data.error;
+				loading = null;
 			}
 		} catch (err) {
-			error =
-				err instanceof Error && err.name === 'AbortError'
-					? 'Request timed out. Try again.'
-					: err instanceof Error
-						? err.message
-						: 'Something went wrong. Please try again.';
-		} finally {
-			clearTimeout(timeout);
+			error = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
 			loading = null;
 		}
 	}
