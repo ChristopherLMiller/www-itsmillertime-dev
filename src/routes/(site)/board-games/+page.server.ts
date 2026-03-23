@@ -75,12 +75,14 @@ async function fetchBGGCollection(
 	}
 }
 
-export const load: PageServerLoad = async ({ request }) => {
-	const url = new URL(request.url);
-	const username = url.searchParams.get('username') || 'moose517';
+export const load: PageServerLoad = async ({ url, parent }) => {
+	const { session } = await parent();
+	const defaultUsername = session?.user?.bggUsername ?? 'moose517';
+	const username = url.searchParams.get('username') || defaultUsername;
 	const result = await fetchBGGCollection(username);
 
 	return {
+		username,
 		games: result.games,
 		total: result.total,
 		error: result.error
