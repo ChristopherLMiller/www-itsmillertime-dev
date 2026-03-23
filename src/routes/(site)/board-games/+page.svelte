@@ -1,7 +1,15 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Panel from "$lib/Panel.svelte";
 
 	const { data } = $props();
+	let lookupUsername = $state('');
+
+	function handleLookup() {
+		const trimmed = lookupUsername.trim();
+		if (!trimmed) return;
+		goto(`/board-games?username=${encodeURIComponent(trimmed)}`);
+	}
 </script>
 
 
@@ -9,11 +17,23 @@
 	<div class="board-games-page">
 		<header class="page-header">
 			<h1>Board Game Collection</h1>
+			<p class="collection-owner font-oswald">
+				Viewing collection for <span class="username">{data.username}</span>
+			</p>
 			{#if !data.error && data.games.length > 0}
 				<p class="collection-stats">
 					{data.total} {data.total === 1 ? 'game' : 'games'} in collection
 				</p>
 			{/if}
+			<form class="lookup" onsubmit={(e) => { e.preventDefault(); handleLookup(); }}>
+				<input
+					class="lookup-input font-special-elite"
+					type="text"
+					placeholder="BGG username..."
+					bind:value={lookupUsername}
+				/>
+				<button class="lookup-btn font-oswald" type="submit">Fetch</button>
+			</form>
 		</header>
 
 		{#if data.error}
@@ -65,11 +85,59 @@
 		margin: 0 0 0.5rem 0;
 	}
 
-	.collection-stats {
-		font-family: var(--font-oswald);
+	.collection-owner {
 		font-size: var(--fs-base);
 		color: var(--color-tertiary-darker);
-		margin: 0;
+		margin: 0 0 0.25rem;
+	}
+
+	.username {
+		color: var(--color-primary);
+		font-weight: 600;
+	}
+
+	.collection-stats {
+		font-family: var(--font-oswald);
+		font-size: var(--fs-xs);
+		color: var(--color-tertiary);
+		margin: 0 0 1.25rem;
+	}
+
+	.lookup {
+		display: flex;
+		justify-content: center;
+		gap: 0.5rem;
+		max-width: 20rem;
+		margin-inline: auto;
+	}
+
+	.lookup-input {
+		flex: 1;
+		padding: 0.5rem 0.75rem;
+		font-size: 0.9rem;
+		border: 1px solid var(--color-tertiary-lighter);
+		background: var(--color-white-lightest);
+		color: var(--color-tertiary-darkest);
+	}
+
+	.lookup-input::placeholder {
+		color: var(--color-tertiary-lighter);
+	}
+
+	.lookup-btn {
+		padding: 0.5rem 1rem;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+		background: var(--color-primary);
+		color: var(--color-white-lightest);
+		border: 1px solid var(--color-primary);
+		cursor: pointer;
+		transition: background 0.2s;
+
+		&:hover {
+			background: var(--color-primary-darker);
+		}
 	}
 
 	.error-message,
