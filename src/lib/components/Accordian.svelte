@@ -8,9 +8,6 @@
 </details>
 
 <style lang="postcss">
-	:global(:not(details + details)) {
-		border-bottom: var(--border-width) solid var(color-primary-lighter);
-	}
 	summary {
 		padding: 1rem;
 		background: var(--color-tertiary-darker);
