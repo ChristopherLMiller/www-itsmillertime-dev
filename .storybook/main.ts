@@ -2,9 +2,12 @@ import type { StorybookConfig } from '@storybook/sveltekit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const dirname = path.dirname(fileURLToPath(import.meta.url));
+	const storybookDir = path.dirname(fileURLToPath(import.meta.url));
+	// Use the app root so Storybook reads the same `.env`, `.env.local`, `.env.production`
+	// as Vite/SvelteKit (nothing Storybook-specific in git).
+	const projectRoot = path.join(storybookDir, '..');
 
-const config: StorybookConfig = {
+	const config: StorybookConfig = {
 	stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|ts|svelte)'],
 	addons: [
 		'@storybook/addon-svelte-csf',
@@ -15,7 +18,7 @@ const config: StorybookConfig = {
 	framework: '@storybook/sveltekit',
 	staticDirs: ['../static'],
 	async viteFinal(config) {
-		config.envDir = dirname;
+		config.envDir = projectRoot;
 		return config;
 	}
 };

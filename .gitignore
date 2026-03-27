@@ -18,7 +18,6 @@ Thumbs.db
 !.env.example
 !.env.production
 !.env.test
-!.storybook/.env
 
 # Vitest coverage output
 coverage/
