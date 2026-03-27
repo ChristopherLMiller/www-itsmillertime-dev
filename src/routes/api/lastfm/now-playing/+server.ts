@@ -1,5 +1,5 @@
-import { LASTFM_API_KEY, LASTFM_USERNAME } from '$env/static/private';
-import { error, json } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+import { error, isHttpError, json } from '@sveltejs/kit';
 
 type LastFmImage = {
 	'#text': string;
@@ -90,6 +90,7 @@ function normalizeTrack(track: LastFmTrack | undefined): NowPlayingTrack | null 
 }
 
 export async function GET() {
+	const { LASTFM_API_KEY, LASTFM_USERNAME } = env;
 	if (!LASTFM_API_KEY || !LASTFM_USERNAME) {
 		throw error(500, 'Last.fm credentials not configured');
 	}
@@ -138,7 +139,7 @@ export async function GET() {
 			}
 		});
 	} catch (err) {
-		if (err?.status) throw err;
+		if (isHttpError(err)) throw err;
 		throw error(500, 'Failed to fetch Last.fm data');
 	}
 }
