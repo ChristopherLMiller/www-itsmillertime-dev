@@ -2,12 +2,16 @@
 	import { page } from '$app/state';
 	import NavButton from './NavButton.svelte';
 	import NavLink from './NavLink.svelte';
+	import { filterNavItems } from './visibility';
+
+	let user = $derived(page.data.session?.user ?? null);
+	let visibleNavItems = $derived(filterNavItems(page.data.navigation.navItems, user));
 </script>
 
 <nav>
 	<div class="nav-contents">
-		{#each page.data.navigation.navItems as navItem}
-			{#if navItem.childNodes.length > 0}
+		{#each visibleNavItems as navItem}
+			{#if navItem.childNodes && navItem.childNodes.length > 0}
 				<NavButton {navItem} />
 			{:else}
 				<NavLink {navItem} />
