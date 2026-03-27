@@ -16,7 +16,11 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!.env.production
 !.env.test
+
+# Vitest coverage output
+coverage/
 
 # Vite
 vite.config.js.timestamp-*
@@ -24,3 +28,6 @@ vite.config.ts.timestamp-*
 
 /logs
 .pnpm-store/
+
+*storybook.log
+storybook-static
