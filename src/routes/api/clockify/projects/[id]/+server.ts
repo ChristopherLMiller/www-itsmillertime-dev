@@ -1,8 +1,9 @@
-import { CLOCKIFY_API_KEY, CLOCKIFY_WORKSPACE_ID } from '$env/static/private';
-import { error, json } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+import { error, isHttpError, json } from '@sveltejs/kit';
 
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ params }) {
+	const { CLOCKIFY_API_KEY, CLOCKIFY_WORKSPACE_ID } = env;
 	if (!CLOCKIFY_API_KEY || !CLOCKIFY_WORKSPACE_ID) {
 		throw error(500, 'Clockify credentials not configured');
 	}
@@ -28,7 +29,7 @@ export async function GET({ params }) {
 		const project = await response.json();
 		return json(project);
 	} catch (err) {
-		if (err.status) throw err;
+		if (isHttpError(err)) throw err;
 		throw error(500, 'Failed to fetch project');
 	}
 }

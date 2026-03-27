@@ -1,4 +1,4 @@
-import { BGG_API_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { PageServerLoad } from './$types';
 
 async function fetchBGGCollection(
@@ -7,6 +7,7 @@ async function fetchBGGCollection(
 ): Promise<{ games: any[]; total: number; error?: string }> {
 	const maxRetries = 5;
 	const retryDelay = 3000;
+	const { BGG_API_TOKEN } = env;
 
 	try {
 		if (!BGG_API_TOKEN) {
