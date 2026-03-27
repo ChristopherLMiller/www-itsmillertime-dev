@@ -59,7 +59,7 @@
 
     .page-title {
       padding-inline-start: 4rem;
-      font-family: var(--font-special-elite)
+      font-family: var(--font-special-elite);
       font-weight: 600;
       text-transform: uppercase;
       line-height: 1;
