@@ -5,13 +5,12 @@
 	import Masonry from 'svelte-bricks';
 	import Panel from '$lib/Panel.svelte';
 	import GalleryAlbumHeader from '$lib/components/GalleryAlbumHeader.svelte';
-	import Polaroid from '$lib/components/Polaroid.svelte';
+	import GalleryAlbumPolaroid from '$lib/components/GalleryAlbumPolaroid.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
-	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
-	import type { GalleryAlbum, Media, GalleryImage } from '$lib/types/payload-types';
+	import type { GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import type { GalleryAlbum } from '$lib/types/payload-types';
 
-	type GalleryMedia = Media & { isNsfw: boolean };
 	const IMAGE_BATCH_SIZE = 30;
 	const LOAD_AHEAD_PX = 2400;
 
@@ -26,46 +25,29 @@
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
 
+	type ImageSlot = { id: number; isNsfw: boolean };
+
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
-	let loadedImageDocs = $state<unknown[]>([]);
+	/** File media id for the open lightbox; keeps index stable as async previews resolve */
+	let pinnedLightboxFileMediaId = $state<number | null>(null);
+	let galleryImageSlots = $state<ImageSlot[]>([]);
+	/** Resolved file media keyed by gallery-image row id */
+	let slotMedia = $state<Record<number, GalleryGridMedia>>({});
+	/** Per-slot preview fetch finished (success or error), for deep-link pagination */
+	let slotFetchDone = $state<Record<number, boolean>>({});
 	let loadedPage = $state<number>(1);
 	let hasNextPage = $state<boolean>(false);
 	let isLoadingMore = $state(false);
 	let infiniteLoadError = $state<string | null>(null);
 	let loadMoreSentinel = $state<HTMLDivElement | null>(null);
 
-	function extractGalleryMedia(doc: unknown): (GalleryMedia & { galleryImageId?: number }) | null {
-		if (typeof doc !== 'object' || doc === null) return null;
-
-		const imageDoc = doc as Partial<GalleryImage>;
-		const docIsNsfw = imageDoc.settings?.isNsfw === true || albumIsNsfw;
-		const galleryImageId = imageDoc.id;
-
-		if ('url' in imageDoc && 'id' in imageDoc) {
-			return { ...(imageDoc as Media), isNsfw: docIsNsfw, galleryImageId };
-		}
-
-		if ('image' in imageDoc) {
-			const candidate = (imageDoc as { image?: unknown }).image;
-			if (typeof candidate === 'object' && candidate !== null && 'id' in candidate) {
-				return { ...(candidate as Media), isNsfw: docIsNsfw, galleryImageId };
-			}
-		}
-
-		return null;
-	}
-
-	const allGalleryImages = $derived(
-		loadedImageDocs
-			.map((doc) => extractGalleryMedia(doc))
-			.filter((media): media is GalleryMedia & { galleryImageId?: number } => Boolean(media))
+	const visibleSlots = $derived(
+		galleryImageSlots.filter((s) => !(nsfwPref === 'hide' && s.isNsfw))
 	);
 
 	const galleryImages = $derived(
-		nsfwPref === 'hide'
-			? allGalleryImages.filter((m) => !m.isNsfw)
-			: allGalleryImages
+		visibleSlots.map((s) => slotMedia[s.id]).filter((m): m is GalleryGridMedia => m != null)
 	);
 	const totalImageCount = $derived(
 		typeof data.gallery.images?.totalDocs === 'number'
@@ -73,9 +55,10 @@
 			: galleryImages.length
 	);
 
-	function openLightboxForItem(item: GalleryMedia) {
+	function openLightboxForItem(item: GalleryGridMedia) {
 		const idx = galleryImages.findIndex((m) => m.id === item.id);
 		if (idx === -1) return;
+		pinnedLightboxFileMediaId = item.id;
 		lightboxIndex = idx;
 		lightboxOpen = true;
 		const url = new URL(window.location.href);
@@ -84,6 +67,7 @@
 	}
 
 	function closeLightbox() {
+		pinnedLightboxFileMediaId = null;
 		const url = new URL(window.location.href);
 		url.searchParams.delete('selected');
 		replaceState(url, page.state);
@@ -92,6 +76,7 @@
 	function updateUrlForIndex(index: number) {
 		const media = galleryImages[index];
 		if (media?.id != null && typeof window !== 'undefined') {
+			pinnedLightboxFileMediaId = media.id;
 			const url = new URL(window.location.href);
 			url.searchParams.set('selected', String(media.id));
 			replaceState(url, page.state);
@@ -106,13 +91,17 @@
 		try {
 			const nextPage = loadedPage + 1;
 			const res = await fetch(
-				`/api/gallery-album-images/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}`
+				`/api/gallery-album-images/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
 			);
 			if (!res.ok) throw new Error(`Failed to load page ${nextPage}`);
 
 			const payload = await res.json();
 			const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
-			loadedImageDocs = [...loadedImageDocs, ...nextDocs];
+			const newSlots: ImageSlot[] = nextDocs.map((d: { id: number; settings?: { isNsfw?: boolean } }) => ({
+				id: d.id,
+				isNsfw: d.settings?.isNsfw === true || albumIsNsfw
+			}));
+			galleryImageSlots = [...galleryImageSlots, ...newSlots];
 			loadedPage = Number(payload?.page ?? nextPage);
 			hasNextPage = Boolean(payload?.hasNextPage);
 		} catch {
@@ -122,26 +111,43 @@
 		}
 	}
 
-	// Open lightbox on load when ?selected=<imageId> is present
+	// Open lightbox on load when ?selected=<file media id> is present
 	$effect(() => {
 		const selected = page.url.searchParams.get('selected');
-		if (!selected || galleryImages.length === 0) return;
-		const id = parseInt(selected, 10);
-		if (Number.isNaN(id)) return;
-		const idx = galleryImages.findIndex((m) => m.id === id);
-		if (idx === -1) {
-			if (hasNextPage && !isLoadingMore) void loadNextImagePage();
+		if (!selected || visibleSlots.length === 0) return;
+		const fileMediaId = parseInt(selected, 10);
+		if (Number.isNaN(fileMediaId)) return;
+		const idx = galleryImages.findIndex((m) => m.id === fileMediaId);
+		if (idx !== -1) {
+			pinnedLightboxFileMediaId = fileMediaId;
+			lightboxIndex = idx;
+			lightboxOpen = true;
 			return;
 		}
-		lightboxIndex = idx;
-		lightboxOpen = true;
+		const stillLoading = visibleSlots.some((s) => !slotFetchDone[s.id]);
+		if (stillLoading) return;
+		if (hasNextPage && !isLoadingMore) void loadNextImagePage();
 	});
+
+	function handlePolaroidResolved(galleryImageId: number, media: GalleryGridMedia) {
+		slotMedia = { ...slotMedia, [galleryImageId]: media };
+	}
+
+	function markSlotFetchDone(galleryImageId: number) {
+		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
+	}
 
 	// Keep client pagination state aligned with server data across route/data updates.
 	$effect(() => {
-		loadedImageDocs = data.gallery.images?.docs ?? [];
+		const docs = (data.gallery.images?.docs ?? []) as { id: number; settings?: { isNsfw?: boolean } }[];
+		galleryImageSlots = docs.map((d) => ({
+			id: d.id,
+			isNsfw: d.settings?.isNsfw === true || albumIsNsfw
+		}));
 		loadedPage = data.gallery.images?.page ?? 1;
 		hasNextPage = data.gallery.images?.hasNextPage ?? false;
+		slotMedia = {};
+		slotFetchDone = {};
 		isLoadingMore = false;
 		infiniteLoadError = null;
 	});
@@ -172,6 +178,12 @@
 
 		return () => observer.disconnect();
 	});
+
+	$effect(() => {
+		if (!lightboxOpen || pinnedLightboxFileMediaId == null) return;
+		const idx = galleryImages.findIndex((m) => m.id === pinnedLightboxFileMediaId);
+		if (idx !== -1) lightboxIndex = idx;
+	});
 </script>
 
 {#if shouldHideAlbum}
@@ -191,34 +203,27 @@
 
 		<div class="gallery-grid">
 			<Masonry
-				items={galleryImages}
+				items={visibleSlots}
 				idKey="id"
 				minColWidth={400}
 				maxColWidth={600}
 				gap={30}
 				animate={false}
 			>
-				{#snippet children({ item })}
-				{@const idx = galleryImages.findIndex((g) => g.id === item.id)}
-				{@const rotation = ((((item.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
-					<button
-						class="gallery-grid__item"
-						style:--rotation="{rotation}deg"
-						onclick={() => openLightboxForItem(item)}
-						aria-label="View {item.alt || 'image'} in lightbox"
-					>
-						<Polaroid
-							media={item}
-							caption={item.caption ? (lexicalToPlainText(item.caption).trim() || undefined) : undefined}
-							interactive={false}
-							clickable={true}
-							enableViewTransition={false}
-							adaptiveHeight={true}
+				{#snippet children({ item: slot })}
+					{@const idx = visibleSlots.findIndex((s) => s.id === slot.id)}
+					{@const rotation = ((((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
+					<div class="gallery-grid__item" style:--rotation="{rotation}deg">
+						<GalleryAlbumPolaroid
+							galleryImageId={slot.id}
+							{albumIsNsfw}
 							{useProxy}
-							isNsfw={item.isNsfw}
 							priority={idx >= 0 && idx < 6}
+							onResolved={(m) => handlePolaroidResolved(slot.id, m)}
+							onFetchEnd={() => markSlotFetchDone(slot.id)}
+							onClick={openLightboxForItem}
 						/>
-					</button>
+					</div>
 				{/snippet}
 			</Masonry>
 		</div>
