@@ -4,8 +4,8 @@ import type { RequestHandler } from './$types';
 
 /**
  * Single gallery-image row from Payload.
- * Default: thumbnail-shaped media (galleries landing), same shape as album hover preview.
- * `?full=1`: full gallery-image document at depth 1 (nested `image` media for lightbox / grid).
+ * `?data=basic` (default): thumbnail-shaped media, same shape as album hover preview.
+ * `?data=full`: full gallery-image document at depth 1 (nested `image` media for lightbox / grid).
  */
 export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 	const galleryImageId = Number(params.id);
@@ -13,7 +13,11 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 		return json({ error: 'Invalid gallery image ID' }, { status: 400 });
 	}
 
-	const full = url.searchParams.get('full') === '1';
+	const raw = url.searchParams.get('data')?.toLowerCase() ?? 'basic';
+	if (raw !== 'basic' && raw !== 'full') {
+		return json({ error: 'Invalid data parameter; use basic or full' }, { status: 400 });
+	}
+	const wantFull = raw === 'full';
 
 	const sdk = getPayloadSDK(fetch, request);
 
@@ -22,7 +26,7 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 		where: { id: { equals: galleryImageId } },
 		limit: 1,
 		page: 1,
-		depth: full ? 1 : 0
+		depth: wantFull ? 1 : 0
 	});
 
 	const doc = result.docs?.[0];
@@ -30,7 +34,7 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 		return json({ error: 'Not found' }, { status: 404 });
 	}
 
-	if (full) {
+	if (wantFull) {
 		return json(doc);
 	}
 
