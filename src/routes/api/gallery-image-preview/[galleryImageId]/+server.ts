@@ -3,14 +3,17 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * Single gallery-image preview for the galleries landing grid.
- * Returns the same lightweight media shape as /api/gallery-album-images/[albumId].
+ * Single gallery-image row from Payload.
+ * Default: thumbnail-shaped media (galleries landing grid), same shape as album hover preview.
+ * `?full=1`: full gallery-image document at depth 1 (nested `image` media for lightbox / grid).
  */
-export const GET: RequestHandler = async ({ params, fetch, request }) => {
+export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 	const galleryImageId = Number(params.galleryImageId);
 	if (!Number.isFinite(galleryImageId)) {
 		return json({ error: 'Invalid gallery image ID' }, { status: 400 });
 	}
+
+	const full = url.searchParams.get('full') === '1';
 
 	const sdk = getPayloadSDK(fetch, request);
 
@@ -19,12 +22,16 @@ export const GET: RequestHandler = async ({ params, fetch, request }) => {
 		where: { id: { equals: galleryImageId } },
 		limit: 1,
 		page: 1,
-		depth: 0
+		depth: full ? 1 : 0
 	});
 
 	const doc = result.docs?.[0];
 	if (!doc) {
 		return json({ error: 'Not found' }, { status: 404 });
+	}
+
+	if (full) {
+		return json(doc);
 	}
 
 	const payload = {

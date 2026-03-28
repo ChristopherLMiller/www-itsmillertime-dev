@@ -36,7 +36,10 @@ export const load: PageServerLoad = async ({ params, fetch, request, url }) => {
 					url: true,
 					alt: true,
 					width: true,
-					height: true
+					height: true,
+					sizes: {
+						og: { url: true, width: true, height: true }
+					}
 				}
 			},
 			createdAt: true,
@@ -50,7 +53,7 @@ export const load: PageServerLoad = async ({ params, fetch, request, url }) => {
 		throw error(404, 'Gallery not found');
 	}
 
-	// Fetch only the first page of images; client will progressively load more.
+	// First page: ids (+ per-image NSFW for client filtering); each grid cell fetches full row via API.
 	const imagesData = await sdk.find({
 		collection: 'gallery-images',
 		where: {
@@ -60,7 +63,11 @@ export const load: PageServerLoad = async ({ params, fetch, request, url }) => {
 		},
 		limit: IMAGE_BATCH_SIZE,
 		page: 1,
-		depth: 1
+		depth: 0,
+		select: {
+			id: true,
+			settings: { isNsfw: true }
+		}
 	});
 
 	const galleryWithPagedImages = {
