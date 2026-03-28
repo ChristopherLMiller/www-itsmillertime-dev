@@ -26,7 +26,13 @@
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
 
-	type ImageSlot = { id: number; isNsfw: boolean; width?: number | null; height?: number | null };
+	type ImageSlot = {
+		id: number;
+		isNsfw: boolean;
+		width?: number | null;
+		height?: number | null;
+		blurhash?: string | null;
+	};
 
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
@@ -99,10 +105,17 @@
 			const payload = await res.json();
 			const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
 			const newSlots: ImageSlot[] = nextDocs.map(
-				(d: { id: number; width?: number | null; height?: number | null; settings?: { isNsfw?: boolean } }) => ({
+				(d: {
+					id: number;
+					width?: number | null;
+					height?: number | null;
+					blurhash?: string | null;
+					settings?: { isNsfw?: boolean };
+				}) => ({
 					id: d.id,
 					width: d.width,
 					height: d.height,
+					blurhash: d.blurhash,
 					isNsfw: d.settings?.isNsfw === true || albumIsNsfw
 				})
 			);
@@ -148,12 +161,14 @@
 			id: number;
 			width?: number | null;
 			height?: number | null;
+			blurhash?: string | null;
 			settings?: { isNsfw?: boolean };
 		}[];
 		galleryImageSlots = docs.map((d) => ({
 			id: d.id,
 			width: d.width,
 			height: d.height,
+			blurhash: d.blurhash,
 			isNsfw: d.settings?.isNsfw === true || albumIsNsfw
 		}));
 		loadedPage = data.gallery.images?.page ?? 1;
@@ -231,6 +246,7 @@
 							<GalleryAlbumPolaroid
 								galleryImageId={slot.id}
 								layoutAspectRatio={layoutAspect}
+								initialBlurhash={slot.blurhash ?? null}
 								{albumIsNsfw}
 								{useProxy}
 								priority={idx >= 0 && idx < 6}

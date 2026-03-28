@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 				meta: {
 					description: true,
 					// Cover id + dimensions for layout/aspect before client preview fetch
-					image: { id: true, width: true, height: true }
+					image: { id: true, width: true, height: true, blurhash: true }
 				}
 			},
 			where: {

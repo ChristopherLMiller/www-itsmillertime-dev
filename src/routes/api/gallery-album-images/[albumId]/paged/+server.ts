@@ -34,6 +34,7 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 						id: true,
 						width: true,
 						height: true,
+						blurhash: true,
 						settings: { isNsfw: true }
 					}
 				}

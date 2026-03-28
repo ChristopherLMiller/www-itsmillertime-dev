@@ -7,6 +7,8 @@
 		galleryImageId: number;
 		/** Primary polaroid + skeleton aspect ratio (width/height) from server */
 		primaryAspectRatio?: number;
+		/** Gallery-image blurhash from server; shown while preview fetch runs */
+		initialBlurhash?: string | null;
 		albumId: number;
 		caption: string;
 		albumDescription?: string;
@@ -24,6 +26,7 @@
 	const {
 		galleryImageId,
 		primaryAspectRatio = 4 / 3,
+		initialBlurhash = null,
 		albumId,
 		caption,
 		albumDescription,
@@ -104,13 +107,24 @@
 {:else}
 	<div
 		class="gallery-landing-polaroid__skeleton"
+		class:gallery-landing-polaroid__skeleton--blurhash={!!initialBlurhash}
 		aria-hidden="true"
 		style:aspect-ratio={primaryAspectRatio}
-	></div>
+	>
+		{#if initialBlurhash}
+			<img
+				src={initialBlurhash}
+				alt=""
+				class="gallery-landing-polaroid__blurhash"
+			/>
+		{/if}
+	</div>
 {/if}
 
 <style lang="postcss">
 	.gallery-landing-polaroid__skeleton {
+		position: relative;
+		overflow: hidden;
 		width: 100%;
 		max-width: min(18rem, 90vw);
 		margin: 0 auto;
@@ -119,6 +133,22 @@
 		animation: gallery-landing-shimmer 1.2s ease-in-out infinite;
 		border-radius: 8px;
 		border: 2px solid var(--color-tertiary-lighter, #f0ede3);
+	}
+
+	.gallery-landing-polaroid__skeleton--blurhash {
+		animation: none;
+		background: #dcd8cf;
+	}
+
+	.gallery-landing-polaroid__blurhash {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		filter: blur(5px);
+		transform: scale(1.02);
+		pointer-events: none;
 	}
 
 	.gallery-landing-polaroid__error {
@@ -139,7 +169,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.gallery-landing-polaroid__skeleton {
+		.gallery-landing-polaroid__skeleton:not(.gallery-landing-polaroid__skeleton--blurhash) {
 			animation: none;
 			background: #e8e4dc;
 		}

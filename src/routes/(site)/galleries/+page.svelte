@@ -88,6 +88,13 @@
 		return cssAspectRatioFromDimensions(w ?? undefined, h ?? undefined, 4 / 3);
 	}
 
+	function coverBlurhash(gallery: (typeof filteredGalleries)[number]): string | null {
+		const img = gallery.meta?.image;
+		if (typeof img !== 'object' || img === null || !('blurhash' in img)) return null;
+		const b = (img as { blurhash?: string | null }).blurhash;
+		return typeof b === 'string' && b.length > 0 ? b : null;
+	}
+
 	async function preloadAlbumImagesInBackground() {
 		const ids = filteredGalleries
 			.filter((gallery) => coverGalleryImageId(gallery) != null)
@@ -276,6 +283,7 @@
 				<GalleryLandingPolaroidStack
 					galleryImageId={gid}
 					primaryAspectRatio={coverAspectRatio(gallery)}
+					initialBlurhash={coverBlurhash(gallery)}
 					albumId={gallery.id}
 					caption={gallery.title}
 					albumDescription={gallery.meta?.description ?? undefined}

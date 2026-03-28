@@ -68,6 +68,7 @@ export const load: PageServerLoad = async ({ params, fetch, request, url }) => {
 			id: true,
 			width: true,
 			height: true,
+			blurhash: true,
 			settings: { isNsfw: true }
 		}
 	});

@@ -8,6 +8,8 @@
 		galleryImageId: number;
 		/** width/height from server for skeleton layout before fetch */
 		layoutAspectRatio?: number;
+		/** From server; shown while full preview fetch runs */
+		initialBlurhash?: string | null;
 		albumIsNsfw: boolean;
 		useProxy: boolean;
 		priority?: boolean;
@@ -20,6 +22,7 @@
 	const {
 		galleryImageId,
 		layoutAspectRatio = 3 / 4,
+		initialBlurhash = null,
 		albumIsNsfw,
 		useProxy,
 		priority = false,
@@ -96,9 +99,14 @@
 {:else}
 	<div
 		class="gallery-album-polaroid__skeleton"
+		class:gallery-album-polaroid__skeleton--blurhash={!!initialBlurhash}
 		aria-hidden="true"
 		style:aspect-ratio={layoutAspectRatio}
-	></div>
+	>
+		{#if initialBlurhash}
+			<img src={initialBlurhash} alt="" class="gallery-album-polaroid__blurhash" />
+		{/if}
+	</div>
 {/if}
 
 <style lang="postcss">
@@ -113,12 +121,30 @@
 	}
 
 	.gallery-album-polaroid__skeleton {
+		position: relative;
+		overflow: hidden;
 		width: 100%;
 		background: linear-gradient(90deg, #e8e4dc 0%, #f5f2eb 50%, #e8e4dc 100%);
 		background-size: 200% 100%;
 		animation: gallery-album-shimmer 1.2s ease-in-out infinite;
 		border-radius: 8px;
 		border: 2px solid var(--color-tertiary-lighter, #f0ede3);
+	}
+
+	.gallery-album-polaroid__skeleton--blurhash {
+		animation: none;
+		background: #dcd8cf;
+	}
+
+	.gallery-album-polaroid__blurhash {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		filter: blur(5px);
+		transform: scale(1.02);
+		pointer-events: none;
 	}
 
 	.gallery-album-polaroid__error {
@@ -139,7 +165,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.gallery-album-polaroid__skeleton {
+		.gallery-album-polaroid__skeleton:not(.gallery-album-polaroid__skeleton--blurhash) {
 			animation: none;
 			background: #e8e4dc;
 		}
