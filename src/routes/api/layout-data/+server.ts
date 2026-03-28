@@ -13,8 +13,8 @@ export interface LayoutApiResponse {
 	siteMeta: SiteMeta;
 }
 
-async function fetchNavigationFromCMS(fetchFn: typeof globalThis.fetch): Promise<SiteNavigation> {
-	const sdk = getPayloadSDK(fetchFn);
+async function fetchNavigationFromCMS(): Promise<SiteNavigation> {
+	const sdk = getPayloadSDK();
 
 	const nav = await sdk.findGlobal({ slug: 'site-navigation', depth: 1, draft: true });
 
@@ -34,30 +34,30 @@ async function fetchNavigationFromCMS(fetchFn: typeof globalThis.fetch): Promise
 	return navigation;
 }
 
-async function fetchSiteMetaFromCMS(fetchFn: typeof globalThis.fetch): Promise<SiteMeta> {
-	const sdk = getPayloadSDK(fetchFn);
+async function fetchSiteMetaFromCMS(): Promise<SiteMeta> {
+	const sdk = getPayloadSDK();
 	return sdk.findGlobal({ slug: 'site-meta', depth: 1 });
 }
 
-async function refreshNavigationInBackground(fetchFn: typeof globalThis.fetch): Promise<void> {
+async function refreshNavigationInBackground(): Promise<void> {
 	try {
-		const navigation = await fetchNavigationFromCMS(fetchFn);
+		const navigation = await fetchNavigationFromCMS();
 		await cacheManager.set(cacheManager.createKey(NAV_CACHE_KEY), navigation);
 	} catch (err) {
 		console.error('[layout-data] Navigation background refresh failed:', err);
 	}
 }
 
-async function refreshSiteMetaInBackground(fetchFn: typeof globalThis.fetch): Promise<void> {
+async function refreshSiteMetaInBackground(): Promise<void> {
 	try {
-		const siteMeta = await fetchSiteMetaFromCMS(fetchFn);
+		const siteMeta = await fetchSiteMetaFromCMS();
 		await cacheManager.set(cacheManager.createKey(META_CACHE_KEY), siteMeta);
 	} catch (err) {
 		console.error('[layout-data] Site meta background refresh failed:', err);
 	}
 }
 
-export const GET: RequestHandler = async ({ fetch }) => {
+export const GET: RequestHandler = async () => {
 	const navCacheKey = cacheManager.createKey(NAV_CACHE_KEY);
 	const metaCacheKey = cacheManager.createKey(META_CACHE_KEY);
 
@@ -74,12 +74,12 @@ export const GET: RequestHandler = async ({ fetch }) => {
 
 		if (isNavStale) {
 			// Serve immediately, refresh navigation in background
-			refreshNavigationInBackground(fetch).catch(() => {});
+			refreshNavigationInBackground().catch(() => {});
 		}
 
 		if (isMetaStale) {
 			// Serve immediately, refresh site meta in background
-			refreshSiteMetaInBackground(fetch).catch(() => {});
+			refreshSiteMetaInBackground().catch(() => {});
 		}
 
 		return json(
@@ -94,14 +94,14 @@ export const GET: RequestHandler = async ({ fetch }) => {
 	if (cachedNavigation) {
 		const isNavStale = await cacheManager.isCacheStale(navCacheKey, STALE_THRESHOLD_S);
 		if (isNavStale) {
-			refreshNavigationInBackground(fetch).catch(() => {});
+			refreshNavigationInBackground().catch(() => {});
 		}
 	}
 
 	if (cachedSiteMeta) {
 		const isMetaStale = await cacheManager.isCacheStale(metaCacheKey, STALE_THRESHOLD_S);
 		if (isMetaStale) {
-			refreshSiteMetaInBackground(fetch).catch(() => {});
+			refreshSiteMetaInBackground().catch(() => {});
 		}
 	}
 
@@ -109,8 +109,8 @@ export const GET: RequestHandler = async ({ fetch }) => {
 	const [navigation, siteMeta] = await Promise.all([
 		cachedNavigation
 			? Promise.resolve(cachedNavigation as SiteNavigation)
-			: fetchNavigationFromCMS(fetch),
-		cachedSiteMeta ? Promise.resolve(cachedSiteMeta as SiteMeta) : fetchSiteMetaFromCMS(fetch)
+			: fetchNavigationFromCMS(),
+		cachedSiteMeta ? Promise.resolve(cachedSiteMeta as SiteMeta) : fetchSiteMetaFromCMS()
 	]);
 
 	const writes: Promise<void>[] = [];
