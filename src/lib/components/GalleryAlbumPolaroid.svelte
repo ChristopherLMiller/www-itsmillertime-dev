@@ -1,11 +1,8 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import Polaroid from '$lib/components/Polaroid.svelte';
-	import {
-		buildPlaceholderGalleryMedia,
-		galleryImageDocToDisplayMedia,
-		type GalleryGridMedia
-	} from '$lib/utils/gallery-image-display';
+	import { buildPlaceholderGalleryMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 
 	type GalleryAlbumPolaroidProps = {
@@ -70,39 +67,25 @@
 			return;
 		}
 
-		let cancelled = false;
-		const ac = new AbortController();
-
+		// Do not AbortController + cleanup: parent re-renders (e.g. slotMedia updates) were
+		// aborting in-flight work and causing canceled storms. Dedupe is in fetchGalleryImageFullForPolaroid.
+		let stale = false;
 		media = null;
 		loadError = null;
 
-		(async () => {
-			try {
-				const res = await fetch(`/api/gallery/images/${id}?data=full`, { signal: ac.signal });
-				if (!res.ok) {
-					if (!cancelled) loadError = res.status === 404 ? 'Image unavailable' : 'Could not load image';
-					return;
-				}
-				const doc: unknown = await res.json();
-				if (cancelled) return;
-				const m = galleryImageDocToDisplayMedia(doc, albumIsNsfw);
-				if (m) {
-					media = m;
-					onResolved?.(m);
-				} else if (!cancelled) {
-					loadError = 'Invalid image data';
-				}
-			} catch (e) {
-				if (e instanceof DOMException && e.name === 'AbortError') return;
-				if (!cancelled) loadError = 'Could not load image';
-			} finally {
-				if (!cancelled) onFetchEnd?.();
+		void fetchGalleryImageFullForPolaroid(id, albumIsNsfw).then((m) => {
+			if (stale) return;
+			if (m) {
+				media = m;
+				onResolved?.(m);
+			} else {
+				loadError = 'Could not load image';
 			}
-		})();
+			onFetchEnd?.();
+		});
 
 		return () => {
-			cancelled = true;
-			ac.abort();
+			stale = true;
 		};
 	});
 </script>
