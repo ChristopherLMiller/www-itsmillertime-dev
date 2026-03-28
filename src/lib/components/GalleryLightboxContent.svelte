@@ -98,6 +98,73 @@
 
 	const showImageLoadingUi = $derived(!isVideo && !!resolvedImageSrc && !mainImageLoaded);
 
+	let mainImgReadyNotified = false;
+
+	function markMainImageReady() {
+		if (mainImgReadyNotified) return;
+		mainImgReadyNotified = true;
+		mainImageLoaded = true;
+		onImageLoad();
+	}
+
+	$effect(() => {
+		index;
+		resolvedImageSrc;
+		mainImgReadyNotified = false;
+	});
+
+	/**
+	 * Cached / 304 responses often leave the img complete before `load` fires (or skip it).
+	 * Poll naturalWidth + decode() so the overlay does not stick forever.
+	 */
+	function mainLightboxImage(node: HTMLImageElement) {
+		let cleared = false;
+		const timeouts: ReturnType<typeof setTimeout>[] = [];
+		let raf2 = 0;
+
+		const maybeReady = () => {
+			if (cleared || !node.isConnected) return;
+			if (node.naturalWidth > 0) {
+				markMainImageReady();
+				return;
+			}
+			if (node.complete && node.currentSrc) {
+				markMainImageReady();
+			}
+		};
+
+		const tryDecode = () => {
+			if (cleared || typeof node.decode !== 'function') return;
+			node.decode().then(maybeReady).catch(maybeReady);
+		};
+
+		queueMicrotask(maybeReady);
+		tryDecode();
+
+		const raf1 = requestAnimationFrame(() => {
+			maybeReady();
+			raf2 = requestAnimationFrame(maybeReady);
+		});
+
+		for (const ms of [0, 32, 100, 400]) {
+			timeouts.push(
+				setTimeout(() => {
+					maybeReady();
+					if (ms === 400) tryDecode();
+				}, ms)
+			);
+		}
+
+		return {
+			destroy() {
+				cleared = true;
+				cancelAnimationFrame(raf1);
+				cancelAnimationFrame(raf2);
+				for (const t of timeouts) clearTimeout(t);
+			}
+		};
+	}
+
 	// Caption (Lexical) or alt as fallback
 	const captionText = $derived(
 		image?.caption ? lexicalToPlainText(image.caption) : null
@@ -265,28 +332,25 @@
 						</div>
 					{/if}
 					{#if resolvedImageSrc}
-						<picture class="gallery-lightbox__picture">
-							<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
-							<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
-							<img
-								class="gallery-lightbox__image"
-								src={resolvedImageSrc ?? ''}
-								alt={image?.alt ?? ''}
-								width={image?.width}
-								height={image?.height}
-								fetchpriority="high"
-								decoding="async"
-								style:opacity={mainImageLoaded ? 1 : 0}
-								onload={() => {
-									mainImageLoaded = true;
-									onImageLoad();
-								}}
-								onerror={() => {
-									mainImageLoaded = true;
-									onImageLoad();
-								}}
-							/>
-						</picture>
+						{#key index}
+							<picture class="gallery-lightbox__picture">
+								<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
+								<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
+								<img
+									class="gallery-lightbox__image"
+									use:mainLightboxImage
+									src={resolvedImageSrc ?? ''}
+									alt={image?.alt ?? ''}
+									width={image?.width}
+									height={image?.height}
+									fetchpriority="high"
+									decoding="async"
+									style:opacity={mainImageLoaded ? 1 : 0}
+									onload={markMainImageReady}
+									onerror={markMainImageReady}
+								/>
+							</picture>
+						{/key}
 					{/if}
 				{/if}
 			</div>
