@@ -32,6 +32,8 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 			? {
 					select: {
 						id: true,
+						width: true,
+						height: true,
 						settings: { isNsfw: true }
 					}
 				}

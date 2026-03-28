@@ -66,6 +66,8 @@ export const load: PageServerLoad = async ({ params, fetch, request, url }) => {
 		depth: 0,
 		select: {
 			id: true,
+			width: true,
+			height: true,
 			settings: { isNsfw: true }
 		}
 	});
