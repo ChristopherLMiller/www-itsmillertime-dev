@@ -21,18 +21,8 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 				},
 				meta: {
 					description: true,
-					image: {
-						id: true,
-						url: true,
-						thumbnailURL: true,
-						alt: true,
-						blurhash: true,
-						width: true,
-						height: true,
-						sizes: {
-							thumbnail: { url: true, width: true, height: true }
-						}
-					}
+					// Cover is a gallery-images id only; Polaroid loads preview via /api/gallery-image-preview/[id]
+					image: { id: true }
 				}
 			},
 			where: {
