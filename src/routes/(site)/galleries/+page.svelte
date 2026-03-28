@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import FilmStrip from '$lib/components/FilmStrip.svelte';
 	import Paginator from '$lib/Paginator.svelte';
-	import PolaroidStack from '$lib/components/PolaroidStack.svelte';
+	import GalleryLandingPolaroidStack from '$lib/components/GalleryLandingPolaroidStack.svelte';
 	import type { Media } from '$lib/types/payload-types';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -71,9 +71,18 @@
 		await promise;
 	}
 
+	function coverGalleryImageId(gallery: (typeof filteredGalleries)[number]): number | null {
+		const img = gallery.meta?.image;
+		if (typeof img === 'number' && Number.isFinite(img)) return img;
+		if (typeof img === 'object' && img !== null && 'id' in img && typeof (img as { id: unknown }).id === 'number') {
+			return (img as { id: number }).id;
+		}
+		return null;
+	}
+
 	async function preloadAlbumImagesInBackground() {
 		const ids = filteredGalleries
-			.filter((gallery) => asMedia(gallery.meta?.image))
+			.filter((gallery) => coverGalleryImageId(gallery) != null)
 			.map((gallery) => gallery.id)
 			.filter((id) => !expandedAlbumImages[id]);
 
@@ -246,29 +255,25 @@
 
 <div class="galleries-grid">
 	{#each filteredGalleries as gallery (gallery.id)}
-		{@const metaImage = asMedia(gallery.meta?.image)}
-		{@const cover = metaImage}
-		{@const initialDisplayImages = cover ? [cover] : []}
+		{@const gid = coverGalleryImageId(gallery)}
 		{@const expanded = expandedAlbumImages[gallery.id]}
-		{@const displayImages = expanded ? expanded.images : initialDisplayImages}
-		{@const nsfwIds = expanded
-			? expanded.nsfwIds
-			: new Set<number>()}
-		{@const needsProxy = gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
-		{#if cover}
+		{@const stackExtraImages = expanded?.images.filter((m) => m.id !== gid) ?? []}
+		{@const nsfwIds = expanded ? expanded.nsfwIds : new Set<number>()}
+		{@const needsProxy =
+			gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
+		{#if gid != null}
 			<div class="gallery-link">
-				<PolaroidStack
-					primary={cover}
-					images={displayImages}
+				<GalleryLandingPolaroidStack
+					galleryImageId={gid}
+					albumId={gallery.id}
 					caption={gallery.title}
-					enableViewTransition={true}
-					hoverFlip={true}
-					albumTitle={gallery.title}
 					albumDescription={gallery.meta?.description ?? undefined}
 					useProxy={needsProxy}
 					isNsfw={gallery.settings?.isNsfw === true}
 					nsfwImageIds={nsfwIds}
-					albumId={gallery.id}
+					extraImages={stackExtraImages}
+					enableViewTransition={true}
+					hoverFlip={true}
 					onHoverExpand={fetchAlbumImagesOnHover}
 					onNavigate={() => goto(`/galleries/${gallery.slug}`)}
 				/>
