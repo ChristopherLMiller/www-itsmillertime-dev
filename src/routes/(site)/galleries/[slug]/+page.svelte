@@ -98,7 +98,7 @@
 		try {
 			const nextPage = loadedPage + 1;
 			const res = await fetch(
-				`/api/gallery-album-images/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
+				`/api/gallery/albums/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
 			);
 			if (!res.ok) throw new Error(`Failed to load page ${nextPage}`);
 

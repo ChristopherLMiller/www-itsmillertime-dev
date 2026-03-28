@@ -59,7 +59,7 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 	const { docs: tags } = tagsData;
 
 	// Initial load only includes gallery metadata and the featured (SEO meta) image.
-	// Polaroid stack images are fetched on hover via /api/gallery-album-images/[albumId].
+	// Polaroid stack images are fetched on hover via /api/gallery/albums/[albumId].
 	const galleries = rawGalleries;
 
 	return { galleries, meta, categories, tags };

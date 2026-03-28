@@ -44,7 +44,7 @@
 		if (signal?.aborted) return;
 		const promise = (async () => {
 			try {
-				const res = await fetch(`/api/gallery-album-images/${albumId}`, signal ? { signal } : undefined);
+				const res = await fetch(`/api/gallery/albums/${albumId}`, signal ? { signal } : undefined);
 				if (!res.ok) return;
 				const { docs } = await res.json();
 				const rawDocs = docs ?? [];

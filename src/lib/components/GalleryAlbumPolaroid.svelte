@@ -66,7 +66,7 @@
 
 		(async () => {
 			try {
-				const res = await fetch(`/api/gallery-image-preview/${id}?full=1`, { signal: ac.signal });
+				const res = await fetch(`/api/gallery/images/${id}?full=1`, { signal: ac.signal });
 				if (!res.ok) {
 					if (!cancelled) loadError = res.status === 404 ? 'Image unavailable' : 'Could not load image';
 					return;

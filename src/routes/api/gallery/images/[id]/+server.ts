@@ -4,11 +4,11 @@ import type { RequestHandler } from './$types';
 
 /**
  * Single gallery-image row from Payload.
- * Default: thumbnail-shaped media (galleries landing grid), same shape as album hover preview.
+ * Default: thumbnail-shaped media (galleries landing), same shape as album hover preview.
  * `?full=1`: full gallery-image document at depth 1 (nested `image` media for lightbox / grid).
  */
 export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
-	const galleryImageId = Number(params.galleryImageId);
+	const galleryImageId = Number(params.id);
 	if (!Number.isFinite(galleryImageId)) {
 		return json({ error: 'Invalid gallery image ID' }, { status: 400 });
 	}
