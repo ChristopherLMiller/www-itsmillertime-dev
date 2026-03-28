@@ -48,6 +48,8 @@
 	let isLoadingMore = $state(false);
 	let infiniteLoadError = $state<string | null>(null);
 	let loadMoreSentinel = $state<HTMLDivElement | null>(null);
+	/** Only reset infinite-scroll client state when navigating to a different album */
+	let syncedGalleryId = $state<number | null>(null);
 
 	const visibleSlots = $derived(
 		galleryImageSlots.filter((s) => !(nsfwPref === 'hide' && s.isNsfw))
@@ -155,8 +157,10 @@
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 	}
 
-	// Keep client pagination state aligned with server data across route/data updates.
+	// Seed first page from server when the album changes only. Do not clear slotMedia on
+	// arbitrary data refreshes or Masonry-driven rerenders — that was wiping resolved polaroids.
 	$effect(() => {
+		const galleryId = data.gallery.id;
 		const docs = (data.gallery.images?.docs ?? []) as {
 			id: number;
 			width?: number | null;
@@ -164,6 +168,10 @@
 			blurhash?: string | null;
 			settings?: { isNsfw?: boolean };
 		}[];
+
+		if (syncedGalleryId === galleryId) return;
+
+		syncedGalleryId = galleryId;
 		galleryImageSlots = docs.map((d) => ({
 			id: d.id,
 			width: d.width,
@@ -245,6 +253,7 @@
 						<div class="gallery-grid__tilt" style:transform="rotate({rotation}deg)">
 							<GalleryAlbumPolaroid
 								galleryImageId={slot.id}
+								cachedMedia={slotMedia[slot.id]}
 								layoutWidth={slot.width}
 								layoutHeight={slot.height}
 								layoutAspectRatio={layoutAspect}

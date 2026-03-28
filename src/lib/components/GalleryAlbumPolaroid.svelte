@@ -10,6 +10,8 @@
 
 	type GalleryAlbumPolaroidProps = {
 		galleryImageId: number;
+		/** From parent cache when Masonry remounts this cell — avoids refetch + blur flash */
+		cachedMedia?: GalleryGridMedia | null;
 		/** width/height from server for placeholder aspect before fetch */
 		layoutWidth?: number | null;
 		layoutHeight?: number | null;
@@ -27,6 +29,7 @@
 
 	const {
 		galleryImageId,
+		cachedMedia = null,
 		layoutWidth,
 		layoutHeight,
 		layoutAspectRatio = 3 / 4,
@@ -58,6 +61,15 @@
 		if (!browser) return;
 
 		const id = galleryImageId;
+		const fromParent = cachedMedia;
+
+		if (fromParent != null && fromParent.galleryImageId === id) {
+			media = fromParent;
+			loadError = null;
+			queueMicrotask(() => onFetchEnd?.());
+			return;
+		}
+
 		let cancelled = false;
 		const ac = new AbortController();
 
