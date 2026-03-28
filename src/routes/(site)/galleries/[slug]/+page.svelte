@@ -245,6 +245,8 @@
 						<div class="gallery-grid__tilt" style:transform="rotate({rotation}deg)">
 							<GalleryAlbumPolaroid
 								galleryImageId={slot.id}
+								layoutWidth={slot.width}
+								layoutHeight={slot.height}
 								layoutAspectRatio={layoutAspect}
 								initialBlurhash={slot.blurhash ?? null}
 								{albumIsNsfw}

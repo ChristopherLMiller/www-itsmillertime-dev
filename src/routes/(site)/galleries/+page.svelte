@@ -95,6 +95,16 @@
 		return typeof b === 'string' && b.length > 0 ? b : null;
 	}
 
+	function coverDimensions(gallery: (typeof filteredGalleries)[number]): {
+		width: number | null;
+		height: number | null;
+	} {
+		const img = gallery.meta?.image;
+		if (typeof img !== 'object' || img === null) return { width: null, height: null };
+		const o = img as { width?: number | null; height?: number | null };
+		return { width: o.width ?? null, height: o.height ?? null };
+	}
+
 	async function preloadAlbumImagesInBackground() {
 		const ids = filteredGalleries
 			.filter((gallery) => coverGalleryImageId(gallery) != null)
@@ -278,11 +288,14 @@
 			gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
 		{#if gid != null}
 			{@const landingTilt = ((((gallery.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
+			{@const coverDim = coverDimensions(gallery)}
 			<div class="gallery-link">
 				<div class="gallery-link__tilt" style:transform="rotate({landingTilt}deg)">
 				<GalleryLandingPolaroidStack
 					galleryImageId={gid}
 					primaryAspectRatio={coverAspectRatio(gallery)}
+					coverWidth={coverDim.width}
+					coverHeight={coverDim.height}
 					initialBlurhash={coverBlurhash(gallery)}
 					albumId={gallery.id}
 					caption={gallery.title}

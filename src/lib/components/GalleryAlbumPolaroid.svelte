@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import Polaroid from '$lib/components/Polaroid.svelte';
-	import { galleryImageDocToDisplayMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import {
+		buildPlaceholderGalleryMedia,
+		galleryImageDocToDisplayMedia,
+		type GalleryGridMedia
+	} from '$lib/utils/gallery-image-display';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 
 	type GalleryAlbumPolaroidProps = {
 		galleryImageId: number;
-		/** width/height from server for skeleton layout before fetch */
+		/** width/height from server for placeholder aspect before fetch */
+		layoutWidth?: number | null;
+		layoutHeight?: number | null;
 		layoutAspectRatio?: number;
 		/** From server; shown while full preview fetch runs */
 		initialBlurhash?: string | null;
@@ -21,6 +27,8 @@
 
 	const {
 		galleryImageId,
+		layoutWidth,
+		layoutHeight,
 		layoutAspectRatio = 3 / 4,
 		initialBlurhash = null,
 		albumIsNsfw,
@@ -33,6 +41,18 @@
 
 	let media = $state<GalleryGridMedia | null>(null);
 	let loadError = $state<string | null>(null);
+
+	const displayMedia = $derived(
+		media ??
+			buildPlaceholderGalleryMedia({
+				galleryImageId,
+				blurhash: initialBlurhash,
+				width: layoutWidth,
+				height: layoutHeight,
+				aspectRatioFallback: layoutAspectRatio,
+				isNsfw: albumIsNsfw
+			})
+	);
 
 	$effect(() => {
 		if (!browser) return;
@@ -77,36 +97,31 @@
 
 {#if loadError}
 	<div class="gallery-album-polaroid__error" role="status">{loadError}</div>
-{:else if media}
+{:else}
 	<button
 		type="button"
 		class="gallery-album-polaroid__hit"
-		onclick={() => onClick?.(media!)}
-		aria-label="View {media.alt || 'image'} in lightbox"
+		class:gallery-album-polaroid__hit--pending={!media}
+		aria-busy={!media}
+		aria-label={media ? `View ${media.alt || 'image'} in lightbox` : 'Loading image'}
+		onclick={() => {
+			if (media) onClick?.(media);
+		}}
 	>
-		<Polaroid
-			{media}
-			caption={media.caption ? (lexicalToPlainText(media.caption).trim() || undefined) : undefined}
-			interactive={false}
-			clickable={false}
-			enableViewTransition={false}
-			adaptiveHeight={true}
-			{useProxy}
-			isNsfw={media.isNsfw}
-			{priority}
-		/>
+		{#key `${displayMedia.id}-${displayMedia.url ?? ''}`}
+			<Polaroid
+				media={displayMedia}
+				caption={displayMedia.caption ? (lexicalToPlainText(displayMedia.caption).trim() || undefined) : undefined}
+				interactive={false}
+				clickable={false}
+				enableViewTransition={false}
+				adaptiveHeight={true}
+				{useProxy}
+				isNsfw={displayMedia.isNsfw}
+				{priority}
+			/>
+		{/key}
 	</button>
-{:else}
-	<div
-		class="gallery-album-polaroid__skeleton"
-		class:gallery-album-polaroid__skeleton--blurhash={!!initialBlurhash}
-		aria-hidden="true"
-		style:aspect-ratio={layoutAspectRatio}
-	>
-		{#if initialBlurhash}
-			<img src={initialBlurhash} alt="" class="gallery-album-polaroid__blurhash" />
-		{/if}
-	</div>
 {/if}
 
 <style lang="postcss">
@@ -120,30 +135,8 @@
 		text-align: left;
 	}
 
-	.gallery-album-polaroid__skeleton {
-		position: relative;
-		overflow: hidden;
-		width: 100%;
-		background: linear-gradient(90deg, #e8e4dc 0%, #f5f2eb 50%, #e8e4dc 100%);
-		background-size: 200% 100%;
-		animation: gallery-album-shimmer 1.2s ease-in-out infinite;
-		border-radius: 8px;
-		border: 2px solid var(--color-tertiary-lighter, #f0ede3);
-	}
-
-	.gallery-album-polaroid__skeleton--blurhash {
-		animation: none;
-		background: #dcd8cf;
-	}
-
-	.gallery-album-polaroid__blurhash {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		filter: blur(5px);
-		transform: scale(1.02);
+	.gallery-album-polaroid__hit--pending {
+		cursor: wait;
 		pointer-events: none;
 	}
 
@@ -155,19 +148,4 @@
 		padding: 2rem 0.5rem;
 	}
 
-	@keyframes gallery-album-shimmer {
-		0% {
-			background-position: 100% 0;
-		}
-		100% {
-			background-position: -100% 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.gallery-album-polaroid__skeleton:not(.gallery-album-polaroid__skeleton--blurhash) {
-			animation: none;
-			background: #e8e4dc;
-		}
-	}
 </style>
