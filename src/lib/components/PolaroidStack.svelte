@@ -18,6 +18,8 @@
 		albumId?: number;
 		onHoverExpand?: (albumId: number) => void | Promise<void>;
 		onNavigate?: () => void;
+		/** Primary card aspect ratio (width/height); stacked items keep 4/3 if unset */
+		primaryAspectRatio?: number;
 	};
 
 	const {
@@ -35,7 +37,8 @@
 		nsfwImageIds,
 		albumId,
 		onHoverExpand,
-		onNavigate
+		onNavigate,
+		primaryAspectRatio = 4 / 3
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -235,7 +238,7 @@
 					flipped={item.isPrimary && hoverFlip && isHovering}
 					albumTitle={item.isPrimary ? albumTitle : undefined}
 					albumDescription={item.isPrimary ? albumDescription : undefined}
-					fixedAspectRatio={4 / 3}
+					fixedAspectRatio={item.isPrimary ? primaryAspectRatio : 4 / 3}
 					{useProxy}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 					onNavigate={item.isPrimary ? onNavigate : undefined}

@@ -5,6 +5,8 @@
 
 	type GalleryLandingPolaroidStackProps = {
 		galleryImageId: number;
+		/** Primary polaroid + skeleton aspect ratio (width/height) from server */
+		primaryAspectRatio?: number;
 		albumId: number;
 		caption: string;
 		albumDescription?: string;
@@ -21,6 +23,7 @@
 
 	const {
 		galleryImageId,
+		primaryAspectRatio = 4 / 3,
 		albumId,
 		caption,
 		albumDescription,
@@ -86,6 +89,7 @@
 		primary={cover}
 		images={[cover, ...extraImages.filter((m) => m.id !== cover.id)]}
 		{caption}
+		{primaryAspectRatio}
 		{enableViewTransition}
 		{hoverFlip}
 		albumTitle={caption}
@@ -98,12 +102,15 @@
 		{onNavigate}
 	/>
 {:else}
-	<div class="gallery-landing-polaroid__skeleton" aria-hidden="true"></div>
+	<div
+		class="gallery-landing-polaroid__skeleton"
+		aria-hidden="true"
+		style:aspect-ratio={primaryAspectRatio}
+	></div>
 {/if}
 
 <style lang="postcss">
 	.gallery-landing-polaroid__skeleton {
-		aspect-ratio: 4 / 3;
 		width: 100%;
 		max-width: min(18rem, 90vw);
 		margin: 0 auto;

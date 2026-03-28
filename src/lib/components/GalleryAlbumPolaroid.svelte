@@ -6,6 +6,8 @@
 
 	type GalleryAlbumPolaroidProps = {
 		galleryImageId: number;
+		/** width/height from server for skeleton layout before fetch */
+		layoutAspectRatio?: number;
 		albumIsNsfw: boolean;
 		useProxy: boolean;
 		priority?: boolean;
@@ -17,6 +19,7 @@
 
 	const {
 		galleryImageId,
+		layoutAspectRatio = 3 / 4,
 		albumIsNsfw,
 		useProxy,
 		priority = false,
@@ -91,7 +94,11 @@
 		/>
 	</button>
 {:else}
-	<div class="gallery-album-polaroid__skeleton" aria-hidden="true"></div>
+	<div
+		class="gallery-album-polaroid__skeleton"
+		aria-hidden="true"
+		style:aspect-ratio={layoutAspectRatio}
+	></div>
 {/if}
 
 <style lang="postcss">
@@ -106,7 +113,6 @@
 	}
 
 	.gallery-album-polaroid__skeleton {
-		aspect-ratio: 3 / 4;
 		width: 100%;
 		background: linear-gradient(90deg, #e8e4dc 0%, #f5f2eb 50%, #e8e4dc 100%);
 		background-size: 200% 100%;

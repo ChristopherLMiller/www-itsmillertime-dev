@@ -9,6 +9,7 @@
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
 	import type { GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 
 	const IMAGE_BATCH_SIZE = 30;
@@ -25,7 +26,7 @@
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
 
-	type ImageSlot = { id: number; isNsfw: boolean };
+	type ImageSlot = { id: number; isNsfw: boolean; width?: number | null; height?: number | null };
 
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
@@ -97,10 +98,14 @@
 
 			const payload = await res.json();
 			const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
-			const newSlots: ImageSlot[] = nextDocs.map((d: { id: number; settings?: { isNsfw?: boolean } }) => ({
-				id: d.id,
-				isNsfw: d.settings?.isNsfw === true || albumIsNsfw
-			}));
+			const newSlots: ImageSlot[] = nextDocs.map(
+				(d: { id: number; width?: number | null; height?: number | null; settings?: { isNsfw?: boolean } }) => ({
+					id: d.id,
+					width: d.width,
+					height: d.height,
+					isNsfw: d.settings?.isNsfw === true || albumIsNsfw
+				})
+			);
 			galleryImageSlots = [...galleryImageSlots, ...newSlots];
 			loadedPage = Number(payload?.page ?? nextPage);
 			hasNextPage = Boolean(payload?.hasNextPage);
@@ -139,9 +144,16 @@
 
 	// Keep client pagination state aligned with server data across route/data updates.
 	$effect(() => {
-		const docs = (data.gallery.images?.docs ?? []) as { id: number; settings?: { isNsfw?: boolean } }[];
+		const docs = (data.gallery.images?.docs ?? []) as {
+			id: number;
+			width?: number | null;
+			height?: number | null;
+			settings?: { isNsfw?: boolean };
+		}[];
 		galleryImageSlots = docs.map((d) => ({
 			id: d.id,
+			width: d.width,
+			height: d.height,
 			isNsfw: d.settings?.isNsfw === true || albumIsNsfw
 		}));
 		loadedPage = data.gallery.images?.page ?? 1;
@@ -213,16 +225,20 @@
 				{#snippet children({ item: slot })}
 					{@const idx = visibleSlots.findIndex((s) => s.id === slot.id)}
 					{@const rotation = ((((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
-					<div class="gallery-grid__item" style:--rotation="{rotation}deg">
-						<GalleryAlbumPolaroid
-							galleryImageId={slot.id}
-							{albumIsNsfw}
-							{useProxy}
-							priority={idx >= 0 && idx < 6}
-							onResolved={(m) => handlePolaroidResolved(slot.id, m)}
-							onFetchEnd={() => markSlotFetchDone(slot.id)}
-							onClick={openLightboxForItem}
-						/>
+					{@const layoutAspect = cssAspectRatioFromDimensions(slot.width ?? undefined, slot.height ?? undefined, 3 / 4)}
+					<div class="gallery-grid__item">
+						<div class="gallery-grid__tilt" style:transform="rotate({rotation}deg)">
+							<GalleryAlbumPolaroid
+								galleryImageId={slot.id}
+								layoutAspectRatio={layoutAspect}
+								{albumIsNsfw}
+								{useProxy}
+								priority={idx >= 0 && idx < 6}
+								onResolved={(m) => handlePolaroidResolved(slot.id, m)}
+								onFetchEnd={() => markSlotFetchDone(slot.id)}
+								onClick={openLightboxForItem}
+							/>
+						</div>
 					</div>
 				{/snippet}
 			</Masonry>
@@ -312,22 +328,29 @@
 		background: transparent;
 		border: none;
 		padding: 0;
-		cursor: pointer;
-		transition: transform 250ms ease;
+	}
+
+	.gallery-grid__tilt {
+		width: 100%;
+		transform-origin: center;
+		transition: transform 250ms ease, box-shadow 250ms ease;
+	}
+
+	.gallery-grid__item:hover .gallery-grid__tilt,
+	.gallery-grid__item:focus-within .gallery-grid__tilt {
+		transform: rotate(0deg) scale(1.15) !important;
+		z-index: 10;
 	}
 
 	.gallery-grid__item :global(.polaroid) {
 		width: 100%;
-		transform: rotate(var(--rotation, 0deg));
 		cursor: pointer;
-		transition: transform 250ms ease, box-shadow 250ms ease;
+		transition: box-shadow 250ms ease;
 	}
 
 	.gallery-grid__item:hover :global(.polaroid),
-	.gallery-grid__item:focus-visible :global(.polaroid) {
-		transform: rotate(0deg) scale(1.15);
+	.gallery-grid__item:focus-within :global(.polaroid) {
 		box-shadow: 0 1.5rem 3rem -0.5rem rgba(0, 0, 0, 0.45), 0 0.75rem 1.5rem -0.25rem rgba(0, 0, 0, 0.3);
-		z-index: 10;
 	}
 
 	.gallery-grid__item:focus-visible {

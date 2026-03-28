@@ -5,6 +5,7 @@
 	import FilmStrip from '$lib/components/FilmStrip.svelte';
 	import Paginator from '$lib/Paginator.svelte';
 	import GalleryLandingPolaroidStack from '$lib/components/GalleryLandingPolaroidStack.svelte';
+	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { Media } from '$lib/types/payload-types';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -78,6 +79,13 @@
 			return (img as { id: number }).id;
 		}
 		return null;
+	}
+
+	function coverAspectRatio(gallery: (typeof filteredGalleries)[number]): number {
+		const img = gallery.meta?.image;
+		const w = typeof img === 'object' && img !== null && 'width' in img ? (img as { width?: number | null }).width : null;
+		const h = typeof img === 'object' && img !== null && 'height' in img ? (img as { height?: number | null }).height : null;
+		return cssAspectRatioFromDimensions(w ?? undefined, h ?? undefined, 4 / 3);
 	}
 
 	async function preloadAlbumImagesInBackground() {
@@ -262,9 +270,12 @@
 		{@const needsProxy =
 			gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
 		{#if gid != null}
+			{@const landingTilt = ((((gallery.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
 			<div class="gallery-link">
+				<div class="gallery-link__tilt" style:transform="rotate({landingTilt}deg)">
 				<GalleryLandingPolaroidStack
 					galleryImageId={gid}
+					primaryAspectRatio={coverAspectRatio(gallery)}
 					albumId={gallery.id}
 					caption={gallery.title}
 					albumDescription={gallery.meta?.description ?? undefined}
@@ -277,6 +288,7 @@
 					onHoverExpand={fetchAlbumImagesOnHover}
 					onNavigate={() => goto(`/galleries/${gallery.slug}`)}
 				/>
+				</div>
 			</div>
 		{/if}
 	{/each}
@@ -413,6 +425,17 @@
 		text-decoration: none;
 		color: inherit;
 		width: 100%;
+	}
+
+	.gallery-link__tilt {
+		width: 100%;
+		transform-origin: center;
+		transition: transform 250ms ease;
+	}
+
+	.gallery-link:hover .gallery-link__tilt,
+	.gallery-link:focus-within .gallery-link__tilt {
+		transform: rotate(0deg) scale(1.03);
 	}
 
 	.gallery-link :global(.polaroid-stack) {
