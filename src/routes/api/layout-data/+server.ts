@@ -4,7 +4,8 @@ import type { SiteMeta, SiteNavigation } from '$lib/types/payload-types';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const CACHE_KEY = 'layout:data';
+const NAV_CACHE_KEY = 'layout:nav';
+const META_CACHE_KEY = 'layout:meta';
 const STALE_THRESHOLD_S = 300; // 5 minutes
 
 export interface LayoutApiResponse {
@@ -12,13 +13,10 @@ export interface LayoutApiResponse {
 	siteMeta: SiteMeta;
 }
 
-async function fetchFromCMS(fetchFn: typeof globalThis.fetch): Promise<LayoutApiResponse> {
+async function fetchNavigationFromCMS(fetchFn: typeof globalThis.fetch): Promise<SiteNavigation> {
 	const sdk = getPayloadSDK(fetchFn);
 
-	const [nav, siteMeta] = await Promise.all([
-		sdk.findGlobal({ slug: 'site-navigation', depth: 1, draft: true }),
-		sdk.findGlobal({ slug: 'site-meta', depth: 1 })
-	]);
+	const nav = await sdk.findGlobal({ slug: 'site-navigation', depth: 1, draft: true });
 
 	const navItems = nav.navItems
 		? [...nav.navItems]
@@ -33,34 +31,98 @@ async function fetchFromCMS(fetchFn: typeof globalThis.fetch): Promise<LayoutApi
 
 	const navigation: SiteNavigation = { ...nav, navItems };
 
-	return { navigation, siteMeta };
+	return navigation;
 }
 
-async function refreshInBackground(fetchFn: typeof globalThis.fetch): Promise<void> {
+async function fetchSiteMetaFromCMS(fetchFn: typeof globalThis.fetch): Promise<SiteMeta> {
+	const sdk = getPayloadSDK(fetchFn);
+	return sdk.findGlobal({ slug: 'site-meta', depth: 1 });
+}
+
+async function refreshNavigationInBackground(fetchFn: typeof globalThis.fetch): Promise<void> {
 	try {
-		const data = await fetchFromCMS(fetchFn);
-		await cacheManager.set(cacheManager.createKey(CACHE_KEY), data);
+		const navigation = await fetchNavigationFromCMS(fetchFn);
+		await cacheManager.set(cacheManager.createKey(NAV_CACHE_KEY), navigation);
 	} catch (err) {
-		console.error('[layout-data] Background refresh failed:', err);
+		console.error('[layout-data] Navigation background refresh failed:', err);
+	}
+}
+
+async function refreshSiteMetaInBackground(fetchFn: typeof globalThis.fetch): Promise<void> {
+	try {
+		const siteMeta = await fetchSiteMetaFromCMS(fetchFn);
+		await cacheManager.set(cacheManager.createKey(META_CACHE_KEY), siteMeta);
+	} catch (err) {
+		console.error('[layout-data] Site meta background refresh failed:', err);
 	}
 }
 
 export const GET: RequestHandler = async ({ fetch }) => {
-	const cacheKey = cacheManager.createKey(CACHE_KEY);
+	const navCacheKey = cacheManager.createKey(NAV_CACHE_KEY);
+	const metaCacheKey = cacheManager.createKey(META_CACHE_KEY);
 
-	const cached = await cacheManager.get(cacheKey);
-	if (cached) {
-		const isStale = await cacheManager.isCacheStale(cacheKey, STALE_THRESHOLD_S);
-		if (isStale) {
-			// Serve immediately, refresh in background
-			refreshInBackground(fetch).catch(() => {});
+	const [cachedNavigation, cachedSiteMeta] = await Promise.all([
+		cacheManager.get(navCacheKey),
+		cacheManager.get(metaCacheKey)
+	]);
+
+	if (cachedNavigation && cachedSiteMeta) {
+		const [isNavStale, isMetaStale] = await Promise.all([
+			cacheManager.isCacheStale(navCacheKey, STALE_THRESHOLD_S),
+			cacheManager.isCacheStale(metaCacheKey, STALE_THRESHOLD_S)
+		]);
+
+		if (isNavStale) {
+			// Serve immediately, refresh navigation in background
+			refreshNavigationInBackground(fetch).catch(() => {});
 		}
-		return json(cached as LayoutApiResponse, { headers: { 'X-Cache': 'HIT' } });
+
+		if (isMetaStale) {
+			// Serve immediately, refresh site meta in background
+			refreshSiteMetaInBackground(fetch).catch(() => {});
+		}
+
+		return json(
+			{
+				navigation: cachedNavigation as SiteNavigation,
+				siteMeta: cachedSiteMeta as SiteMeta
+			},
+			{ headers: { 'X-Cache': 'HIT' } }
+		);
 	}
 
-	// Cache miss – fetch fresh
-	const data = await fetchFromCMS(fetch);
-	await cacheManager.set(cacheKey, data);
+	if (cachedNavigation) {
+		const isNavStale = await cacheManager.isCacheStale(navCacheKey, STALE_THRESHOLD_S);
+		if (isNavStale) {
+			refreshNavigationInBackground(fetch).catch(() => {});
+		}
+	}
 
-	return json(data, { headers: { 'X-Cache': 'MISS' } });
+	if (cachedSiteMeta) {
+		const isMetaStale = await cacheManager.isCacheStale(metaCacheKey, STALE_THRESHOLD_S);
+		if (isMetaStale) {
+			refreshSiteMetaInBackground(fetch).catch(() => {});
+		}
+	}
+
+	// Partial/full cache miss – fetch only missing pieces fresh
+	const [navigation, siteMeta] = await Promise.all([
+		cachedNavigation
+			? Promise.resolve(cachedNavigation as SiteNavigation)
+			: fetchNavigationFromCMS(fetch),
+		cachedSiteMeta ? Promise.resolve(cachedSiteMeta as SiteMeta) : fetchSiteMetaFromCMS(fetch)
+	]);
+
+	const writes: Promise<void>[] = [];
+	if (!cachedNavigation) {
+		writes.push(cacheManager.set(navCacheKey, navigation));
+	}
+	if (!cachedSiteMeta) {
+		writes.push(cacheManager.set(metaCacheKey, siteMeta));
+	}
+	if (writes.length > 0) {
+		await Promise.all(writes);
+	}
+
+	return json({ navigation, siteMeta }, { headers: { 'X-Cache': 'MISS' } });
 };
