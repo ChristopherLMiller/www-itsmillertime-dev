@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ params, fetch, request }) => {
 		return json({ error: 'Invalid album ID' }, { status: 400 });
 	}
 
-	const sdk = getPayloadSDK(fetch, request);
+	const sdk = getPayloadSDK(fetch, request, { cacheGallerySwr: { enabled: true } });
 
 	const imagesResult = await sdk.find({
 		collection: 'gallery-images',

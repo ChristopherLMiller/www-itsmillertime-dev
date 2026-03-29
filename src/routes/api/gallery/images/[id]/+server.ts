@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 	}
 	const wantFull = raw === 'full';
 
-	const sdk = getPayloadSDK(fetch, request);
+	const sdk = getPayloadSDK(fetch, request, { cacheGallerySwr: { enabled: true } });
 
 	const result = await sdk.find({
 		collection: 'gallery-images',

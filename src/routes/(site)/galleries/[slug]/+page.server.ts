@@ -6,7 +6,7 @@ const IMAGE_BATCH_SIZE = 30;
 
 export const load: PageServerLoad = async ({ params, fetch, request, url }) => {
 	const { slug } = params;
-	const sdk = getPayloadSDK(fetch, request);
+	const sdk = getPayloadSDK(fetch, request, { cacheGallerySwr: { enabled: true } });
 
 	const galleriesData = await sdk.find({
 		collection: 'gallery-albums',
