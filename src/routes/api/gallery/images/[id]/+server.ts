@@ -1,8 +1,4 @@
 import { getPayloadSDK } from '$lib/payload.server';
-import {
-	galleryImageSelectBasic,
-	galleryImageSelectFull
-} from '$lib/payload/gallery-image-select';
 import { payloadSwrInit } from '$lib/payloadSwr';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { json } from '@sveltejs/kit';
@@ -29,13 +25,14 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 
 	let doc: GalleryImage | null;
 	try {
+		// Do not use Payload `select` on gallery-images (upload): it returns broken `sizes.*.url`
+		// (see docs/gallery-album-page-unused-fields.md). Full document keeps correct URLs.
 		doc = await sdk.findByID(
 			{
 				collection: 'gallery-images',
 				id: galleryImageId,
 				depth: wantFull ? 1 : 0,
-				disableErrors: true,
-				select: wantFull ? galleryImageSelectFull : galleryImageSelectBasic
+				disableErrors: true
 			},
 			payloadSwrInit()
 		);
