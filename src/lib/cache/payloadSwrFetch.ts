@@ -17,6 +17,12 @@ function upstashConfigured(): boolean {
 	return Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
 }
 
+function swrDebug(msg: string, extra?: unknown): void {
+	if (env.PAYLOAD_SWR_DEBUG !== '1' && env.PAYLOAD_SWR_DEBUG !== 'true') return;
+	if (extra !== undefined) console.log('[payload SWR]', msg, extra);
+	else console.log('[payload SWR]', msg);
+}
+
 /**
  * Path + search after Payload baseURL, e.g. /gallery-albums/5 or /gallery-images?where=...
  */
@@ -32,6 +38,15 @@ function pathAndSearchFromPayloadUrl(fullUrl: string, baseURL: string): { pathna
 
 function parseWhereIdEquals(search: string): string | null {
 	const q = search.startsWith('?') ? search.slice(1) : search;
+	// Bracket keys survive URLSearchParams in Node 18+, but match raw query as fallback
+	const bracket = /(?:^|&)where\[id\]\[equals\]=([^&]+)/.exec(q);
+	if (bracket?.[1]) {
+		try {
+			return decodeURIComponent(bracket[1].replace(/\+/g, ' '));
+		} catch {
+			return bracket[1];
+		}
+	}
 	const params = new URLSearchParams(q);
 	const direct = params.get('where[id][equals]');
 	if (direct != null && direct !== '') return direct;
@@ -164,7 +179,11 @@ export function wrapFetchWithPayloadSwr(
 
 	return async (input: RequestInfo | URL, init?: RequestInit) => {
 		const method = (init?.method ?? 'GET').toUpperCase();
-		if (method !== 'GET' || !options.enabled || !upstashConfigured()) {
+		if (method !== 'GET' || !options.enabled) {
+			return innerFetch(input, init);
+		}
+		if (!upstashConfigured()) {
+			swrDebug('skip: UPSTASH_REDIS_REST_URL / TOKEN not set (server private env only)');
 			return innerFetch(input, init);
 		}
 
@@ -177,6 +196,7 @@ export function wrapFetchWithPayloadSwr(
 
 		const redisKey = redisKeyForPayloadGet(urlStr, baseURL);
 		if (!redisKey) {
+			swrDebug('no cache key for URL (not a matched gallery document GET)', urlStr.slice(0, 200));
 			return innerFetch(input, init);
 		}
 
@@ -184,6 +204,7 @@ export function wrapFetchWithPayloadSwr(
 		const unwrapped = unwrapCache(rawCached, staleSeconds);
 		if (unwrapped != null) {
 			const stale = unwrapped.ageSeconds >= staleSeconds;
+			swrDebug(stale ? 'STALE serve + revalidate' : 'HIT', redisKey);
 			if (stale) {
 				void refreshInBackground(redisKey, urlStr, init, innerFetch, ttlSeconds);
 			}
@@ -201,6 +222,7 @@ export function wrapFetchWithPayloadSwr(
 		try {
 			const body = JSON.parse(text) as unknown;
 			await cacheManager.set(redisKey, wrapForCache(body), ttlSeconds);
+			swrDebug('MISS → SET', redisKey);
 		} catch {
 			/* not JSON */
 		}
