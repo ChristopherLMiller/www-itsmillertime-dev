@@ -5,32 +5,6 @@
 import { cacheManager } from '$lib/cache/cache';
 import type { PayloadSwrKeyContext, PayloadSwrKeyResolver } from '$lib/cache/payloadSwrCore';
 
-function parseWhereIdEquals(search: string): string | null {
-	const q = search.startsWith('?') ? search.slice(1) : search;
-	const bracket = /(?:^|&)where\[id\]\[equals\]=([^&]+)/.exec(q);
-	if (bracket?.[1]) {
-		try {
-			return decodeURIComponent(bracket[1].replace(/\+/g, ' '));
-		} catch {
-			return bracket[1];
-		}
-	}
-	const params = new URLSearchParams(q);
-	const direct = params.get('where[id][equals]');
-	if (direct != null && direct !== '') return direct;
-	const whereRaw = params.get('where');
-	if (whereRaw) {
-		try {
-			const w = JSON.parse(whereRaw) as { id?: { equals?: number | string } };
-			const eq = w?.id?.equals;
-			if (eq != null && String(eq) !== '') return String(eq);
-		} catch {
-			/* ignore */
-		}
-	}
-	return null;
-}
-
 function parseWhereSlugEquals(search: string): string | null {
 	const q = search.startsWith('?') ? search.slice(1) : search;
 	const bracket = /(?:^|&)where\[slug\]\[equals\]=([^&]+)/.exec(q);
@@ -59,17 +33,6 @@ function sortedQueryRecord(search: string): Record<string, string> | null {
 	return out;
 }
 
-function galleryImageFindSingleId(search: string): Record<string, string> | null {
-	const q = search.startsWith('?') ? search.slice(1) : search;
-	const params = new URLSearchParams(q);
-	const id = parseWhereIdEquals(`?${q}`);
-	if (id == null) return null;
-	if (params.get('limit') !== '1') return null;
-	const page = params.get('page');
-	if (page != null && page !== '1') return null;
-	return sortedQueryRecord(search);
-}
-
 function galleryAlbumBySlugFind(search: string): Record<string, string> | null {
 	const q = search.startsWith('?') ? search.slice(1) : search;
 	const params = new URLSearchParams(q);
@@ -79,12 +42,6 @@ function galleryAlbumBySlugFind(search: string): Record<string, string> | null {
 	const page = params.get('page');
 	if (page != null && page !== '1') return null;
 	return sortedQueryRecord(search);
-}
-
-function qsFromSearch(search: string): Record<string, string> | undefined {
-	if (!search.startsWith('?') || search.length <= 1) return undefined;
-	const o = sortedQueryRecord(search);
-	return o && Object.keys(o).length > 0 ? o : undefined;
 }
 
 const galleryAlbumByIdPath: PayloadSwrKeyResolver = ({ pathname }) => {
@@ -102,22 +59,20 @@ const galleryAlbumBySlugList: PayloadSwrKeyResolver = ({ pathname, search }) => 
 	return cacheManager.createKey(`gallery-album/slug/${encodeURIComponent(slug)}`, qp);
 };
 
+/**
+ * GET /gallery-images/:id (findByID). Cache key is id-only except depth=1 vs 0
+ * (different populated shape).
+ */
 const galleryImageByIdPath: PayloadSwrKeyResolver = ({ pathname, search }) => {
 	const m = pathname.match(/^\/gallery-images\/([^/?#]+)\/?$/);
 	if (!m) return null;
-	const q = qsFromSearch(search);
-	return q
-		? cacheManager.createKey(`gallery-image/${m[1]}`, q)
-		: cacheManager.createKey(`gallery-image/${m[1]}`);
-};
-
-const galleryImageFindSingle: PayloadSwrKeyResolver = ({ pathname, search }) => {
-	if (pathname !== '/gallery-images' && pathname !== '/gallery-images/') return null;
-	const qp = galleryImageFindSingleId(search);
-	if (!qp) return null;
-	const id = parseWhereIdEquals(search);
-	if (id == null) return null;
-	return cacheManager.createKey(`gallery-image/${id}`, qp);
+	const id = m[1];
+	const q = search.startsWith('?') ? search.slice(1) : search;
+	const depth = new URLSearchParams(q).get('depth');
+	if (depth === '1') {
+		return cacheManager.createKey(`gallery-image/${id}`, { depth: '1' });
+	}
+	return cacheManager.createKey(`gallery-image/${id}`);
 };
 
 /**
@@ -127,6 +82,5 @@ const galleryImageFindSingle: PayloadSwrKeyResolver = ({ pathname, search }) => 
 export const payloadSwrKeyResolvers: PayloadSwrKeyResolver[] = [
 	galleryAlbumByIdPath,
 	galleryAlbumBySlugList,
-	galleryImageByIdPath,
-	galleryImageFindSingle
+	galleryImageByIdPath
 ];

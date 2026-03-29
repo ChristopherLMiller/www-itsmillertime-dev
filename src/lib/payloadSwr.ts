@@ -15,7 +15,7 @@ export type PayloadSwrInitOptions = {
 };
 
 /**
- * @example sdk.find({ collection: 'gallery-images', where: {...}, limit: 1 }, payloadSwrInit())
+ * @example sdk.findByID({ collection: 'gallery-images', id: 1, depth: 1 }, payloadSwrInit())
  * @example sdk.find({ ... }, payloadSwrInit({ staleSeconds: 120 }))
  */
 export function payloadSwrInit(options?: PayloadSwrInitOptions): RequestInit {

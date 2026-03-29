@@ -1,5 +1,6 @@
 import { getPayloadSDK } from '$lib/payload.server';
 import { payloadSwrInit } from '$lib/payloadSwr';
+import type { GalleryImage } from '$lib/types/payload-types';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -22,18 +23,21 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 
 	const sdk = getPayloadSDK(fetch, request);
 
-	const result = await sdk.find(
-		{
-			collection: 'gallery-images',
-			where: { id: { equals: galleryImageId } },
-			limit: 1,
-			page: 1,
-			depth: wantFull ? 1 : 0
-		},
-		payloadSwrInit()
-	);
+	let doc: GalleryImage | null;
+	try {
+		doc = await sdk.findByID(
+			{
+				collection: 'gallery-images',
+				id: galleryImageId,
+				depth: wantFull ? 1 : 0,
+				disableErrors: true
+			},
+			payloadSwrInit()
+		);
+	} catch {
+		return json({ error: 'Not found' }, { status: 404 });
+	}
 
-	const doc = result.docs?.[0];
 	if (!doc) {
 		return json({ error: 'Not found' }, { status: 404 });
 	}
