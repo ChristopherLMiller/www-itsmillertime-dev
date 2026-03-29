@@ -22,6 +22,8 @@
 		/** Called after the preview request finishes (success or failure). */
 		onFetchEnd?: () => void;
 		onClick?: (media: GalleryGridMedia) => void;
+		/** Tighter HTML `sizes` for grid srcset selection */
+		responsiveSizes?: string;
 	};
 
 	const {
@@ -36,7 +38,8 @@
 		priority = false,
 		onResolved,
 		onFetchEnd,
-		onClick
+		onClick,
+		responsiveSizes = '(max-width: 900px) 100vw, min(500px, 45vw)'
 	}: GalleryAlbumPolaroidProps = $props();
 
 	let media = $state<GalleryGridMedia | null>(null);
@@ -114,6 +117,7 @@
 				{useProxy}
 				isNsfw={displayMedia.isNsfw}
 				{priority}
+				responsiveSizes={responsiveSizes}
 			/>
 		{/key}
 	</button>

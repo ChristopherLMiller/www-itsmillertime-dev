@@ -24,6 +24,8 @@
 		/** Secondary stack images (filled after album hover fetch) */
 		extraImages: Media[];
 		nsfwImageIds: Set<number>;
+		/** Tighter `sizes` than Image default so srcset picks smaller files in the grid */
+		polaroidResponsiveSizes?: string;
 	};
 
 	const {
@@ -42,7 +44,8 @@
 		onHoverExpand,
 		onNavigate,
 		extraImages,
-		nsfwImageIds
+		nsfwImageIds,
+		polaroidResponsiveSizes = '(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 18rem'
 	}: GalleryLandingPolaroidStackProps = $props();
 
 	let primary = $state<Media | null>(null);
@@ -121,6 +124,7 @@
 		{albumId}
 		{onHoverExpand}
 		{onNavigate}
+		{polaroidResponsiveSizes}
 	/>
 	{/key}
 {/if}

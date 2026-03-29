@@ -25,6 +25,8 @@
 		onNavigate?: () => void;
 		/** When true, image loads eagerly (for above-the-fold) */
 		priority?: boolean;
+		/** HTML sizes for srcset selection (smaller hints = less download in grids) */
+		responsiveSizes?: string;
 	};
 
 	const {
@@ -43,7 +45,8 @@
 		fixedAspectRatio,
 		flipped,
 		onNavigate,
-		priority = false
+		priority = false,
+		responsiveSizes
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? '');
@@ -115,6 +118,7 @@
 							{useProxy}
 							{isNsfw}
 							{priority}
+							sizes={responsiveSizes}
 						/>
 					{/if}
 					<div class="polaroid__caption"><p>{displayCaption}</p></div>
@@ -162,6 +166,7 @@
 							{useProxy}
 							{isNsfw}
 							{priority}
+							sizes={responsiveSizes}
 						/>
 					{/if}
 					<div class="polaroid__caption"><p>{displayCaption}</p></div>

@@ -20,6 +20,8 @@
 		onNavigate?: () => void;
 		/** Primary card aspect ratio (width/height); stacked items keep 4/3 if unset */
 		primaryAspectRatio?: number;
+		/** Passed to Polaroid → Image `sizes` for lighter grid downloads */
+		polaroidResponsiveSizes?: string;
 	};
 
 	const {
@@ -38,7 +40,8 @@
 		albumId,
 		onHoverExpand,
 		onNavigate,
-		primaryAspectRatio = 4 / 3
+		primaryAspectRatio = 4 / 3,
+		polaroidResponsiveSizes
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -239,6 +242,7 @@
 					albumTitle={item.isPrimary ? albumTitle : undefined}
 					albumDescription={item.isPrimary ? albumDescription : undefined}
 					fixedAspectRatio={item.isPrimary ? primaryAspectRatio : 4 / 3}
+					responsiveSizes={polaroidResponsiveSizes}
 					{useProxy}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 					onNavigate={item.isPrimary ? onNavigate : undefined}

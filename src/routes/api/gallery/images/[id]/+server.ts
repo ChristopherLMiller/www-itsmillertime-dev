@@ -1,4 +1,8 @@
 import { getPayloadSDK } from '$lib/payload.server';
+import {
+	galleryImageSelectBasic,
+	galleryImageSelectFull
+} from '$lib/payload/gallery-image-select';
 import { payloadSwrInit } from '$lib/payloadSwr';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { json } from '@sveltejs/kit';
@@ -30,7 +34,8 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 				collection: 'gallery-images',
 				id: galleryImageId,
 				depth: wantFull ? 1 : 0,
-				disableErrors: true
+				disableErrors: true,
+				select: wantFull ? galleryImageSelectFull : galleryImageSelectBasic
 			},
 			payloadSwrInit()
 		);
