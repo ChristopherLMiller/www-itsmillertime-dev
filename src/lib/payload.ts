@@ -1,6 +1,5 @@
 import { dev } from '$app/environment';
 import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_API_ENDPOINT_DEV } from '$env/static/public';
-import { wrapFetchWithPayloadSwr } from '$lib/cache/payloadSwrFetch';
 import { PayloadSDK } from '@payloadcms/sdk';
 import type { Config } from '$lib/types/payload-types';
 
@@ -54,14 +53,22 @@ function createFetchWithDevFallback(
 	};
 }
 
-export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request) {
+const baseInit = { credentials: 'include' as RequestCredentials };
+
+/**
+ * Cookie + dev-fallback chain only (no SWR). Safe to import from client bundles.
+ * Server code that needs Upstash SWR should use `getPayloadSDK` from `$lib/payload.server`.
+ */
+export function createPayloadInnerFetch(
+	fetch?: typeof globalThis.fetch,
+	request?: Request
+): { innerFetch: typeof fetch; baseURL: string } {
 	const baseFetcher =
 		request && fetch ? createPayloadFetch(fetch, request) : (fetch ?? globalThis.fetch);
 
-	const baseInit = { credentials: 'include' as RequestCredentials };
 	const baseURL = dev ? PUBLIC_PAYLOAD_API_ENDPOINT_DEV : PUBLIC_PAYLOAD_API_ENDPOINT;
 
-	let fetcher: typeof fetch =
+	const innerFetch =
 		dev && PUBLIC_PAYLOAD_API_ENDPOINT_DEV !== PUBLIC_PAYLOAD_API_ENDPOINT
 			? createFetchWithDevFallback(
 					baseFetcher,
@@ -70,12 +77,17 @@ export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request
 				)
 			: baseFetcher;
 
-	fetcher = wrapFetchWithPayloadSwr(fetcher, baseURL, {});
+	return { innerFetch, baseURL };
+}
+
+/** Universal / client-safe Payload SDK (no server private env, no SWR). */
+export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request) {
+	const { innerFetch, baseURL } = createPayloadInnerFetch(fetch, request);
 
 	if (request) {
 		return new PayloadSDK<Config>({
 			baseURL,
-			fetch: fetcher,
+			fetch: innerFetch,
 			baseInit
 		});
 	}
@@ -83,11 +95,13 @@ export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request
 	if (!sdk) {
 		sdk = new PayloadSDK<Config>({
 			baseURL,
-			fetch: fetcher,
+			fetch: innerFetch,
 			baseInit
 		});
 	}
 	return sdk;
 }
+
+export { baseInit as payloadSdkBaseInit };
 
 export const payloadSDK = () => getPayloadSDK();

@@ -1,4 +1,4 @@
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

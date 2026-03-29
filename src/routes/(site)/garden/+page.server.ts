@@ -1,4 +1,4 @@
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, request }) => {

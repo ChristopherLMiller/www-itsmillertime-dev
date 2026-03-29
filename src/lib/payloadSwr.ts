@@ -2,7 +2,8 @@
  * Per-request opt-in for Payload SWR (Upstash). Pass as the third argument to
  * `sdk.find`, `sdk.findByID`, etc.: `sdk.find({ ... }, payloadSwrInit())`.
  *
- * Only requests that include this header are eligible for caching (see payloadSwrFetch).
+ * Only applies when using `getPayloadSDK` from `$lib/payload.server` (SWR wrapper).
+ * Add cache key rules in `payloadSwrRules.server.ts`.
  */
 export const PAYLOAD_SWR_HEADER = 'x-payload-swr';
 

@@ -1,5 +1,5 @@
 import { PUBLIC_URL } from '$env/static/public';
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import type { RequestHandler } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async function GET({ fetch, setHeaders }) {
