@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 	const limit = Math.min(MAX_IMAGE_BATCH_SIZE, Math.max(1, requestedLimit || DEFAULT_IMAGE_BATCH_SIZE));
 	const idsOnly = url.searchParams.get('idsOnly') === '1';
 
-	const sdk = getPayloadSDK(fetch, request, { cacheGallerySwr: { enabled: true } });
+	const sdk = getPayloadSDK(fetch, request);
 
 	const imagesResult = await sdk.find({
 		collection: 'gallery-images',

@@ -2,7 +2,7 @@ import { getPayloadSDK } from '$lib/payload';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, request, url }) => {
-	const sdk = getPayloadSDK(fetch, request, { cacheGallerySwr: { enabled: true } });
+	const sdk = getPayloadSDK(fetch, request);
 
 	const [galleriesData, categoriesData, tagsData] = await Promise.all([
 		sdk.find({

@@ -1,12 +1,11 @@
 import { cacheManager } from '$lib/cache/cache';
 import { env } from '$env/dynamic/private';
+import { PAYLOAD_SWR_HEADER } from '$lib/payloadSwr';
 
 export type PayloadSwrCacheOptions = {
-	/** When true, eligible Payload GETs use Upstash stale-while-revalidate caching */
-	enabled?: boolean;
-	/** Serve cached value while older than this (seconds); triggers background refresh */
+	/** Default stale threshold when header is `1` / `true` (seconds) */
 	staleSeconds?: number;
-	/** Redis TTL for stored JSON (seconds) */
+	/** Default Redis TTL when header is `1` / `true` (seconds) */
 	softTtlSeconds?: number;
 };
 
@@ -21,6 +20,70 @@ function swrDebug(msg: string, extra?: unknown): void {
 	if (env.PAYLOAD_SWR_DEBUG !== '1' && env.PAYLOAD_SWR_DEBUG !== 'true') return;
 	if (extra !== undefined) console.log('[payload SWR]', msg, extra);
 	else console.log('[payload SWR]', msg);
+}
+
+function getHeader(init: RequestInit | undefined, name: string): string | null {
+	if (!init?.headers) return null;
+	const h = init.headers;
+	if (h instanceof Headers) {
+		const v = h.get(name);
+		return v;
+	}
+	const record = h as Record<string, string | undefined>;
+	const lower = name.toLowerCase();
+	for (const [k, v] of Object.entries(record)) {
+		if (k.toLowerCase() === lower && v != null) return v;
+	}
+	return null;
+}
+
+/** Payload must not receive our internal opt-in header */
+function withoutSwrHeader(init: RequestInit | undefined): RequestInit | undefined {
+	if (!init?.headers) return init;
+	const h = init.headers;
+	if (h instanceof Headers) {
+		const next = new Headers(h);
+		next.delete(PAYLOAD_SWR_HEADER);
+		return { ...init, headers: next };
+	}
+	const record = { ...(h as Record<string, string>) };
+	delete record[PAYLOAD_SWR_HEADER];
+	delete record[PAYLOAD_SWR_HEADER.toLowerCase()];
+	for (const k of Object.keys(record)) {
+		if (k.toLowerCase() === PAYLOAD_SWR_HEADER.toLowerCase()) delete record[k];
+	}
+	return { ...init, headers: record };
+}
+
+/** Per-request opt-in + optional JSON overrides for stale/ttl */
+function parseSwrFromInit(
+	init: RequestInit | undefined,
+	defaults: PayloadSwrCacheOptions
+): { enabled: boolean; staleSeconds: number; ttlSeconds: number } | null {
+	const raw = getHeader(init, PAYLOAD_SWR_HEADER);
+	if (raw == null || raw === '') return null;
+	const trimmed = raw.trim();
+	if (trimmed === '1' || trimmed.toLowerCase() === 'true') {
+		return {
+			enabled: true,
+			staleSeconds: defaults.staleSeconds ?? DEFAULT_STALE,
+			ttlSeconds: defaults.softTtlSeconds ?? DEFAULT_TTL
+		};
+	}
+	try {
+		const o = JSON.parse(trimmed) as {
+			staleSeconds?: number;
+			softTtlSeconds?: number;
+		};
+		return {
+			enabled: true,
+			staleSeconds: o.staleSeconds ?? defaults.staleSeconds ?? DEFAULT_STALE,
+			ttlSeconds: o.softTtlSeconds ?? defaults.softTtlSeconds ?? DEFAULT_TTL
+		};
+	} catch {
+		swrDebug('invalid x-payload-swr header, ignoring', raw);
+		return null;
+	}
 }
 
 /**
@@ -38,7 +101,6 @@ function pathAndSearchFromPayloadUrl(fullUrl: string, baseURL: string): { pathna
 
 function parseWhereIdEquals(search: string): string | null {
 	const q = search.startsWith('?') ? search.slice(1) : search;
-	// Bracket keys survive URLSearchParams in Node 18+, but match raw query as fallback
 	const bracket = /(?:^|&)where\[id\]\[equals\]=([^&]+)/.exec(q);
 	if (bracket?.[1]) {
 		try {
@@ -63,12 +125,47 @@ function parseWhereIdEquals(search: string): string | null {
 	return null;
 }
 
+function parseWhereSlugEquals(search: string): string | null {
+	const q = search.startsWith('?') ? search.slice(1) : search;
+	const bracket = /(?:^|&)where\[slug\]\[equals\]=([^&]+)/.exec(q);
+	if (bracket?.[1]) {
+		try {
+			return decodeURIComponent(bracket[1].replace(/\+/g, ' '));
+		} catch {
+			return bracket[1];
+		}
+	}
+	const params = new URLSearchParams(q);
+	const direct = params.get('where[slug][equals]');
+	if (direct != null && direct !== '') return direct;
+	return null;
+}
+
 /** Stable query object for gallery-images find (single id) — used in cache key */
 function galleryImageFindQueryParams(search: string): Record<string, string> | null {
 	const q = search.startsWith('?') ? search.slice(1) : search;
 	const params = new URLSearchParams(q);
 	const id = parseWhereIdEquals(`?${q}`);
 	if (id == null) return null;
+	if (params.get('limit') !== '1') return null;
+	const page = params.get('page');
+	if (page != null && page !== '1') return null;
+
+	const out: Record<string, string> = {};
+	const keys = Array.from(params.keys()).sort();
+	for (const k of keys) {
+		const v = params.get(k);
+		if (v != null) out[k] = v;
+	}
+	return out;
+}
+
+/** Single-album-by-slug list query (Payload find) */
+function galleryAlbumBySlugQueryParams(search: string): Record<string, string> | null {
+	const q = search.startsWith('?') ? search.slice(1) : search;
+	const params = new URLSearchParams(q);
+	const slug = parseWhereSlugEquals(`?${q}`);
+	if (slug == null || slug === '') return null;
 	if (params.get('limit') !== '1') return null;
 	const page = params.get('page');
 	if (page != null && page !== '1') return null;
@@ -95,6 +192,16 @@ function redisKeyForPayloadGet(fullUrl: string, baseURL: string): string | null 
 	const albumMatch = pathname.match(/^\/gallery-albums\/([^/?#]+)\/?$/);
 	if (albumMatch) {
 		return cacheManager.createKey(`gallery-album/${albumMatch[1]}`);
+	}
+
+	if (pathname === '/gallery-albums' || pathname === '/gallery-albums/') {
+		const qp = galleryAlbumBySlugQueryParams(search);
+		if (qp != null) {
+			const slug = parseWhereSlugEquals(search);
+			if (slug != null) {
+				return cacheManager.createKey(`gallery-album/slug/${encodeURIComponent(slug)}`, qp);
+			}
+		}
 	}
 
 	const imageById = pathname.match(/^\/gallery-images\/([^/?#]+)\/?$/);
@@ -138,7 +245,6 @@ function unwrapCache(raw: unknown, staleThreshold: number): { data: unknown; age
 	if ('_swrAt' in o && 'data' in o && typeof o._swrAt === 'number') {
 		return { data: o.data, ageSeconds: Math.floor(Date.now() / 1000) - o._swrAt };
 	}
-	/* legacy entries without envelope: serve once, always trigger background refresh to re-wrap */
 	return { data: raw, ageSeconds: staleThreshold + 1 };
 }
 
@@ -150,7 +256,7 @@ async function refreshInBackground(
 	ttlSeconds: number
 ): Promise<void> {
 	try {
-		const res = await innerFetch(fullUrl, init);
+		const res = await innerFetch(fullUrl, withoutSwrHeader(init));
 		if (!res.ok) return;
 		const text = await res.text();
 		let body: unknown;
@@ -166,25 +272,38 @@ async function refreshInBackground(
 }
 
 /**
- * Opt-in: gallery-album and gallery-image document GETs use Upstash SWR.
- * Keys: payload:gallery-album/{id}, payload:gallery-image/{id} or payload:gallery-image/{id}-<query>
+ * Wrap fetch: SWR only when `x-payload-swr` is on RequestInit and URL matches gallery doc GETs.
  */
 export function wrapFetchWithPayloadSwr(
 	innerFetch: typeof fetch,
 	baseURL: string,
-	options: PayloadSwrCacheOptions
+	defaults: PayloadSwrCacheOptions
 ): typeof fetch {
-	const staleSeconds = options.staleSeconds ?? DEFAULT_STALE;
-	const ttlSeconds = options.softTtlSeconds ?? DEFAULT_TTL;
+	const envStale = env.PAYLOAD_SWR_STALE_SECONDS
+		? Number.parseInt(env.PAYLOAD_SWR_STALE_SECONDS, 10)
+		: undefined;
+	const envTtl = env.PAYLOAD_SWR_TTL_SECONDS ? Number.parseInt(env.PAYLOAD_SWR_TTL_SECONDS, 10) : undefined;
+	const baseDefaults: PayloadSwrCacheOptions = {
+		staleSeconds:
+			defaults.staleSeconds ??
+			(Number.isFinite(envStale) ? envStale : DEFAULT_STALE),
+		softTtlSeconds:
+			defaults.softTtlSeconds ?? (Number.isFinite(envTtl) ? envTtl : DEFAULT_TTL)
+	};
 
 	return async (input: RequestInfo | URL, init?: RequestInit) => {
 		const method = (init?.method ?? 'GET').toUpperCase();
-		if (method !== 'GET' || !options.enabled) {
-			return innerFetch(input, init);
+		if (method !== 'GET' || !upstashConfigured()) {
+			if (method === 'GET' && !upstashConfigured()) {
+				swrDebug('skip: Upstash env not set');
+			}
+			return innerFetch(input, withoutSwrHeader(init));
 		}
-		if (!upstashConfigured()) {
-			swrDebug('skip: UPSTASH_REDIS_REST_URL / TOKEN not set (server private env only)');
-			return innerFetch(input, init);
+
+		const swr = parseSwrFromInit(init, baseDefaults);
+		const forwardInit = withoutSwrHeader(init);
+		if (!swr?.enabled) {
+			return innerFetch(input, forwardInit);
 		}
 
 		const urlStr =
@@ -196,17 +315,17 @@ export function wrapFetchWithPayloadSwr(
 
 		const redisKey = redisKeyForPayloadGet(urlStr, baseURL);
 		if (!redisKey) {
-			swrDebug('no cache key for URL (not a matched gallery document GET)', urlStr.slice(0, 200));
-			return innerFetch(input, init);
+			swrDebug('no cache key (URL not a cached gallery pattern)', urlStr.slice(0, 180));
+			return innerFetch(input, forwardInit);
 		}
 
 		const rawCached = await cacheManager.get(redisKey);
-		const unwrapped = unwrapCache(rawCached, staleSeconds);
+		const unwrapped = unwrapCache(rawCached, swr.staleSeconds);
 		if (unwrapped != null) {
-			const stale = unwrapped.ageSeconds >= staleSeconds;
-			swrDebug(stale ? 'STALE serve + revalidate' : 'HIT', redisKey);
+			const stale = unwrapped.ageSeconds >= swr.staleSeconds;
+			swrDebug(stale ? 'STALE + revalidate' : 'HIT', redisKey);
 			if (stale) {
-				void refreshInBackground(redisKey, urlStr, init, innerFetch, ttlSeconds);
+				void refreshInBackground(redisKey, urlStr, forwardInit, innerFetch, swr.ttlSeconds);
 			}
 			return new Response(JSON.stringify(unwrapped.data), {
 				status: 200,
@@ -214,14 +333,14 @@ export function wrapFetchWithPayloadSwr(
 			});
 		}
 
-		const res = await innerFetch(input, init);
+		const res = await innerFetch(input, forwardInit);
 		if (!res.ok) return res;
 
 		const clone = res.clone();
 		const text = await clone.text();
 		try {
 			const body = JSON.parse(text) as unknown;
-			await cacheManager.set(redisKey, wrapForCache(body), ttlSeconds);
+			await cacheManager.set(redisKey, wrapForCache(body), swr.ttlSeconds);
 			swrDebug('MISS → SET', redisKey);
 		} catch {
 			/* not JSON */
@@ -231,27 +350,5 @@ export function wrapFetchWithPayloadSwr(
 			statusText: res.statusText,
 			headers: res.headers
 		});
-	};
-}
-
-/** Read opt-in flags from private env (set in deployment) */
-export function getPayloadGallerySwrOptionsFromEnv(): PayloadSwrCacheOptions {
-	const enabled =
-		env.PAYLOAD_SWR_GALLERY === '1' ||
-		env.PAYLOAD_SWR_GALLERY === 'true' ||
-		env.PAYLOAD_CACHE_GALLERY === '1' ||
-		env.PAYLOAD_CACHE_GALLERY === 'true';
-
-	const staleSeconds = env.PAYLOAD_SWR_STALE_SECONDS
-		? Number.parseInt(env.PAYLOAD_SWR_STALE_SECONDS, 10)
-		: undefined;
-	const softTtlSeconds = env.PAYLOAD_SWR_TTL_SECONDS
-		? Number.parseInt(env.PAYLOAD_SWR_TTL_SECONDS, 10)
-		: undefined;
-
-	return {
-		enabled,
-		staleSeconds: Number.isFinite(staleSeconds) ? staleSeconds : undefined,
-		softTtlSeconds: Number.isFinite(softTtlSeconds) ? softTtlSeconds : undefined
 	};
 }

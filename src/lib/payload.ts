@@ -1,10 +1,6 @@
 import { dev } from '$app/environment';
 import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_API_ENDPOINT_DEV } from '$env/static/public';
-import {
-	getPayloadGallerySwrOptionsFromEnv,
-	wrapFetchWithPayloadSwr,
-	type PayloadSwrCacheOptions
-} from '$lib/cache/payloadSwrFetch';
+import { wrapFetchWithPayloadSwr } from '$lib/cache/payloadSwrFetch';
 import { PayloadSDK } from '@payloadcms/sdk';
 import type { Config } from '$lib/types/payload-types';
 
@@ -58,31 +54,7 @@ function createFetchWithDevFallback(
 	};
 }
 
-export type GetPayloadSDKOptions = {
-	/** Merge with env-based gallery SWR flags (PAYLOAD_SWR_GALLERY, etc.) */
-	cacheGallerySwr?: PayloadSwrCacheOptions;
-};
-
-function applyGallerySwrWrap(
-	fetcher: typeof fetch,
-	baseURL: string,
-	explicit?: PayloadSwrCacheOptions
-): typeof fetch {
-	const fromEnv = getPayloadGallerySwrOptionsFromEnv();
-	const merged: PayloadSwrCacheOptions = {
-		enabled: explicit?.enabled === true || Boolean(fromEnv.enabled),
-		staleSeconds: explicit?.staleSeconds ?? fromEnv.staleSeconds,
-		softTtlSeconds: explicit?.softTtlSeconds ?? fromEnv.softTtlSeconds
-	};
-	if (!merged.enabled) return fetcher;
-	return wrapFetchWithPayloadSwr(fetcher, baseURL, merged);
-}
-
-export function getPayloadSDK(
-	fetch?: typeof globalThis.fetch,
-	request?: Request,
-	options?: GetPayloadSDKOptions
-) {
+export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request) {
 	const baseFetcher =
 		request && fetch ? createPayloadFetch(fetch, request) : (fetch ?? globalThis.fetch);
 
@@ -98,22 +70,20 @@ export function getPayloadSDK(
 				)
 			: baseFetcher;
 
-	// When request is provided (server), create fresh SDK per call — merge explicit SWR opts with env.
+	fetcher = wrapFetchWithPayloadSwr(fetcher, baseURL, {});
+
 	if (request) {
-		const wrapped = applyGallerySwrWrap(fetcher, baseURL, options?.cacheGallerySwr);
 		return new PayloadSDK<Config>({
 			baseURL,
-			fetch: wrapped,
+			fetch: fetcher,
 			baseInit
 		});
 	}
 
-	// Singleton: only env flags apply (PAYLOAD_SWR_GALLERY); no per-call options.
 	if (!sdk) {
-		const wrapped = applyGallerySwrWrap(fetcher, baseURL, undefined);
 		sdk = new PayloadSDK<Config>({
 			baseURL,
-			fetch: wrapped,
+			fetch: fetcher,
 			baseInit
 		});
 	}

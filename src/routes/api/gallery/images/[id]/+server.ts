@@ -1,4 +1,5 @@
 import { getPayloadSDK } from '$lib/payload';
+import { payloadSwrInit } from '$lib/payloadSwr';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -19,15 +20,18 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 	}
 	const wantFull = raw === 'full';
 
-	const sdk = getPayloadSDK(fetch, request, { cacheGallerySwr: { enabled: true } });
+	const sdk = getPayloadSDK(fetch, request);
 
-	const result = await sdk.find({
-		collection: 'gallery-images',
-		where: { id: { equals: galleryImageId } },
-		limit: 1,
-		page: 1,
-		depth: wantFull ? 1 : 0
-	});
+	const result = await sdk.find(
+		{
+			collection: 'gallery-images',
+			where: { id: { equals: galleryImageId } },
+			limit: 1,
+			page: 1,
+			depth: wantFull ? 1 : 0
+		},
+		payloadSwrInit()
+	);
 
 	const doc = result.docs?.[0];
 	if (!doc) {
