@@ -213,18 +213,20 @@
 		isLoaded = false;
 	});
 
-	// Check if current image is cached and update loaded state
+	// Default lightbox only: probe cache for src= URL. Skip when using custom content — those
+	// layouts often use <picture srcset>; a probe on src alone can mismatch the chosen resource
+	// and leave isLoaded false while the real image is already visible (blank flash).
 	$effect(() => {
 		if (!open) {
 			isLoaded = false;
 			return;
 		}
+		if (content) return;
 
 		if (imageSrc && typeof window !== 'undefined') {
 			const img = new Image();
 			img.src = getMediaUrl(imageSrc, useProxy);
 
-			// If image is complete (cached), set loaded immediately
 			if (img.complete) {
 				isLoaded = true;
 			} else {

@@ -1,4 +1,4 @@
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, request, url }) => {
@@ -21,18 +21,8 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 				},
 				meta: {
 					description: true,
-					image: {
-						id: true,
-						url: true,
-						thumbnailURL: true,
-						alt: true,
-						blurhash: true,
-						width: true,
-						height: true,
-						sizes: {
-							thumbnail: { url: true, width: true, height: true }
-						}
-					}
+					// Cover id + dimensions for layout/aspect before client preview fetch
+					image: { id: true, width: true, height: true, blurhash: true }
 				}
 			},
 			where: {
@@ -69,7 +59,7 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 	const { docs: tags } = tagsData;
 
 	// Initial load only includes gallery metadata and the featured (SEO meta) image.
-	// Polaroid stack images are fetched on hover via /api/gallery-album-images/[albumId].
+	// Polaroid stack images are fetched on hover via /api/gallery/albums/[albumId].
 	const galleries = rawGalleries;
 
 	return { galleries, meta, categories, tags };

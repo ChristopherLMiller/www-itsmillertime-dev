@@ -25,6 +25,8 @@
 		onNavigate?: () => void;
 		/** When true, image loads eagerly (for above-the-fold) */
 		priority?: boolean;
+		/** HTML sizes for srcset selection (smaller hints = less download in grids) */
+		responsiveSizes?: string;
 	};
 
 	const {
@@ -43,7 +45,8 @@
 		fixedAspectRatio,
 		flipped,
 		onNavigate,
-		priority = false
+		priority = false,
+		responsiveSizes
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? '');
@@ -115,6 +118,7 @@
 							{useProxy}
 							{isNsfw}
 							{priority}
+							sizes={responsiveSizes}
 						/>
 					{/if}
 					<div class="polaroid__caption"><p>{displayCaption}</p></div>
@@ -162,6 +166,7 @@
 							{useProxy}
 							{isNsfw}
 							{priority}
+							sizes={responsiveSizes}
 						/>
 					{/if}
 					<div class="polaroid__caption"><p>{displayCaption}</p></div>
@@ -258,7 +263,7 @@
 		gap: 1.25rem;
 		background: var(--polaroid-background);
 		border: 2px solid var(--polaroid-border);
-		border-radius: 8px;
+		border-radius: 0;
 		padding: 1rem 1rem 2.5rem;
 		box-shadow: 0 0.75rem 1.5rem -1rem var(--polaroid-shadow);
 	}
@@ -279,7 +284,7 @@
 
 	.polaroid__card :global(.polaroid__image) {
 		width: 100%;
-		border-radius: 6px;
+		border-radius: 0;
 		background: #dcd8cf;
 	}
 

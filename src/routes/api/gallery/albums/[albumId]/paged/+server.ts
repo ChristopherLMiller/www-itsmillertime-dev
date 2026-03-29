@@ -1,4 +1,4 @@
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -14,6 +14,7 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 	const requestedLimit = Number(url.searchParams.get('limit') ?? String(DEFAULT_IMAGE_BATCH_SIZE));
 	const limit = Math.min(MAX_IMAGE_BATCH_SIZE, Math.max(1, requestedLimit || DEFAULT_IMAGE_BATCH_SIZE));
+	const idsOnly = url.searchParams.get('idsOnly') === '1';
 
 	const sdk = getPayloadSDK(fetch, request);
 
@@ -26,7 +27,18 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 		},
 		limit,
 		page,
-		depth: 1
+		depth: idsOnly ? 0 : 1,
+		...(idsOnly
+			? {
+					select: {
+						id: true,
+						width: true,
+						height: true,
+						blurhash: true,
+						settings: { isNsfw: true }
+					}
+				}
+			: {})
 	});
 
 	return json({

@@ -68,18 +68,102 @@
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
 	const resolvedImageSrc = $derived(imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null));
 	const lightboxSrcsets = $derived(buildSrcsets(image, useProxy ?? false));
-	const resolvedPlaceholderSrc = $derived.by(() => {
-		if (placeholderSrc) return placeholderSrc;
-		if (!image?.sizes) return null;
 
+	/** Blurhash (or parent-passed placeholder string) for underlay while full image loads */
+	const blurPlaceholder = $derived.by(() => {
+		const p = placeholderSrc ?? image?.blurhash;
+		return p != null && String(p).length > 0 ? String(p) : null;
+	});
+
+	/** Thumbnail URL when there is no blurhash — still faster to paint than full srcset */
+	const thumbPlaceholder = $derived.by(() => {
+		if (blurPlaceholder) return null;
+		if (!image?.sizes) return null;
 		const fallbackSize =
 			image.sizes.thumbnail?.url ??
 			image.sizes.small?.url ??
 			image.sizes.medium?.url ??
 			null;
-
 		return fallbackSize ? getMediaUrl(fallbackSize, useProxy ?? false) : null;
 	});
+
+	/** Load state for the main <img> (picture/srcset); do not trust parent isLoaded — it probes src only */
+	let mainImageLoaded = $state(false);
+
+	$effect(() => {
+		index;
+		resolvedImageSrc;
+		mainImageLoaded = false;
+	});
+
+	const showImageLoadingUi = $derived(!isVideo && !!resolvedImageSrc && !mainImageLoaded);
+
+	let mainImgReadyNotified = false;
+
+	function markMainImageReady() {
+		if (mainImgReadyNotified) return;
+		mainImgReadyNotified = true;
+		mainImageLoaded = true;
+		onImageLoad();
+	}
+
+	$effect(() => {
+		index;
+		resolvedImageSrc;
+		mainImgReadyNotified = false;
+	});
+
+	/**
+	 * Cached / 304 responses often leave the img complete before `load` fires (or skip it).
+	 * Poll naturalWidth + decode() so the overlay does not stick forever.
+	 */
+	function mainLightboxImage(node: HTMLImageElement) {
+		let cleared = false;
+		const timeouts: ReturnType<typeof setTimeout>[] = [];
+		let raf2 = 0;
+
+		const maybeReady = () => {
+			if (cleared || !node.isConnected) return;
+			if (node.naturalWidth > 0) {
+				markMainImageReady();
+				return;
+			}
+			if (node.complete && node.currentSrc) {
+				markMainImageReady();
+			}
+		};
+
+		const tryDecode = () => {
+			if (cleared || typeof node.decode !== 'function') return;
+			node.decode().then(maybeReady).catch(maybeReady);
+		};
+
+		queueMicrotask(maybeReady);
+		tryDecode();
+
+		const raf1 = requestAnimationFrame(() => {
+			maybeReady();
+			raf2 = requestAnimationFrame(maybeReady);
+		});
+
+		for (const ms of [0, 32, 100, 400]) {
+			timeouts.push(
+				setTimeout(() => {
+					maybeReady();
+					if (ms === 400) tryDecode();
+				}, ms)
+			);
+		}
+
+		return {
+			destroy() {
+				cleared = true;
+				cancelAnimationFrame(raf1);
+				cancelAnimationFrame(raf2);
+				for (const t of timeouts) clearTimeout(t);
+			}
+		};
+	}
 
 	// Caption (Lexical) or alt as fallback
 	const captionText = $derived(
@@ -223,35 +307,50 @@
 				{#if isVideo && image}
 					<GalleryMediaPlayer media={image} useProxy={useProxy ?? false} className="gallery-lightbox__video" />
 				{:else}
-					{#if !isLoaded}
-						<div class="gallery-lightbox__loading-backdrop" aria-hidden="true"></div>
-					{/if}
-					{#if resolvedPlaceholderSrc && !isLoaded}
-						<img
-							class="gallery-lightbox__placeholder"
-							src={resolvedPlaceholderSrc}
-							alt="Loading"
-							aria-hidden="true"
-						/>
+					{#if showImageLoadingUi}
+						<div
+							class="gallery-lightbox__loading-overlay"
+							aria-busy="true"
+							aria-label="Loading image"
+						>
+							{#if blurPlaceholder}
+								<img
+									src={blurPlaceholder}
+									alt=""
+									class="gallery-lightbox__placeholder gallery-lightbox__placeholder--blurhash"
+								/>
+							{:else if thumbPlaceholder}
+								<img
+									src={thumbPlaceholder}
+									alt=""
+									class="gallery-lightbox__placeholder gallery-lightbox__placeholder--thumb"
+								/>
+							{:else}
+								<div class="gallery-lightbox__loading-backdrop" aria-hidden="true"></div>
+							{/if}
+							<div class="gallery-lightbox__spinner" aria-hidden="true"></div>
+						</div>
 					{/if}
 					{#if resolvedImageSrc}
-						<picture
-							class="gallery-lightbox__picture"
-						>
-							<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
-							<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
-							<img
-								class="gallery-lightbox__image"
-								src={resolvedImageSrc ?? ''}
-								alt={image?.alt ?? ''}
-								width={image?.width}
-								height={image?.height}
-								fetchpriority="high"
-								decoding="async"
-								style:opacity={isLoaded ? 1 : 0}
-								onload={onImageLoad}
-							/>
-						</picture>
+						{#key index}
+							<picture class="gallery-lightbox__picture">
+								<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
+								<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
+								<img
+									class="gallery-lightbox__image"
+									use:mainLightboxImage
+									src={resolvedImageSrc ?? ''}
+									alt={image?.alt ?? ''}
+									width={image?.width}
+									height={image?.height}
+									fetchpriority="high"
+									decoding="async"
+									style:opacity={mainImageLoaded ? 1 : 0}
+									onload={markMainImageReady}
+									onerror={markMainImageReady}
+								/>
+							</picture>
+						{/key}
 					{/if}
 				{/if}
 			</div>
@@ -490,11 +589,21 @@
 		pointer-events: none;
 	}
 
+	.gallery-lightbox__loading-overlay {
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+	}
+
 	.gallery-lightbox__loading-backdrop {
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(180deg, rgba(20, 20, 20, 0.75), rgba(10, 10, 10, 0.9));
-		z-index: 1;
+		background: linear-gradient(180deg, rgba(20, 20, 20, 0.85), rgba(10, 10, 10, 0.95));
+		z-index: 0;
 	}
 
 	.gallery-lightbox__placeholder {
@@ -503,9 +612,37 @@
 		width: 100%;
 		height: 100%;
 		object-fit: contain;
-		filter: blur(20px);
-		opacity: 0.85;
-		z-index: 2;
+		object-position: center;
+		z-index: 0;
+	}
+
+	.gallery-lightbox__placeholder--blurhash {
+		filter: blur(12px);
+		transform: scale(1.03);
+		opacity: 0.95;
+	}
+
+	.gallery-lightbox__placeholder--thumb {
+		filter: blur(8px);
+		opacity: 0.9;
+	}
+
+	.gallery-lightbox__spinner {
+		position: relative;
+		z-index: 1;
+		width: 2.5rem;
+		height: 2.5rem;
+		border: 3px solid rgba(255, 255, 255, 0.25);
+		border-top-color: rgba(255, 255, 255, 0.95);
+		border-radius: 50%;
+		animation: gallery-lightbox-spin 0.7s linear infinite;
+		box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+	}
+
+	@keyframes gallery-lightbox-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.gallery-lightbox__picture {
@@ -675,6 +812,13 @@
 			flex: 0 0 auto;
 			border-left: none;
 			border-top: 1px solid var(--color-tertiary-lighter);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gallery-lightbox__spinner {
+			animation: none;
+			border-top-color: rgba(255, 255, 255, 0.6);
 		}
 	}
 
