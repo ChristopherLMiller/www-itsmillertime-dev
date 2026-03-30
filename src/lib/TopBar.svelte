@@ -3,9 +3,12 @@
 	import { fly } from 'svelte/transition';
 	import { navStore, type NavState } from '../stores/navigation';
 	import NavLink from './navigation/NavLink.svelte';
+	import { filterNavItems } from './navigation/visibility';
 
-	let isLoggedIn = $derived(!!page.data.session?.user);
-	let isAdmin = $derived(isLoggedIn && (page.data.session?.user?.role as string[] | undefined)?.includes('admin'));
+	let user = $derived(page.data.session?.user ?? null);
+	let isLoggedIn = $derived(!!user);
+	let isAdmin = $derived(isLoggedIn && (user?.role as string[] | undefined)?.includes('admin'));
+	let visibleNavItems = $derived(filterNavItems(page.data.navigation.navItems, user));
 
 	let navState = $state<NavState>({ isOpen: false, activeDropdown: null });
 	let currentPath = $state(page.url.pathname);
@@ -68,18 +71,18 @@
 						<NavLink navItem={{ title: 'Sign Up', link: '/account/sign-up' }} />
 					{/if}
 				</div>
-				<div class="dropdown-section hide-on-desktop">
-					{#each page.data.navigation.navItems as navItem}
-						{#if navItem.childNodes.length > 0}
-							{#each navItem.childNodes as childNavItem}
-								<NavLink navItem={childNavItem} />
-							{/each}
-							<hr />
-						{:else}
-							<NavLink {navItem} />
-						{/if}
-					{/each}
-				</div>
+			<div class="dropdown-section hide-on-desktop">
+				{#each visibleNavItems as navItem}
+					{#if navItem.childNodes && navItem.childNodes.length > 0}
+						{#each navItem.childNodes as childNavItem}
+							<NavLink navItem={childNavItem} />
+						{/each}
+						<hr />
+					{:else}
+						<NavLink {navItem} />
+					{/if}
+				{/each}
+			</div>
 			</div>
 		{/if}
 	</div>
