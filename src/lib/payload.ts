@@ -66,7 +66,7 @@ export function createPayloadInnerFetch(
 	const baseFetcher =
 		request && fetch ? createPayloadFetch(fetch, request) : (fetch ?? globalThis.fetch);
 
-	const baseURL = dev ? PUBLIC_PAYLOAD_API_ENDPOINT_DEV : PUBLIC_PAYLOAD_API_ENDPOINT;
+	const baseURL = PUBLIC_PAYLOAD_API_ENDPOINT;
 
 	const innerFetch =
 		dev && PUBLIC_PAYLOAD_API_ENDPOINT_DEV !== PUBLIC_PAYLOAD_API_ENDPOINT
