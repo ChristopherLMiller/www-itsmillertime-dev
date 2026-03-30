@@ -1,5 +1,5 @@
 import { cacheManager } from '$lib/cache/cache';
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import type { SiteMeta, SiteNavigation } from '$lib/types/payload-types';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';

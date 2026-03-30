@@ -1,10 +1,9 @@
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * Fetches a lightweight preview payload for a gallery album.
- * Used on hover to populate the polaroid stack with just enough image data to render.
+ * Lightweight preview images for a gallery album (polaroid stack hover).
  */
 export const GET: RequestHandler = async ({ params, fetch, request }) => {
 	const albumId = Number(params.albumId);
@@ -33,7 +32,6 @@ export const GET: RequestHandler = async ({ params, fetch, request }) => {
 		blurhash: doc.blurhash ?? null,
 		width: doc.sizes?.thumbnail?.width ?? doc.width ?? null,
 		height: doc.sizes?.thumbnail?.height ?? doc.height ?? null,
-		// Image.svelte reads `image.url` and `image.sizes.*`; keep both aligned to thumbnail.
 		url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '',
 		sizes: {
 			thumbnail: {
