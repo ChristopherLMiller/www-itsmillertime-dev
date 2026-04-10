@@ -65,19 +65,15 @@
 </script>
 
 <div class="film-strip">
-	<div class="film-strip__sprockets film-strip__sprockets--top" aria-hidden="true">
-		{#each Array(12) as _}
-			<span class="film-strip__sprocket"></span>
-		{/each}
-	</div>
+	<div class="film-strip__sprockets film-strip__sprockets--top" aria-hidden="true"></div>
 
 	<div class="film-strip__track">
 		<div class="film-strip__frames" bind:this={framesEl}>
-		<div
-			class="film-strip__indicator"
-			style="left: {indicatorLeft}px; width: {indicatorWidth}px;"
-			aria-hidden="true"
-		></div>
+			<div
+				class="film-strip__indicator"
+				style="left: {indicatorLeft}px; width: {indicatorWidth}px;"
+				aria-hidden="true"
+			></div>
 			{#each items as item, i (item.slug || item.title)}
 				<a
 					href={getHref(item.slug)}
@@ -91,11 +87,7 @@
 		</div>
 	</div>
 
-	<div class="film-strip__sprockets film-strip__sprockets--bottom" aria-hidden="true">
-		{#each Array(12) as _}
-			<span class="film-strip__sprocket"></span>
-		{/each}
-	</div>
+	<div class="film-strip__sprockets film-strip__sprockets--bottom" aria-hidden="true"></div>
 </div>
 
 <style lang="postcss">
@@ -118,17 +110,17 @@
 	}
 
 	.film-strip__sprockets {
-		display: flex;
-		gap: 12px;
-		justify-content: center;
-		padding: 4px 0;
-	}
-
-	.film-strip__sprocket {
-		width: 8px;
+		width: 100%;
 		height: 10px;
-		background: var(--sprocket-color);
-		border-radius: 2px;
+		margin: 4px 0;
+		background-image: linear-gradient(
+			to right,
+			var(--sprocket-color) 0 8px,
+			transparent 8px 20px
+		);
+		background-repeat: repeat-x;
+		background-size: 20px 100%;
+		background-position: center;
 	}
 
 	.film-strip__track {
@@ -166,8 +158,8 @@
 
 	.film-strip__frame {
 		flex-shrink: 0;
-		width: 104px;
-		height: 3rem;
+		width: auto;
+		min-height: 3rem;
 		padding: 0.25rem 0.5rem;
 		background: var(--film-frame-bg);
 		border: 2px solid transparent;
@@ -194,10 +186,7 @@
 	}
 
 	.film-strip__frame-label {
-		overflow: hidden;
-		text-overflow: ellipsis;
 		white-space: nowrap;
-		max-width: 100%;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

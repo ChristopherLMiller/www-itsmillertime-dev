@@ -21,7 +21,7 @@
 	const perPageOptions = [6, 12, 15, 24, 48];
 
 	const selectedCategory = $derived(page.url.searchParams.get('category') || '');
-	let selectedTag = $state(page.url.searchParams.get('tag') || '');
+	const selectedTag = $derived(page.url.searchParams.get('tag') || '');
 	let selectedPerPage = $state(Number(page.url.searchParams.get('limit')) || 15);
 	let expandedAlbumImages = $state<
 		Record<number, { images: Media[]; nsfwIds: Set<number> }>
@@ -164,17 +164,15 @@
 		return url.pathname + url.search;
 	}
 
-	async function handleTagChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		const slug = target.value;
-		const url = new URL(window.location.href);
+	function getTagHref(slug: string): string {
+		const url = new URL(page.url);
 		if (slug) {
 			url.searchParams.set('tag', slug);
 		} else {
 			url.searchParams.delete('tag');
 		}
 		url.searchParams.set('page', '1');
-		await goto(url.toString(), { keepFocus: true, noScroll: false });
+		return url.pathname + url.search;
 	}
 
 	async function handlePerPageChange(event: Event) {
@@ -253,30 +251,28 @@
 	</div>
 {/if}
 
-<header class="gallery-header">
-	<h1 class="gallery-header__title">Galleries</h1>
-	<div class="gallery-header__filters">
-		<span class="gallery-header__filter-label">Filter by</span>
-		<div class="filter-group">
-			<label for="category-filter">Category</label>
-			<select id="category-filter" class="filter-select" value={selectedCategory} onchange={handleCategoryChange}>
-				<option value="">All Categories</option>
-				{#each data.categories as category (category.id)}
-					<option value={category.slug}>{category.title}</option>
-				{/each}
-			</select>
-		</div>
-		<div class="filter-group">
-			<label for="tag-filter">Tag</label>
-			<select id="tag-filter" class="filter-select" bind:value={selectedTag} onchange={handleTagChange}>
-				<option value="">All Tags</option>
-				{#each data.tags as tag (tag.id)}
-					<option value={tag.slug}>{tag.title}</option>
-				{/each}
-			</select>
-		</div>
+{#if data.tags.length > 0}
+	<div class="tag-strip-wrapper">
+		<nav class="tag-contact-sheet" aria-label="Filter galleries by tag">
+			<a
+				href={getTagHref('')}
+				class="tag-frame"
+				class:tag-frame--active={!selectedTag}
+			>
+				<span class="tag-frame__label">All tags</span>
+			</a>
+			{#each data.tags as tag (tag.id)}
+				<a
+					href={getTagHref(tag.slug ?? '')}
+					class="tag-frame"
+					class:tag-frame--active={selectedTag === (tag.slug ?? '')}
+				>
+					<span class="tag-frame__label">{tag.title}</span>
+				</a>
+			{/each}
+		</nav>
 	</div>
-</header>
+{/if}
 
 <div class="galleries-grid">
 	{#each filteredGalleries as gallery (gallery.id)}
@@ -337,6 +333,69 @@
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 1.5rem 1rem 0;
+	}
+
+	.tag-strip-wrapper {
+		max-width: 1400px;
+		margin: 0 auto;
+		padding: 0.75rem 1rem 0;
+	}
+
+	.tag-contact-sheet {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		justify-content: center;
+		align-items: center;
+		padding: 0.75rem;
+		background:
+			repeating-linear-gradient(
+				to right,
+				rgba(255, 255, 255, 0.08) 0,
+				rgba(255, 255, 255, 0.08) 1px,
+				transparent 1px,
+				transparent 18px
+			),
+			#f5f0e6;
+		border: 1px solid var(--color-tertiary-lighter);
+		border-radius: 0.4rem;
+	}
+
+	.tag-frame {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.35rem 0.7rem;
+		background: var(--color-white-lightest);
+		border: 1px solid var(--color-tertiary-light);
+		border-radius: 999px;
+		text-decoration: none;
+		color: var(--color-primary);
+		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+
+		&:hover {
+			transform: translateY(-1px);
+			border-color: var(--color-primary);
+			background: #fffef9;
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--color-primary);
+			outline-offset: 2px;
+		}
+	}
+
+	.tag-frame__label {
+		font-family: Garamond, serif;
+		font-size: var(--fs-xs);
+		letter-spacing: 0.03em;
+		white-space: nowrap;
+	}
+
+	.tag-frame--active {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
+		color: var(--color-white-lightest);
 	}
 
 	.gallery-header {

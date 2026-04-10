@@ -1,68 +1,51 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Lexical from '$lib/Lexical.svelte';
-	import Newspaper from '$lib/Newspaper.svelte';
 	import Disqus from '$lib/components/Disqus.svelte';
+	import NewspaperArticleContent from '$lib/components/Newspaper/NewspaperArticleContent.svelte';
+	import NewspaperLayout from '$lib/components/Newspaper/NewspaperLayout.svelte';
 	import ShareButtons from '$lib/components/ShareButtons.svelte';
+	import type { PostsCategory, PostsTag } from '$lib/types/payload-types';
+	import type { PageProps } from './$types';
 
-	const { data } = $props();
+	const { data }: PageProps = $props();
+
+	const categories: PostsCategory[] = [];
+	const tags: PostsTag[] = [];
 </script>
 
-<Newspaper
-	heading="From My Desk"
-	subheading={data.article.title}
-	headingTransitionName={`article-headline-${data.article.slug}`}
-	columns={2}
-	featuredImage={data.article.featuredImage}
-	featuredImageTransitionName={`article-featured-image-${data.article.slug}`}
->
-	{#snippet meta()}
-		<div class="meta">
-			<span style:view-transition-name={`article-pub-date-${data.article.slug}`}>
-				Published on {new Date(data.article.originalPublicationDate).toLocaleDateString(
-					'en-US',
-					{
-						year: 'numeric',
-						month: 'long',
-						day: 'numeric'
-					}
-				)}
-			</span>
-			|
-			<span
-				>First written {new Date(data.article.createdAt).toLocaleDateString('en-US', {
-					year: 'numeric',
-					month: 'long',
-					day: 'numeric'
-				})}
-			</span>
-			|
-			<span style:view-transition-name={`article-category-${data.article.slug}`}>
-				Filed under {data.article.category?.title}
-			</span>
-		</div>
-		
-	{/snippet}
-	<article
-		class="post contents"
-		style:view-transition-name={`article-content-${data.article.slug}`}
+<div class="newspaper-page">
+	<NewspaperLayout
+		title="From My Desk"
+		subtitle="A collection of my thoughts and ideas"
+		subtitleTransitionName="newspaper-subtitle"
+		mastheadTitleTag="p"
+		{categories}
+		selectedCategory=""
+		{tags}
+		selectedTag=""
+		pagination={null}
+		showFilters={false}
 	>
-		<Lexical data={data.article.content} />
-	</article>
-	{#snippet footerContent()}
-		<ShareButtons url={page.url.href} title={data.article.title} />
-		<Disqus identifier={`article-${data.article.slug}`} title={data.article.title} url={page.url.href} />
-	{/snippet}
-</Newspaper>
+		<NewspaperArticleContent article={data.article}>
+			{#snippet footer()}
+				<ShareButtons url={page.url.href} title={data.article.title} />
+				<Disqus
+					identifier={`article-${data.article.slug}`}
+					title={data.article.title}
+					url={page.url.href}
+				/>
+			{/snippet}
+		</NewspaperArticleContent>
+	</NewspaperLayout>
+</div>
 
 <style lang="postcss">
-	.meta {
-		font-size: var(--fs-xs);
-		line-height: initial;
-	}
+	.newspaper-page {
+		min-height: 100vh;
+		padding: 0.5rem 0 1rem;
 
-	:global(.share-buttons) {
-		margin-top: 1rem;
-		margin-bottom: 0.5rem;
+		@media (min-width: 768px) {
+			padding: 0.75rem 0 1.25rem;
+		}
 	}
 </style>

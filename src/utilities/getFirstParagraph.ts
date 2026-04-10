@@ -7,4 +7,5 @@ export const getFirstParagraph = (contents: unknown) => {
 			return paragraphs[0].children[0].text;
 		}
 	}
+	return '';
 };
