@@ -29,6 +29,9 @@ importers:
       better-auth:
         specifier: ^1.4.19
         version: 1.4.19(@sveltejs/kit@2.49.2(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.46.1)(vite@7.3.0(@types/node@22.15.17)(lightningcss@1.30.1)(tsx@4.21.0)))(svelte@5.46.1)(vite@7.3.0(@types/node@22.15.17)(lightningcss@1.30.1)(tsx@4.21.0)))(react-dom@19.2.4(react@19.2.3))(react@19.2.3)(svelte@5.46.1)(vitest@4.1.2)
+      highlight.js:
+        specifier: ^11.11.1
+        version: 11.11.1
       maplibre-gl:
         specifier: ^5.16.0
         version: 5.16.0
@@ -2177,6 +2180,10 @@ packages:
   hex-rgb@4.3.0:
     resolution: {integrity: sha512-Ox1pJVrDCyGHMG9CFg1tmrRUMRPRsAWYc/PinY0XzJU4K7y7vjNoLKIQ7BR5UJMCxNN8EM1MNDmHWA/B3aZUuw==}
     engines: {node: '>=6'}
+
+  highlight.js@11.11.1:
+    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
+    engines: {node: '>=12.0.0'}
 
   hookified@1.14.0:
     resolution: {integrity: sha512-pi1ynXIMFx/uIIwpWJ/5CEtOHLGtnUB0WhGeeYT+fKcQ+WCQbm3/rrkAXnpfph++PgepNqPdTC2WTj8A6k6zoQ==}
@@ -5362,6 +5369,8 @@ snapshots:
   help-me@5.0.0: {}
 
   hex-rgb@4.3.0: {}
+
+  highlight.js@11.11.1: {}
 
   hookified@1.14.0: {}
 
