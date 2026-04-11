@@ -12,3 +12,23 @@
 ::view-transition-new(root) {
   animation-duration: 0.2s;
 }
+
+/* Newspaper layout + article cards — match duration with root navigation */
+::view-transition-old(newspaper-sheet),
+::view-transition-new(newspaper-sheet),
+::view-transition-old(newspaper-masthead),
+::view-transition-new(newspaper-masthead),
+::view-transition-old(newspaper-kicker),
+::view-transition-new(newspaper-kicker),
+::view-transition-old(newspaper-subtitle),
+::view-transition-new(newspaper-subtitle),
+::view-transition-old(newspaper-edition),
+::view-transition-new(newspaper-edition),
+::view-transition-old(newspaper-filters),
+::view-transition-new(newspaper-filters),
+::view-transition-old(newspaper-main),
+::view-transition-new(newspaper-main),
+::view-transition-old(newspaper-footer),
+::view-transition-new(newspaper-footer) {
+  animation-duration: 0.2s;
+}

@@ -10,6 +10,11 @@ const STORE_NAME = 'entries';
 const IDB_VERSION = 1;
 const SCHEMA_VERSION = 1;
 
+/** For admin / debugging UI. */
+export const BROWSER_CACHE_DB_NAME = DB_NAME;
+export const BROWSER_CACHE_STORE_NAME = STORE_NAME;
+export const BROWSER_CACHE_SCHEMA_VERSION = SCHEMA_VERSION;
+
 interface IDBCacheEntry<T> {
 	key: string;
 	data: T;
@@ -20,6 +25,14 @@ interface IDBCacheEntry<T> {
 export interface CacheEntryMeta<T> {
 	data: T;
 	cachedAt: number;
+}
+
+/** Raw row from IndexedDB for inspection (includes stale schema rows). */
+export interface IdbCacheRow {
+	key: string;
+	cachedAt: number;
+	schemaVersion: number;
+	data: unknown;
 }
 
 // Lazily opened – reused for the lifetime of the page.
@@ -118,6 +131,36 @@ export const browserCache = {
 		} catch {
 			// Silently ignore – if IDB is unavailable the cache is effectively empty anyway.
 		}
+	},
+
+	/**
+	 * All rows in the `entries` store (read-only), including entries with a stale `schemaVersion`.
+	 * Sorted by key. Throws if IndexedDB cannot be opened or read.
+	 */
+	async listAllEntries(): Promise<IdbCacheRow[]> {
+		const db = await getDB();
+		return new Promise((resolve, reject) => {
+			const out: IdbCacheRow[] = [];
+			const tx = db.transaction(STORE_NAME, 'readonly');
+			const req = tx.objectStore(STORE_NAME).openCursor();
+			req.onsuccess = () => {
+				const cursor = req.result;
+				if (!cursor) {
+					out.sort((a, b) => a.key.localeCompare(b.key));
+					resolve(out);
+					return;
+				}
+				const row = cursor.value as IDBCacheEntry<unknown>;
+				out.push({
+					key: row.key,
+					cachedAt: row.cachedAt,
+					schemaVersion: row.schemaVersion,
+					data: row.data
+				});
+				cursor.continue();
+			};
+			req.onerror = () => reject(req.error ?? new Error('IndexedDB cursor failed'));
+		});
 	},
 
 	/**

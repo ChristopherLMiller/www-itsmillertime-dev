@@ -7,6 +7,7 @@
 	import Header from '$lib/Header.svelte';
 	import Meta from '$lib/meta/Meta.svelte';
 	import Navigation from '$lib/navigation/Navigation.svelte';
+	import AdminUtilitiesDock from '$lib/components/AdminUtilitiesDock.svelte';
 	import TopBar from '$lib/TopBar.svelte';
 	import { browserCache, LAYOUT_CACHE_KEY } from '$lib/cache/browserCache';
 	import { isSilentRefresh } from '$lib/stores/silentRefresh';
@@ -73,6 +74,7 @@
 		</div>
 		<Footer />
 		<LastFmNowPlaying />
+		<AdminUtilitiesDock />
 
 <style lang="postcss">
 	.layout {
