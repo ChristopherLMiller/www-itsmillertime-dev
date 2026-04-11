@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Disqus from '$lib/components/Disqus.svelte';
-	import NewspaperArticleContent from '$lib/components/Newspaper/NewspaperArticleContent.svelte';
-	import NewspaperLayout from '$lib/components/Newspaper/NewspaperLayout.svelte';
+	import { NewspaperArticleContent, NewspaperLayout } from '$lib/components/Newspaper';
 	import ShareButtons from '$lib/components/ShareButtons.svelte';
 	import type { PostsCategory, PostsTag } from '$lib/types/payload-types';
 	import type { PageProps } from './$types';

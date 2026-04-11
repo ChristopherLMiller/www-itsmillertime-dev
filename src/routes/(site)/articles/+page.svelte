@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Newspaper from '$lib/components/Newspaper/Newspaper.svelte';
+	import Newspaper from '$lib/components/Newspaper';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();

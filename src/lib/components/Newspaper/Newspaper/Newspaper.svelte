@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Post, PostsCategory, PostsTag } from '$lib/types/payload-types';
-	import NewspaperArticlesContent from './NewspaperArticlesContent.svelte';
-	import NewspaperLayout from './NewspaperLayout.svelte';
+	import NewspaperArticlesContent from '../NewspaperArticlesContent/NewspaperArticlesContent.svelte';
+	import NewspaperLayout from '../NewspaperLayout/NewspaperLayout.svelte';
 
 	type Pagination = {
 		page?: number;

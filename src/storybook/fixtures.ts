@@ -1,4 +1,12 @@
-import type { GalleryAlbum, Garden, Media, Model, Post } from '$lib/types/payload-types';
+import type {
+	GalleryAlbum,
+	Garden,
+	Media,
+	Model,
+	Post,
+	PostsCategory,
+	PostsTag
+} from '$lib/types/payload-types';
 
 /** Minimal Lexical document for stories that render rich text */
 export const sampleLexicalParagraph = {
@@ -83,6 +91,22 @@ export const storybookGalleryAlbum: GalleryAlbum = {
 	createdAt: '2024-01-01T00:00:00.000Z'
 };
 
+export const storybookPostsCategory: PostsCategory = {
+	id: 1,
+	title: 'Notes',
+	slug: 'notes',
+	updatedAt: '',
+	createdAt: ''
+};
+
+export const storybookPostsTag: PostsTag = {
+	id: 1,
+	title: 'Dev',
+	slug: 'dev',
+	updatedAt: '',
+	createdAt: ''
+};
+
 export const storybookPost: Post = {
 	id: 1,
 	title: 'Example article',
@@ -91,10 +115,27 @@ export const storybookPost: Post = {
 	originalPublicationDate: '2024-01-15T12:00:00.000Z',
 	featuredImage: storybookImageMedia,
 	content: sampleLexicalParagraph,
-	category: { id: 1, title: 'Notes', slug: 'notes', updatedAt: '', createdAt: '' },
+	category: storybookPostsCategory,
 	updatedAt: '',
 	createdAt: ''
 };
+
+/** Enough posts to fill hero + secondary + columns + “more” in NewspaperArticlesContent */
+export const storybookNewspaperPosts: Post[] = Array.from({ length: 12 }, (_, i) => ({
+	...storybookPost,
+	id: i + 1,
+	slug: `storypost-${i + 1}`,
+	title: `Story headline ${i + 1}`,
+	meta: {
+		description: i === 0 ? 'Lead subhead for the main story.' : undefined,
+		image: i % 2 === 0 ? storybookImageMedia : undefined
+	},
+	featuredImage: i % 3 === 0 ? null : storybookImageMedia,
+	content: sampleLexicalParagraph,
+	category: storybookPostsCategory,
+	tags: [storybookPostsTag],
+	originalPublicationDate: new Date(2024, 0, 15 + i).toISOString()
+}));
 
 export const storybookGarden: Garden = {
 	id: 1,
