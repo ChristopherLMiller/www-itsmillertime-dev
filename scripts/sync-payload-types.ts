@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-
-import Anthropic from '@anthropic-ai/sdk';
 import { createHash } from 'crypto';
 import { config as envConfig } from 'dotenv';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import path, { dirname, join } from 'path';
+import { dirname, join } from 'path';
 
 envConfig();
 
 interface Config {
 	payloadUrl: string;
 	outputPath: string;
-	outputPathZod: string;
 	timeout: number;
 	retries: number;
 }
@@ -21,7 +18,6 @@ const config: Config = {
 		process.env.PAYLOAD_TYPES_URL ||
 		'https://raw.githubusercontent.com/ChristopherLMiller/cms-itsmillertime-dev/refs/heads/main/src/payload-types.ts',
 	outputPath: './src/lib/types/payload-types.ts',
-	outputPathZod: './src/lib/schemas/zod/generated.ts',
 	timeout: 10000,
 	retries: 3
 };
@@ -99,17 +95,6 @@ class PayloadTypesSyncer {
 		} catch (error) {
 			console.warn('⚠️  Could not save cache:', error.message);
 		}
-	}
-
-	private loadPackageDependencies() {
-		const packageJsonPath = path.join(process.cwd(), 'package.json');
-		const packageJsonContents = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-
-		return {
-			dependencies: packageJsonContents.dependencies || {},
-			devDependencies: packageJsonContents.devDependencies || {},
-			peerDependencies: packageJsonContents.peerDependencies || {}
-		};
 	}
 
 	private ensureDirectoryExists(filePath: string): void {
