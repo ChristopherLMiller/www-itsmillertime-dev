@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
 	import { onMount, tick } from 'svelte';
+
+	const nowPlayingUrl = `${PUBLIC_PAYLOAD_API_ENDPOINT.replace(/\/$/, '')}/lastfm/now-playing`;
 
 	type NowPlayingTrack = {
 		name: string;
@@ -127,7 +130,7 @@
 
 	async function fetchNowPlaying() {
 		try {
-			const response = await fetch('/api/lastfm/now-playing', {
+			const response = await fetch(nowPlayingUrl, {
 				headers: {
 					Accept: 'application/json'
 				},
