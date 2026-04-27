@@ -3,9 +3,11 @@
     box-sizing: border-box;
   }
 
-  html {  
+  html {
     box-sizing: border-box;
-    text-size-adjust: none;;
+    text-size-adjust: none;
+    min-height: 100%;
+    min-height: 100dvh;
     scrollbar-color: var(--color-secondary-darker) var(--color-tertiary-darker);
     scrollbar-width: thin;
   }
@@ -18,18 +20,20 @@
     font-size: var(--fs-base);
     font-family: 'Special Elite', serif;
     color: light-dark(var(--color-tertiary-darkest), var(--color-tertiary-lightest));
+    min-height: 100%;
+    min-height: 100dvh;
   }
 
   @media (prefers-color-scheme: dark) {
     body {
-      background: var(--color-tertiary-darkest) no-repeat var(--background-dark) top left/cover fixed;
-
+      /* Solid fill; animated grunge is GrungeOverlay (WebGL) in the site layout */
+      background-color: var(--page-bg-dark);
     }
   }
-  
+
   @media (prefers-color-scheme: light) {
     body {
-      background: var(--color-tertiary-lighter) no-repeat var(--background-light) top left/cover fixed;
+      background-color: var(--color-tertiary-lighter);
     }
   }
 

@@ -7,6 +7,7 @@
 	import Header from '$lib/Header.svelte';
 	import Meta from '$lib/meta/Meta.svelte';
 	import Navigation from '$lib/navigation/Navigation.svelte';
+	import GrungeOverlay from '$lib/components/GrungeOverlay.svelte';
 	import AdminUtilitiesDock from '$lib/components/AdminUtilitiesDock.svelte';
 	import TopBar from '$lib/TopBar.svelte';
 	import { browserCache, LAYOUT_CACHE_KEY } from '$lib/cache/browserCache';
@@ -62,21 +63,37 @@
 	});
 </script>
 
-		<NavigationProgress />
-		<Meta />
-		<TopBar />
-		<Header />
-		<Navigation />
-		<div class="layout">
-			<main>
-				{@render children?.()}
-			</main>
+		<div class="site-foreground">
+			<GrungeOverlay />
+			<div class="site-content-layer">
+				<NavigationProgress />
+				<Meta />
+				<TopBar />
+				<Header />
+				<Navigation />
+				<div class="layout">
+					<main>
+						{@render children?.()}
+					</main>
+				</div>
+				<Footer />
+				<LastFmNowPlaying />
+				<AdminUtilitiesDock />
+			</div>
 		</div>
-		<Footer />
-		<LastFmNowPlaying />
-		<AdminUtilitiesDock />
 
 <style lang="postcss">
+	.site-foreground {
+		position: relative;
+		z-index: 1;
+	}
+
+	/* In-flow nodes (footer) paint under fixed z-0 without an explicit higher layer */
+	.site-content-layer {
+		position: relative;
+		z-index: 1;
+	}
+
 	.layout {
 		overscroll-behavior: none;
 		display: grid;

@@ -43,9 +43,9 @@
 	/* Line heights */
 	--line-height: calc(2px + 2ex + 2px);
 
-	/* Backgrounds */
-	--background-dark: url('https://cms.itsmillertime.dev/api/media/file/background.avif');
-	--background-light: url('https://cms.itsmillertime.dev/api/media/file/background_light.avif');
+	/* Backgrounds (page texture: see GrungeOverlay) */
+	/* A touch lighter than --color-tertiary-darkest so the light grunge reads on margins */
+	--page-bg-dark: hsl(from var(--color-tertiary) h s calc(l - 27) / 1);
 	--linen-paper: url('https://cms.itsmillertime.dev/api/media/file/linen.avif');
 
 	/* Box Shadows */
