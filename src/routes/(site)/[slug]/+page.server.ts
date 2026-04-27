@@ -26,7 +26,9 @@ export const load: PageServerLoad = async ({ params, fetch, url }) => {
 	}
 
 	const doc = pageData.docs[0];
-	const meta = doc.meta ? { ...doc.meta, canonicalURL: `${url.origin}/${params.slug}` } : { canonicalURL: `${url.origin}/${params.slug}` };
+	const meta = doc.meta
+		? { ...doc.meta, canonicalURL: `${url.origin}/${params.slug}` }
+		: { canonicalURL: `${url.origin}/${params.slug}` };
 	return {
 		page: doc,
 		meta

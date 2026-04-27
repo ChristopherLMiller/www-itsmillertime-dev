@@ -1,4 +1,4 @@
-<script module>
+<script module lang="ts">
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import FilmStrip from './FilmStrip.svelte';
 
@@ -7,7 +7,7 @@
 		{ id: 2, slug: 'food', title: 'Food' }
 	];
 
-	function getHref(slug) {
+	function getHref(slug: string) {
 		return `/galleries?category=${slug}`;
 	}
 

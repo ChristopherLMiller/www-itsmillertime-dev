@@ -71,18 +71,18 @@
 						<NavLink navItem={{ title: 'Sign Up', link: '/account/sign-up' }} />
 					{/if}
 				</div>
-			<div class="dropdown-section hide-on-desktop">
-				{#each visibleNavItems as navItem}
-					{#if navItem.childNodes && navItem.childNodes.length > 0}
-						{#each navItem.childNodes as childNavItem}
-							<NavLink navItem={childNavItem} />
-						{/each}
-						<hr />
-					{:else}
-						<NavLink {navItem} />
-					{/if}
-				{/each}
-			</div>
+				<div class="dropdown-section hide-on-desktop">
+					{#each visibleNavItems as navItem}
+						{#if navItem.childNodes && navItem.childNodes.length > 0}
+							{#each navItem.childNodes as childNavItem}
+								<NavLink navItem={childNavItem} />
+							{/each}
+							<hr />
+						{:else}
+							<NavLink {navItem} />
+						{/if}
+					{/each}
+				</div>
 			</div>
 		{/if}
 	</div>

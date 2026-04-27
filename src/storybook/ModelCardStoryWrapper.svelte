@@ -6,7 +6,10 @@
 	let { model }: { model: Model } = $props();
 
 	const origFetch = globalThis.fetch.bind(globalThis);
-	globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+	globalThis.fetch = (
+		input: Parameters<typeof globalThis.fetch>[0],
+		init?: Parameters<typeof globalThis.fetch>[1]
+	) => {
 		if (String(input).includes('/api/clockify/')) {
 			return Promise.resolve(
 				new Response(JSON.stringify({ duration: 3_600_000 }), {

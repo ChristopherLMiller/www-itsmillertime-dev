@@ -3,7 +3,7 @@ import { cacheManager } from '$lib/cache/cache';
 import { json } from '@sveltejs/kit';
 import * as qs from 'qs-esm';
 
-export async function POST({ url, fetch, request }) {
+export async function POST({ fetch, request }) {
 	try {
 		const body = await request.json();
 		const { endpoint, queryParams = {} } = body;
@@ -40,7 +40,7 @@ export async function POST({ url, fetch, request }) {
 	}
 }
 
-export async function GET({ url }) {
+export async function GET() {
 	return json({
 		message: 'Use POST method to refresh cache',
 		example: {

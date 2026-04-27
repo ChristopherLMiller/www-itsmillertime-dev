@@ -30,7 +30,7 @@
 		const result = await authClient.signIn.email({
 			callbackURL: '/account/profile',
 			email,
-			password,
+			password
 		});
 
 		if ((result.data as { twoFactorRedirect?: boolean })?.twoFactorRedirect) {
@@ -45,7 +45,10 @@
 		}
 
 		if (result.error) {
-			if (result.error.status === 302 || result.error.message?.toLowerCase().includes('two factor')) {
+			if (
+				result.error.status === 302 ||
+				result.error.message?.toLowerCase().includes('two factor')
+			) {
 				step = '2fa';
 				loading = null;
 				return;
@@ -158,8 +161,14 @@
 					</div>
 				{/if}
 
-			<form class="email-form" onsubmit={(e) => { e.preventDefault(); verifyTOTP(e); }}>
-				<input
+				<form
+					class="email-form"
+					onsubmit={(e) => {
+						e.preventDefault();
+						verifyTOTP(e);
+					}}
+				>
+					<input
 						type="text"
 						name="totp"
 						inputmode="numeric"
@@ -188,8 +197,14 @@
 					</div>
 				{/if}
 
-			<form class="email-form" onsubmit={(e) => { e.preventDefault(); signInWithEmail(e); }}>
-				<input
+				<form
+					class="email-form"
+					onsubmit={(e) => {
+						e.preventDefault();
+						signInWithEmail(e);
+					}}
+				>
+					<input
 						type="email"
 						name="email"
 						autocomplete="username webauthn"
@@ -197,7 +212,7 @@
 						bind:value={email}
 						disabled={loading !== null}
 					/>
-				<input
+					<input
 						type="password"
 						name="password"
 						autocomplete="current-password"
@@ -219,7 +234,17 @@
 					onclick={signInWithPasskey}
 					disabled={loading !== null}
 				>
-					<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						width="20"
+						height="20"
+						aria-hidden="true"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z" />
 						<circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
 					</svg>

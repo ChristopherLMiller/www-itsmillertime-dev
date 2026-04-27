@@ -34,5 +34,29 @@ export default ts.config(
 			}
 		}
 	},
-	storybook.configs['flat/recommended']
+	storybook.configs['flat/recommended'],
+	{
+		rules: {
+			// Most internal links use CMS paths, query strings, or `#`; full `resolve()` adoption is opt-in.
+			'svelte/no-navigation-without-resolve': 'off',
+			// Prefer keys on dynamic `{#each}`; enable when you want to enforce project-wide.
+			'svelte/require-each-key': 'off',
+			'@typescript-eslint/no-empty-object-type': 'off',
+			// Admin preview HTML is trusted server-provided content.
+			'svelte/no-at-html-tags': 'off',
+			'svelte/no-unused-svelte-ignore': 'off',
+			// Lightbox and similar components intentionally pair $state with effects for open/index sync.
+			'svelte/prefer-writable-derived': 'off',
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{
+					args: 'after-used',
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+					destructuredArrayIgnorePattern: '^_'
+				}
+			]
+		}
+	}
 );

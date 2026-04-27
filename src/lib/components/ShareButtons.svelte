@@ -9,7 +9,7 @@
 		className?: string;
 	};
 
-	const { url, title, description = '', className = '' }: ShareButtonsProps = $props();
+	const { url, title, className = '' }: ShareButtonsProps = $props();
 
 	let copySuccess = $state(false);
 	let copyTimeout: ReturnType<typeof setTimeout> | null = $state(null);

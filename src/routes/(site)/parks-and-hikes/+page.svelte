@@ -3,7 +3,6 @@
 	import maplibregl from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import '@fortawesome/fontawesome-free/css/all.min.css';
-	import Panel from "$lib/Panel.svelte";
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -40,7 +39,8 @@
 						type: 'raster',
 						tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
 						tileSize: 256,
-						attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+						attribution:
+							'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 					}
 				},
 				layers: [
@@ -53,30 +53,34 @@
 					}
 				]
 			},
-			center: [-86.2384, 41.7030], // Notre Dame, South Bend, Indiana
+			center: [-86.2384, 41.703], // Notre Dame, South Bend, Indiana
 			zoom: 7
 		});
 
 		// Add markers to the map
 		data.mapMarkers.forEach((marker) => {
-			const linksHTML = marker.links && marker.links.length > 0
-				? `<div class="popup-links">
-						${marker.links.map(link => {
-							// Handle external URL
-							if (link.url) {
-								return `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.title}</a>`;
-							}
-							// Handle gallery album link
-							if (link.album) {
-								const album = typeof link.album.value === 'object' ? link.album.value : null;
-								if (album && album.slug) {
-									return `<a href="/galleries/${album.slug}">${link.title}</a>`;
+			const linksHTML =
+				marker.links && marker.links.length > 0
+					? `<div class="popup-links">
+						${marker.links
+							.map((link) => {
+								// Handle external URL
+								if (link.url) {
+									return `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.title}</a>`;
 								}
-							}
-							return '';
-						}).filter(Boolean).join('')}
+								// Handle gallery album link
+								if (link.album) {
+									const album = typeof link.album.value === 'object' ? link.album.value : null;
+									if (album && album.slug) {
+										return `<a href="/galleries/${album.slug}">${link.title}</a>`;
+									}
+								}
+								return '';
+							})
+							.filter(Boolean)
+							.join('')}
 					</div>`
-				: '';
+					: '';
 
 			const popupContent = `
 				<div class="marker-popup">
@@ -89,10 +93,7 @@
 
 			const popup = new maplibregl.Popup({ offset: 25 }).setHTML(popupContent);
 
-			new maplibregl.Marker()
-				.setLngLat(marker.location)
-				.setPopup(popup)
-				.addTo(map);
+			new maplibregl.Marker().setLngLat(marker.location).setPopup(popup).addTo(map);
 		});
 
 		return () => {

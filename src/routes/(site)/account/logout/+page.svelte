@@ -7,9 +7,8 @@
 	onMount(async () => {
 		const referrer = document.referrer;
 		const fallback = '/';
-		const redirectTo = referrer && new URL(referrer).origin === window.location.origin
-			? referrer
-			: fallback;
+		const redirectTo =
+			referrer && new URL(referrer).origin === window.location.origin ? referrer : fallback;
 
 		try {
 			await authClient.signOut();

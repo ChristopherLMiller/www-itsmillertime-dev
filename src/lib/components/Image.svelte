@@ -166,9 +166,15 @@
 		class:nsfw-blur={shouldBlur && !nsfwRevealed}
 		style="position: relative; overflow: hidden; aspect-ratio: {aspectRatioStyle};"
 		style:view-transition-name={transitionName}
-		onmouseenter={() => { if (shouldBlur) nsfwRevealed = true; }}
-		onmouseleave={() => { if (shouldBlur) nsfwRevealed = false; }}
-		onclick={() => { if (shouldBlur && !nsfwRevealed) nsfwRevealed = true; }}
+		onmouseenter={() => {
+			if (shouldBlur) nsfwRevealed = true;
+		}}
+		onmouseleave={() => {
+			if (shouldBlur) nsfwRevealed = false;
+		}}
+		onclick={() => {
+			if (shouldBlur && !nsfwRevealed) nsfwRevealed = true;
+		}}
 	>
 		{#if image?.blurhash}
 			<img
@@ -197,7 +203,7 @@
 				<source type="image/avif" srcset={avifSrcset || undefined} {sizes} />
 				<source type="image/jpeg" srcset={jpegSrcset || undefined} {sizes} />
 				<img
-					src={src}
+					{src}
 					alt={image.alt ?? ''}
 					width={image.width ?? undefined}
 					height={image.height ?? undefined}
@@ -248,7 +254,12 @@
 			}}
 			onkeydown={handleKeydown}
 		>
-			<button class="close-button" onclick={closeLightbox} aria-label="Close lightbox" type="button">
+			<button
+				class="close-button"
+				onclick={closeLightbox}
+				aria-label="Close lightbox"
+				type="button"
+			>
 				<Icon name="x" size={32} />
 			</button>
 
@@ -268,10 +279,20 @@
 								easing: quintOut
 							}}
 						>
-							<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
-							<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
+							<source
+								type="image/avif"
+								srcset={lightboxSrcsets.avifSrcset || undefined}
+								sizes="100vw"
+							/>
+							<source
+								type="image/jpeg"
+								srcset={lightboxSrcsets.jpegSrcset || undefined}
+								sizes="100vw"
+							/>
 							<img
-								src={currentLightboxImage?.url ? getMediaUrl(currentLightboxImage.url, useProxy) : ''}
+								src={currentLightboxImage?.url
+									? getMediaUrl(currentLightboxImage.url, useProxy)
+									: ''}
 								alt={currentLightboxImage?.alt ?? ''}
 								class="lightbox-image"
 							/>
@@ -331,7 +352,9 @@
 		display: block;
 		width: 100%;
 		height: 100%;
-		transition: opacity 0.3s ease, filter 0.4s ease;
+		transition:
+			opacity 0.3s ease,
+			filter 0.4s ease;
 	}
 
 	.image-container.nsfw-blur :global(.main-image) {

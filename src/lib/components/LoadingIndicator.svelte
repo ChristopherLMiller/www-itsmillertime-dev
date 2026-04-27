@@ -5,7 +5,7 @@
 		variant?: 'dots' | 'spinner' | 'pulse';
 	}
 
-	let { text = 'Loading...', size = 'medium', variant = 'dots' } = $props<Props>();
+	let { text = 'Loading...', size = 'medium', variant = 'dots' }: Props = $props();
 </script>
 
 <div class="loading-indicator {size} {variant}">

@@ -53,7 +53,7 @@ function createOGImage(text: string) {
 					props: {
 						src: logo,
 						style: {
-							maxWidth: '100%',
+							maxWidth: '100%'
 						}
 					}
 				},
@@ -103,7 +103,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const markup = createOGImage(text);
 
 		// Generate SVG with satori
-		const svg = await satori(markup, {
+		const svg = await satori(markup as Parameters<typeof satori>[0], {
 			width: 1200,
 			height: 630,
 			fonts: [
@@ -119,7 +119,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Convert SVG to PNG using sharp
 		const png = await sharp(Buffer.from(svg)).png().toBuffer();
 
-		return new Response(png, {
+		return new Response(new Uint8Array(png), {
 			headers: {
 				'Content-Type': 'image/png',
 				'Cache-Control': 'public, max-age=31536000, immutable'

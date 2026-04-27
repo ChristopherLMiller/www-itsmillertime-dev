@@ -96,7 +96,9 @@
 		<nav class="actions" aria-label="What to do next">
 			<a class="btn primary" href="/">Home</a>
 			<button type="button" class="btn secondary" onclick={() => history.back()}>Go back</button>
-			<button type="button" class="btn secondary" onclick={() => window.location.reload()}>Retry</button>
+			<button type="button" class="btn secondary" onclick={() => window.location.reload()}
+				>Retry</button
+			>
 		</nav>
 	</Panel>
 </div>

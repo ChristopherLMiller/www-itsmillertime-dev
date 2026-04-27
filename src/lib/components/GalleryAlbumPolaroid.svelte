@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import Polaroid from '$lib/components/Polaroid.svelte';
-	import { buildPlaceholderGalleryMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import {
+		buildPlaceholderGalleryMedia,
+		type GalleryGridMedia
+	} from '$lib/utils/gallery-image-display';
 	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 
@@ -109,7 +112,9 @@
 		{#key `${displayMedia.id}-${displayMedia.url ?? ''}`}
 			<Polaroid
 				media={displayMedia}
-				caption={displayMedia.caption ? (lexicalToPlainText(displayMedia.caption).trim() || undefined) : undefined}
+				caption={displayMedia.caption
+					? lexicalToPlainText(displayMedia.caption).trim() || undefined
+					: undefined}
 				interactive={false}
 				clickable={false}
 				enableViewTransition={false}
@@ -117,7 +122,7 @@
 				{useProxy}
 				isNsfw={displayMedia.isNsfw}
 				{priority}
-				responsiveSizes={responsiveSizes}
+				{responsiveSizes}
 			/>
 		{/key}
 	</button>
@@ -146,5 +151,4 @@
 		text-align: center;
 		padding: 2rem 0.5rem;
 	}
-
 </style>

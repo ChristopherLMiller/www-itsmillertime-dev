@@ -1,13 +1,20 @@
 <script lang="ts">
 	import Image from '$lib/components/Image.svelte';
-	import type { Media, Model } from '$lib/types/payload-types';
+	import type { Kit, Media, Model } from '$lib/types/payload-types';
 	import { convertDate } from '../../utilities/convertDate';
 	import { makeClockifyDurationFriendly } from '../../utilities/makeClockifyDurationFriendly';
+
+	type ClockifyProject = { duration: string };
 
 	let { model }: { model: Model } = $props();
 	let isClockifyLoading = $state(true);
 	let completionDate = $derived(convertDate(model.model_meta.completionDate));
-	let clockifyProject = $state(null);
+	let clockifyProject = $state<ClockifyProject | null>(null);
+	const kit = $derived(
+		typeof model.model_meta.kit === 'object' && model.model_meta.kit != null
+			? (model.model_meta.kit as Kit)
+			: null
+	);
 
 	$effect(() => {
 		async function getClockifyProjects() {
@@ -31,20 +38,26 @@
 	<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
 		<div class="contents">
 			<p class="head">
-				{model.model_meta.kit.manufacturer.title} • {model.model_meta.kit.kit_number}
+				{kit
+					? `${typeof kit.manufacturer === 'object' && kit.manufacturer !== null ? kit.manufacturer.title : ''} • ${kit.kit_number ?? ''}`
+					: ''}
 			</p>
 			<div class="card-image">
 				<Image image={model.model_meta.featuredImage as Media} />
 				<span class={`status ${model.model_meta.status.toLowerCase()}`}
 					>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
 				>
-				<a href={`/models/${model.slug}`} class="name">{model.model_meta.kit.title}</a>
+				<a href={`/models/${model.slug}`} class="name">{kit?.title ?? ''}</a>
 			</div>
 			<div class="details">
 				<div class="stats">
 					<div class="stat-row">
 						<span class="stat-label">Scale:</span>
-						<span class="value">{model.model_meta.kit.scale.title}</span>
+						<span class="value"
+							>{kit && typeof kit.scale === 'object' && kit.scale !== null
+								? kit.scale.title
+								: ''}</span
+						>
 					</div>
 					{#if model.clockify_project}
 						<div class="stat-row">

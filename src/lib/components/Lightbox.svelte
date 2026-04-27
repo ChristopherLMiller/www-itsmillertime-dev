@@ -80,14 +80,13 @@
 		onNext: next,
 		hasPrevious,
 		hasNext,
-		galleryImageId: currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined,
+		galleryImageId:
+			currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined,
 		useProxy
 	});
 
 	const aspectRatio = $derived(
-		currentImage?.width && currentImage?.height
-			? currentImage.width / currentImage.height
-			: 1
+		currentImage?.width && currentImage?.height ? currentImage.width / currentImage.height : 1
 	);
 
 	// Calculate dimensions for the container based on aspect ratio and viewport
@@ -182,7 +181,6 @@
 		}
 	}
 
-
 	function preloadByIndex(index: number) {
 		const image = images[index];
 		const src = image?.url;
@@ -256,11 +254,7 @@
 
 {#if open}
 	<div class="lightbox" class:lightbox--custom={!!content} role="presentation">
-		<button
-			type="button"
-			class="lightbox__backdrop"
-			aria-label="Close lightbox"
-			onclick={close}
+		<button type="button" class="lightbox__backdrop" aria-label="Close lightbox" onclick={close}
 		></button>
 		<div class="lightbox__content" class:lightbox__content--custom={!!content}>
 			{#if !content}

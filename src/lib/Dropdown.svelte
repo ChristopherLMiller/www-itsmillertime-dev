@@ -32,10 +32,4 @@
 		background: none;
 		border: none;
 	}
-
-	.dropdown-links {
-		z-index: 10;
-		position: absolute;
-		translate: 0px 3px;
-	}
 </style>

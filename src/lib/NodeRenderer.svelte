@@ -138,7 +138,9 @@
 	 * @param {keyof typeof TEXT_TYPE_TO_FORMAT} type - Format type
 	 * @returns {boolean}
 	 */
-	function hasFormat(format, type) {
+	type TextFormatName = keyof typeof TEXT_TYPE_TO_FORMAT;
+
+	function hasFormat(format: number, type: TextFormatName) {
 		return (format & TEXT_TYPE_TO_FORMAT[type]) !== 0;
 	}
 
@@ -147,7 +149,7 @@
 	 * @param {TextNode} node - Text node
 	 * @returns {{ text: string, formats: Record<string, boolean> }}
 	 */
-	function getTextFormatting(node) {
+	function getTextFormatting(node: { text?: string; format?: number }) {
 		const text = node.text || '';
 
 		if (!node.format) {
@@ -191,15 +193,21 @@
 		{textData.text}
 	</span>
 {:else if node.type === 'image'}
-	<Image
-		src={node.src || ''}
-		alt={node.altText || node.alt || ''}
-		width={node.width}
-		height={node.height}
-		caption={node.caption || ''}
-		hasLightbox
-		hasBorder
-	/>
+	{@const imageFromUrl = {
+		id: 0,
+		alt: node.altText || node.alt || '',
+		updatedAt: '',
+		createdAt: '',
+		url: node.src || '',
+		width: node.width,
+		height: node.height
+	} as Media}
+	<figure class="lexical-image">
+		<Image image={imageFromUrl} hasLightbox hasBorder />
+		{#if node.caption}
+			<figcaption class="lexical-image__caption">{node.caption}</figcaption>
+		{/if}
+	</figure>
 {:else if node.type === 'upload'}
 	<Image image={node.value as Media} hasBorder hasLightbox />
 {:else if node.type === 'heading'}
@@ -259,7 +267,7 @@
 		</ul>
 	{/if}
 {:else if node.type === 'listitem'}
-	{#if node.hasOwnProperty('checked')}
+	{#if 'checked' in (node as Record<string, unknown>)}
 		<li class="checklist-item">
 			<input type="checkbox" checked={node.checked} disabled />
 			<label>
@@ -284,7 +292,7 @@
 {:else if node.type === 'code'}
 	<pre><code class="language-{node.language || ''}"
 			>{node.children
-				? node.children.map((child) => child.text || '').join('')
+				? node.children.map((child: { text?: string }) => child.text || '').join('')
 				: node.text || ''}</code
 		></pre>
 {:else if node.type === 'horizontalrule'}

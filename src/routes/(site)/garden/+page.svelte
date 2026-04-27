@@ -53,10 +53,6 @@
 		gap: 1rem;
 	}
 
-	.entry-content {
-		padding: 1rem;
-	}
-
 	.featured {
 		margin-bottom: 1rem;
 		max-width: min(100%, 42rem);

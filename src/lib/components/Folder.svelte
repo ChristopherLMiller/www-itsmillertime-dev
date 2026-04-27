@@ -16,17 +16,15 @@
 </script>
 
 <div class="folder">
-  <div class="front">
-    <span class="title">{title}</span>
-  </div>
-  <div class="contents">
-    {#if isOpen}
-      {#if typeof children === 'function'}
-        {@render children?.()}
-      {/if}
-    {/if}
-  </div>
-  <div class="back">
-
-  </div>
+	<div class="front" role="presentation" onclick={toggleFolder}>
+		<span class="title">{title}</span>
+	</div>
+	<div class="contents">
+		{#if isOpen}
+			{#if typeof children === 'function'}
+				{@render children?.()}
+			{/if}
+		{/if}
+	</div>
+	<div class="back"></div>
 </div>

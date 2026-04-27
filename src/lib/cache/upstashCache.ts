@@ -34,7 +34,10 @@ export class UpstashCache {
 		return `${this.prefix}${key}`;
 	}
 
-	public createKey(endpoint: string, queryParams?: { [key: string]: any }): string {
+	public createKey(
+		endpoint: string,
+		queryParams?: { [key: string]: string | number | boolean }
+	): string {
 		if (queryParams && Object.keys(queryParams).length > 0) {
 			return `${this.formatKey(endpoint)}-${qs.stringify(queryParams)}`;
 		} else {
@@ -47,7 +50,7 @@ export class UpstashCache {
 		return result > 0;
 	}
 
-	public async get(key: string): Promise<any> {
+	public async get(key: string): Promise<unknown> {
 		try {
 			const result = await this.redis.get(key);
 
@@ -64,7 +67,7 @@ export class UpstashCache {
 		}
 	}
 
-	public async set(key: string, value: any, ttl?: number): Promise<void> {
+	public async set(key: string, value: unknown, ttl?: number): Promise<void> {
 		try {
 			const pipeline = this.redis.pipeline();
 			pipeline.set(key, value);

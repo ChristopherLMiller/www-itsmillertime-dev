@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
  * - Strips Domain so the cookie is set for the current request host (the site)
  * - In dev (HTTP): strips Secure and __Secure- prefix so browsers accept the cookie
  */
-function rewriteSetCookie(cookie: string, requestHost: string): string {
+function rewriteSetCookie(cookie: string): string {
 	const [nameValue, ...attrs] = cookie.split('; ').map((s) => s.trim());
 	const [name, ...valueParts] = nameValue.split('=');
 	const value = valueParts.join('=').trim();
@@ -21,9 +21,8 @@ function rewriteSetCookie(cookie: string, requestHost: string): string {
 	}
 
 	// In dev, backend may use __Secure-better-auth.*; browser rejects that on HTTP
-	const cookieName = dev && name.startsWith('__Secure-better-auth.')
-		? name.replace('__Secure-', '')
-		: name;
+	const cookieName =
+		dev && name.startsWith('__Secure-better-auth.') ? name.replace('__Secure-', '') : name;
 
 	return [cookieName + '=' + value, ...keep].join('; ');
 }
@@ -39,7 +38,6 @@ const proxy: RequestHandler = async ({ request, params }) => {
 	const targetUrl = `${PUBLIC_PAYLOAD_URL}/api/auth/${params.path}`;
 	const url = new URL(request.url);
 	const fullUrl = `${targetUrl}${url.search}`;
-	const requestHost = url.host;
 
 	const headers = new Headers(request.headers);
 	headers.delete('accept-encoding');
@@ -79,7 +77,7 @@ const proxy: RequestHandler = async ({ request, params }) => {
 	}
 
 	for (const cookie of response.headers.getSetCookie()) {
-		responseHeaders.append('Set-Cookie', rewriteSetCookie(cookie, requestHost));
+		responseHeaders.append('Set-Cookie', rewriteSetCookie(cookie));
 	}
 
 	const body = await response.arrayBuffer();

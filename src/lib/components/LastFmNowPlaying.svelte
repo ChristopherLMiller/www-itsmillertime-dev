@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
 	import { onMount, tick } from 'svelte';
+
+	const nowPlayingUrl = `${PUBLIC_PAYLOAD_API_ENDPOINT.replace(/\/$/, '')}/lastfm/now-playing`;
 
 	type NowPlayingTrack = {
 		name: string;
@@ -71,7 +74,9 @@
 		dismissed = true;
 		try {
 			localStorage.setItem(DISMISS_KEY, '1');
-		} catch {}
+		} catch {
+			void 0;
+		}
 	}
 
 	function getInitialPosition(): { top?: string; bottom?: string; left?: string; right?: string } {
@@ -102,8 +107,14 @@
 		if (!isDragging || !widgetEl) return;
 		wasDragged = true;
 
-		const x = Math.max(0, Math.min(e.clientX - dragOffset.x, window.innerWidth - widgetEl.offsetWidth));
-		const y = Math.max(0, Math.min(e.clientY - dragOffset.y, window.innerHeight - widgetEl.offsetHeight));
+		const x = Math.max(
+			0,
+			Math.min(e.clientX - dragOffset.x, window.innerWidth - widgetEl.offsetWidth)
+		);
+		const y = Math.max(
+			0,
+			Math.min(e.clientY - dragOffset.y, window.innerHeight - widgetEl.offsetHeight)
+		);
 
 		widgetEl.style.left = `${x}px`;
 		widgetEl.style.top = `${y}px`;
@@ -127,7 +138,7 @@
 
 	async function fetchNowPlaying() {
 		try {
-			const response = await fetch('/api/lastfm/now-playing', {
+			const response = await fetch(nowPlayingUrl, {
 				headers: {
 					Accept: 'application/json'
 				},
@@ -141,7 +152,7 @@
 			const data: NowPlayingResponse = await response.json();
 			isPlaying = Boolean(data?.isPlaying);
 			track = data?.track ?? null;
-		} catch (error) {
+		} catch {
 			isPlaying = false;
 			track = null;
 		}
@@ -160,7 +171,9 @@
 	onMount(() => {
 		try {
 			dismissed = localStorage.getItem(DISMISS_KEY) === '1';
-		} catch {}
+		} catch {
+			void 0;
+		}
 
 		fetchNowPlaying();
 
@@ -186,7 +199,9 @@
 		aria-live="polite"
 		role="status"
 	>
-		<button class="close-btn" onclick={dismiss} aria-label="Dismiss now playing widget">&times;</button>
+		<button class="close-btn" onclick={dismiss} aria-label="Dismiss now playing widget"
+			>&times;</button
+		>
 		<div class="artwork">
 			{#if track?.image}
 				<img
@@ -199,13 +214,7 @@
 				<div class="placeholder" aria-hidden="true">FM</div>
 			{/if}
 		</div>
-		<a
-			class="details"
-			href={track?.url}
-			target="_blank"
-			rel="noreferrer"
-			onclick={handleClick}
-		>
+		<a class="details" href={track?.url} target="_blank" rel="noreferrer" onclick={handleClick}>
 			<span class="status">
 				<span class="dot {isPlaying ? 'playing' : ''}" aria-hidden="true"></span>
 				{statusText}
@@ -275,7 +284,10 @@
 		cursor: pointer;
 		padding: 0;
 		opacity: 0;
-		transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+		transition:
+			opacity 0.15s ease,
+			color 0.15s ease,
+			background 0.15s ease;
 		z-index: 1;
 		touch-action: manipulation;
 	}

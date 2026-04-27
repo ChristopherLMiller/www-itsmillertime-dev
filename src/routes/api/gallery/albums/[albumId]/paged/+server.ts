@@ -13,7 +13,10 @@ export const GET: RequestHandler = async ({ params, url, fetch, request }) => {
 
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 	const requestedLimit = Number(url.searchParams.get('limit') ?? String(DEFAULT_IMAGE_BATCH_SIZE));
-	const limit = Math.min(MAX_IMAGE_BATCH_SIZE, Math.max(1, requestedLimit || DEFAULT_IMAGE_BATCH_SIZE));
+	const limit = Math.min(
+		MAX_IMAGE_BATCH_SIZE,
+		Math.max(1, requestedLimit || DEFAULT_IMAGE_BATCH_SIZE)
+	);
 	const idsOnly = url.searchParams.get('idsOnly') === '1';
 
 	const sdk = getPayloadSDK(fetch, request);

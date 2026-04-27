@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-
-import Anthropic from '@anthropic-ai/sdk';
 import { createHash } from 'crypto';
 import { config as envConfig } from 'dotenv';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import path, { dirname, join } from 'path';
+import { dirname, join } from 'path';
 
 envConfig();
 
 interface Config {
 	payloadUrl: string;
 	outputPath: string;
-	outputPathZod: string;
 	timeout: number;
 	retries: number;
 }
@@ -21,7 +18,6 @@ const config: Config = {
 		process.env.PAYLOAD_TYPES_URL ||
 		'https://raw.githubusercontent.com/ChristopherLMiller/cms-itsmillertime-dev/refs/heads/main/src/payload-types.ts',
 	outputPath: './src/lib/types/payload-types.ts',
-	outputPathZod: './src/lib/schemas/zod/generated.ts',
 	timeout: 10000,
 	retries: 3
 };
@@ -101,17 +97,6 @@ class PayloadTypesSyncer {
 		}
 	}
 
-	private loadPackageDependencies() {
-		const packageJsonPath = path.join(process.cwd(), 'package.json');
-		const packageJsonContents = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-
-		return {
-			dependencies: packageJsonContents.dependencies || {},
-			devDependencies: packageJsonContents.devDependencies || {},
-			peerDependencies: packageJsonContents.peerDependencies || {}
-		};
-	}
-
 	private ensureDirectoryExists(filePath: string): void {
 		const dir = dirname(filePath);
 		if (!existsSync(dir)) {
@@ -133,7 +118,12 @@ class PayloadTypesSyncer {
 
 			this.ensureDirectoryExists(this.config.outputPath);
 
-			writeFileSync(this.config.outputPath, typesContent, 'utf8');
+			// Module augmentation belongs in `src/payload-module.d.ts` (no `payload` package in this app).
+			const withoutPayloadAugment = typesContent.replace(
+				/\r?\n\s*declare module 'payload'[\s\S]*$/,
+				'\n'
+			);
+			writeFileSync(this.config.outputPath, withoutPayloadAugment, 'utf8');
 			this.saveCache(contentHash);
 
 			const lines = typesContent.split('\n').length;

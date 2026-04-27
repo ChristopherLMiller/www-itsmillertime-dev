@@ -13,9 +13,7 @@
 
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const filteredGalleries = $derived(
-		nsfwPref === 'hide'
-			? data.galleries.filter((g) => !g.settings?.isNsfw)
-			: data.galleries
+		nsfwPref === 'hide' ? data.galleries.filter((g) => !g.settings?.isNsfw) : data.galleries
 	);
 
 	const perPageOptions = [6, 12, 15, 24, 48];
@@ -23,9 +21,7 @@
 	const selectedCategory = $derived(page.url.searchParams.get('category') || '');
 	const selectedTag = $derived(page.url.searchParams.get('tag') || '');
 	let selectedPerPage = $state(Number(page.url.searchParams.get('limit')) || 15);
-	let expandedAlbumImages = $state<
-		Record<number, { images: Media[]; nsfwIds: Set<number> }>
-	>({});
+	let expandedAlbumImages = $state<Record<number, { images: Media[]; nsfwIds: Set<number> }>>({});
 	const inFlightFetches = new SvelteMap<number, Promise<void>>();
 	const preloadControllers = new SvelteMap<number, AbortController>();
 
@@ -53,14 +49,16 @@
 						.filter((doc: unknown) => isImageNsfw(doc))
 						.map((doc: unknown) => (doc as { id: number }).id)
 				);
-				const filtered = (nsfwPref === 'hide'
-					? rawDocs.filter((doc: unknown) => !isImageNsfw(doc))
-					: rawDocs
+				const filtered = (
+					nsfwPref === 'hide' ? rawDocs.filter((doc: unknown) => !isImageNsfw(doc)) : rawDocs
 				)
 					.map((doc: unknown) => asMedia(doc))
 					.filter((img: Media | null): img is Media => img !== null);
 				if (!signal?.aborted) {
-					expandedAlbumImages = { ...expandedAlbumImages, [albumId]: { images: filtered, nsfwIds } };
+					expandedAlbumImages = {
+						...expandedAlbumImages,
+						[albumId]: { images: filtered, nsfwIds }
+					};
 				}
 			} catch (error) {
 				if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
@@ -75,7 +73,12 @@
 	function coverGalleryImageId(gallery: (typeof filteredGalleries)[number]): number | null {
 		const img = gallery.meta?.image;
 		if (typeof img === 'number' && Number.isFinite(img)) return img;
-		if (typeof img === 'object' && img !== null && 'id' in img && typeof (img as { id: unknown }).id === 'number') {
+		if (
+			typeof img === 'object' &&
+			img !== null &&
+			'id' in img &&
+			typeof (img as { id: unknown }).id === 'number'
+		) {
 			return (img as { id: number }).id;
 		}
 		return null;
@@ -83,8 +86,14 @@
 
 	function coverAspectRatio(gallery: (typeof filteredGalleries)[number]): number {
 		const img = gallery.meta?.image;
-		const w = typeof img === 'object' && img !== null && 'width' in img ? (img as { width?: number | null }).width : null;
-		const h = typeof img === 'object' && img !== null && 'height' in img ? (img as { height?: number | null }).height : null;
+		const w =
+			typeof img === 'object' && img !== null && 'width' in img
+				? (img as { width?: number | null }).width
+				: null;
+		const h =
+			typeof img === 'object' && img !== null && 'height' in img
+				? (img as { height?: number | null }).height
+				: null;
 		return cssAspectRatioFromDimensions(w ?? undefined, h ?? undefined, 4 / 3);
 	}
 
@@ -134,22 +143,6 @@
 		};
 
 		await Promise.all(Array.from({ length: concurrency }, worker));
-	}
-
-	async function handleCategoryChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		await selectCategory(target.value);
-	}
-
-	async function selectCategory(slug: string) {
-		const url = new URL(window.location.href);
-		if (slug) {
-			url.searchParams.set('category', slug);
-		} else {
-			url.searchParams.delete('category');
-		}
-		url.searchParams.set('page', '1');
-		await goto(url.toString(), { keepFocus: true, noScroll: false });
 	}
 
 	function getCategoryHref(slug: string): string {
@@ -238,7 +231,6 @@
 			cancelPendingPreloads();
 		});
 	}
-
 </script>
 
 {#if data.categories.length > 0}
@@ -254,11 +246,7 @@
 {#if data.tags.length > 0}
 	<div class="tag-strip-wrapper">
 		<nav class="tag-contact-sheet" aria-label="Filter galleries by tag">
-			<a
-				href={getTagHref('')}
-				class="tag-frame"
-				class:tag-frame--active={!selectedTag}
-			>
+			<a href={getTagHref('')} class="tag-frame" class:tag-frame--active={!selectedTag}>
 				<span class="tag-frame__label">All tags</span>
 			</a>
 			{#each data.tags as tag (tag.id)}
@@ -281,30 +269,35 @@
 		{@const stackExtraImages = expanded?.images.filter((m) => m.id !== gid) ?? []}
 		{@const nsfwIds = expanded ? expanded.nsfwIds : new Set<number>()}
 		{@const needsProxy =
-			gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL' || nsfwIds.size > 0}
+			gallery.settings?.isNsfw === true ||
+			gallery.settings?.visibility !== 'ALL' ||
+			nsfwIds.size > 0}
 		{#if gid != null}
-			{@const landingTilt = ((((gallery.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
+			{@const landingTilt = (
+				(((gallery.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 -
+				7
+			).toFixed(1)}
 			{@const coverDim = coverDimensions(gallery)}
 			<div class="gallery-link">
 				<div class="gallery-link__tilt" style:transform="rotate({landingTilt}deg)">
-				<GalleryLandingPolaroidStack
-					galleryImageId={gid}
-					primaryAspectRatio={coverAspectRatio(gallery)}
-					coverWidth={coverDim.width}
-					coverHeight={coverDim.height}
-					initialBlurhash={coverBlurhash(gallery)}
-					albumId={gallery.id}
-					caption={gallery.title}
-					albumDescription={gallery.meta?.description ?? undefined}
-					useProxy={needsProxy}
-					isNsfw={gallery.settings?.isNsfw === true}
-					nsfwImageIds={nsfwIds}
-					extraImages={stackExtraImages}
-					enableViewTransition={true}
-					hoverFlip={true}
-					onHoverExpand={fetchAlbumImagesOnHover}
-					onNavigate={() => goto(`/galleries/${gallery.slug}`)}
-				/>
+					<GalleryLandingPolaroidStack
+						galleryImageId={gid}
+						primaryAspectRatio={coverAspectRatio(gallery)}
+						coverWidth={coverDim.width}
+						coverHeight={coverDim.height}
+						initialBlurhash={coverBlurhash(gallery)}
+						albumId={gallery.id}
+						caption={gallery.title}
+						albumDescription={gallery.meta?.description ?? undefined}
+						useProxy={needsProxy}
+						isNsfw={gallery.settings?.isNsfw === true}
+						nsfwImageIds={nsfwIds}
+						extraImages={stackExtraImages}
+						enableViewTransition={true}
+						hoverFlip={true}
+						onHoverExpand={fetchAlbumImagesOnHover}
+						onNavigate={() => goto(`/galleries/${gallery.slug}`)}
+					/>
 				</div>
 			</div>
 		{/if}
@@ -316,14 +309,20 @@
 	<div class="pagination-info">
 		<div class="per-page">
 			<label for="per-page-select">Show</label>
-			<select id="per-page-select" class="per-page-select" bind:value={selectedPerPage} onchange={handlePerPageChange}>
+			<select
+				id="per-page-select"
+				class="per-page-select"
+				bind:value={selectedPerPage}
+				onchange={handlePerPageChange}
+			>
 				{#each perPageOptions as option}
 					<option value={option}>{option}</option>
 				{/each}
 			</select>
 		</div>
 		<span class="page-info">
-			Page {page.url.searchParams.get('page') || '1'} of {data.meta.totalPages} ({data.meta.totalDocs} total)
+			Page {page.url.searchParams.get('page') || '1'} of {data.meta.totalPages} ({data.meta
+				.totalDocs} total)
 		</span>
 	</div>
 </div>
@@ -371,7 +370,10 @@
 		border-radius: 999px;
 		text-decoration: none;
 		color: var(--color-primary);
-		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+		transition:
+			transform 0.2s ease,
+			border-color 0.2s ease,
+			background-color 0.2s ease;
 
 		&:hover {
 			transform: translateY(-1px);
@@ -396,81 +398,6 @@
 		background: var(--color-primary);
 		border-color: var(--color-primary);
 		color: var(--color-white-lightest);
-	}
-
-	.gallery-header {
-		max-width: 1400px;
-		margin: 0 auto;
-		padding: 2rem 1rem 1.5rem;
-		border-bottom: 1px solid var(--color-tertiary-lighter);
-	}
-
-	.gallery-header__title {
-		font-family: var(--font-permanent-marker), cursive;
-		font-size: var(--fs-xl);
-		font-weight: 400;
-		color: var(--color-primary);
-		text-align: center;
-		margin: 0 0 1.25rem;
-		letter-spacing: 0.02em;
-	}
-
-	.gallery-header__filters {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 1.5rem;
-		justify-content: center;
-		align-items: flex-end;
-	}
-
-	.gallery-header__filter-label {
-		font-family: Garamond, serif;
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		text-transform: uppercase;
-		letter-spacing: 1px;
-		font-weight: 600;
-		padding-bottom: 0.25rem;
-	}
-
-	.filter-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.filter-group label {
-		font-family: Garamond, serif;
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		text-transform: uppercase;
-		letter-spacing: 1px;
-		font-weight: 600;
-	}
-
-	.filter-select {
-		font-family: Garamond, serif;
-		font-size: var(--fs-base);
-		padding: 0.35rem 2rem 0.35rem 0.75rem;
-		border: 1px solid var(--color-tertiary-lighter);
-		border-radius: 0;
-		background-color: var(--color-white-lightest);
-		color: var(--color-primary);
-		cursor: pointer;
-		appearance: none;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 0.5rem center;
-		min-width: 160px;
-
-		&:hover {
-			border-color: var(--color-primary);
-		}
-
-		&:focus {
-			outline: 2px solid var(--color-primary);
-			outline-offset: 1px;
-		}
 	}
 
 	.galleries-grid {

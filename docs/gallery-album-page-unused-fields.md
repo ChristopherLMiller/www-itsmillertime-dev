@@ -9,77 +9,82 @@ This document lists all fields returned by the Payload CMS API for the gallery a
 ## Summary: What IS Used
 
 ### Gallery Album (per album)
-| Field | Used By |
-|-------|---------|
-| `id` | Merging images, galleryWithAllImages |
-| `slug` | URL, canonicalURL |
-| `title` | GalleryAlbumHeader, page, GalleryLightboxContent, meta |
-| `settings.isNsfw` | Page (isRestricted, albumIsNsfw) |
-| `settings.visibility` | Page (isRestricted) |
-| `settings.category` | GalleryAlbumHeader (category title) |
-| `settings.tags` | GalleryAlbumHeader (tag titles) |
-| `content` | GalleryAlbumHeader (Lexical description) |
-| `meta.description` | GalleryAlbumHeader, meta |
-| `meta.title` | meta (metaTitle) |
-| `meta.image` | meta (SEO image) |
-| `createdAt` | GalleryAlbumHeader (date formatted) |
+
+| Field                 | Used By                                                |
+| --------------------- | ------------------------------------------------------ |
+| `id`                  | Merging images, galleryWithAllImages                   |
+| `slug`                | URL, canonicalURL                                      |
+| `title`               | GalleryAlbumHeader, page, GalleryLightboxContent, meta |
+| `settings.isNsfw`     | Page (isRestricted, albumIsNsfw)                       |
+| `settings.visibility` | Page (isRestricted)                                    |
+| `settings.category`   | GalleryAlbumHeader (category title)                    |
+| `settings.tags`       | GalleryAlbumHeader (tag titles)                        |
+| `content`             | GalleryAlbumHeader (Lexical description)               |
+| `meta.description`    | GalleryAlbumHeader, meta                               |
+| `meta.title`          | meta (metaTitle)                                       |
+| `meta.image`          | meta (SEO image)                                       |
+| `createdAt`           | GalleryAlbumHeader (date formatted)                    |
 
 ### Gallery Images (per image)
-| Field | Used By |
-|-------|---------|
-| `id` | Key, lightbox, extractGalleryMedia |
-| `url` | Polaroid, Lightbox, GalleryMediaPlayer, isVideoMedia |
-| `alt` | Polaroid, GalleryLightboxContent |
-| `caption` | Polaroid, GalleryLightboxContent (Lexical → plain text) |
-| `blurhash` | Lightbox placeholder |
-| `mimeType` | isVideoMedia |
-| `width`, `height` | Lightbox, GalleryLightboxContent, GalleryMediaPlayer |
-| `exif` | GalleryLightboxContent (camera settings, date, location) |
-| `settings.isNsfw` | extractGalleryMedia (isNsfw per image) |
-| `sizes.thumbnail` | Lightbox, Image |
-| `sizes.small` | Lightbox imageSrc cascade |
-| `sizes.medium` | Lightbox imageSrc cascade |
-| `sizes.large` | Lightbox imageSrc cascade |
-| `sizes.xlarge` | Lightbox imageSrc cascade |
+
+| Field             | Used By                                                  |
+| ----------------- | -------------------------------------------------------- |
+| `id`              | Key, lightbox, extractGalleryMedia                       |
+| `url`             | Polaroid, Lightbox, GalleryMediaPlayer, isVideoMedia     |
+| `alt`             | Polaroid, GalleryLightboxContent                         |
+| `caption`         | Polaroid, GalleryLightboxContent (Lexical → plain text)  |
+| `blurhash`        | Lightbox placeholder                                     |
+| `mimeType`        | isVideoMedia                                             |
+| `width`, `height` | Lightbox, GalleryLightboxContent, GalleryMediaPlayer     |
+| `exif`            | GalleryLightboxContent (camera settings, date, location) |
+| `settings.isNsfw` | extractGalleryMedia (isNsfw per image)                   |
+| `sizes.thumbnail` | Lightbox, Image                                          |
+| `sizes.small`     | Lightbox imageSrc cascade                                |
+| `sizes.medium`    | Lightbox imageSrc cascade                                |
+| `sizes.large`     | Lightbox imageSrc cascade                                |
+| `sizes.xlarge`    | Lightbox imageSrc cascade                                |
 
 ---
 
 ## Unused Fields (Safe to Exclude)
 
 ### Gallery Album – Top Level
-| Field | Notes |
-|-------|-------|
-| `slugLock` | Never read |
-| `settings.permittedRoles` | Never read |
-| `settings.allowedUsers` | **Heavy** – full User objects |
-| `tracking` | views, downloads, likes, etc. |
-| `images` | Replaced with gallery-images query result |
-| `updatedAt` | Never read |
+
+| Field                     | Notes                                     |
+| ------------------------- | ----------------------------------------- |
+| `slugLock`                | Never read                                |
+| `settings.permittedRoles` | Never read                                |
+| `settings.allowedUsers`   | **Heavy** – full User objects             |
+| `tracking`                | views, downloads, likes, etc.             |
+| `images`                  | Replaced with gallery-images query result |
+| `updatedAt`               | Never read                                |
 
 ### meta.image (for SEO) – Unused
-| Field | Notes |
-|-------|-------|
+
+| Field              | Notes                                             |
+| ------------------ | ------------------------------------------------- |
 | Full nested object | Only need url for meta tags; can select minimally |
 
 ### Gallery Images – Unused
-| Field | Notes |
-|-------|-------|
-| `generateSlug` | Never read |
-| `slug` | Never read |
-| `settings.gallery-tags` | Never read |
-| `settings.visibility` | Never read |
-| `settings.permittedRoles` | Never read |
-| `settings.allowedUsers` | **Heavy** |
-| `tracking` | Never read |
-| `albums` | Never read |
-| `meta` | Never read |
-| `updatedAt`, `createdAt` | Never read |
-| `thumbnailURL` | Use sizes.*.url |
-| `filename` | Never read |
-| `filesize` | Never read |
-| `focalX`, `focalY` | Never read |
-| `sizes.square` | Not in Lightbox cascade |
-| `sizes.og` | Not in Lightbox cascade |
+
+| Field                     | Notes                   |
+| ------------------------- | ----------------------- |
+| `generateSlug`            | Never read              |
+| `slug`                    | Never read              |
+| `settings.gallery-tags`   | Never read              |
+| `settings.visibility`     | Never read              |
+| `settings.permittedRoles` | Never read              |
+| `settings.allowedUsers`   | **Heavy**               |
+| `tracking`                | Never read              |
+| `albums`                  | Never read              |
+| `meta`                    | Never read              |
+| `updatedAt`, `createdAt`  | Never read              |
+| `thumbnailURL`            | Use sizes.\*.url        |
+| `filename`                | Never read              |
+| `filesize`                | Never read              |
+| `focalX`, `focalY`        | Never read              |
+| `sizes.square`            | Not in Lightbox cascade |
+| `sizes.og`                | Not in Lightbox cascade |
 
 ---
 

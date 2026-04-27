@@ -1,10 +1,12 @@
 <script lang="ts">
 	import Lexical from '$lib/Lexical.svelte';
+	import type { LexicalEditorState } from '$lib/lexicalTypes';
 	import { slide } from 'svelte/transition';
 
 	type TimelineCardProps = {
 		title: string;
-		content: any;
+		/** Lexical JSON from Payload */
+		content: LexicalEditorState | null | undefined;
 		isLast?: boolean;
 	};
 

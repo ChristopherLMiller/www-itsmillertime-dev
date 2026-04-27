@@ -17,10 +17,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const { name, email, message } = body;
 
 	if (!name?.trim() || !email?.trim() || !message?.trim()) {
-		return json(
-			{ error: 'Name, email, and message are required' },
-			{ status: 400 }
-		);
+		return json({ error: 'Name, email, and message are required' }, { status: 400 });
 	}
 
 	const res = await fetch(`${PUBLIC_PAYLOAD_URL}/api/contact-form`, {
@@ -32,10 +29,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const data = await res.json().catch(() => ({}));
 
 	if (!res.ok) {
-		return json(
-			{ error: data.error ?? 'Failed to send message' },
-			{ status: res.status }
-		);
+		return json({ error: data.error ?? 'Failed to send message' }, { status: res.status });
 	}
 
 	return json({ success: true });

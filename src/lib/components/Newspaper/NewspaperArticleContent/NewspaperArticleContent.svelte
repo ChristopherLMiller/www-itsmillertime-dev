@@ -43,9 +43,7 @@
 	);
 
 	const categoryTitle = $derived(
-		typeof article.category === 'object' && article.category?.title
-			? article.category.title
-			: null
+		typeof article.category === 'object' && article.category?.title ? article.category.title : null
 	);
 
 	const featured = $derived(featuredMedia(article));
@@ -89,10 +87,7 @@
 				style:view-transition-name={article.slug ? `article-dateline-${article.slug}` : undefined}
 			>
 				{#if pubLabel || createdLabel || categoryTitle}
-					<div
-						class="article-meta"
-						style:view-transition-name={`article-meta-${article.slug}`}
-					>
+					<div class="article-meta" style:view-transition-name={`article-meta-${article.slug}`}>
 						{#if pubLabel}
 							<span style:view-transition-name={`article-pub-date-${article.slug}`}>
 								Published on {pubLabel}

@@ -18,8 +18,7 @@
 	const { data } = $props();
 
 	const isRestricted = $derived(
-		data.gallery.settings?.isNsfw === true ||
-		data.gallery.settings?.visibility !== 'ALL'
+		data.gallery.settings?.isNsfw === true || data.gallery.settings?.visibility !== 'ALL'
 	);
 	const useProxy = $derived(isRestricted);
 	const albumIsNsfw = $derived(data.gallery.settings?.isNsfw === true);
@@ -227,14 +226,19 @@
 			<Panel hasBorder hasPadding>
 				<header class="gallery-header">
 					<h1>{data.gallery.title}</h1>
-					<p class="gallery-hidden-notice">This album contains NSFW content and is hidden by your profile settings.</p>
+					<p class="gallery-hidden-notice">
+						This album contains NSFW content and is hidden by your profile settings.
+					</p>
 				</header>
 			</Panel>
 		</div>
 	</div>
 {:else}
 	<div class="gallery-page">
-		<GalleryAlbumHeader gallery={data.gallery as GalleryAlbum} imageCount={totalImageCount} />
+		<GalleryAlbumHeader
+			gallery={data.gallery as unknown as GalleryAlbum}
+			imageCount={totalImageCount}
+		/>
 
 		<div class="gallery-grid">
 			<Masonry
@@ -247,8 +251,15 @@
 			>
 				{#snippet children({ item: slot })}
 					{@const idx = visibleSlots.findIndex((s) => s.id === slot.id)}
-					{@const rotation = ((((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 - 7).toFixed(1)}
-					{@const layoutAspect = cssAspectRatioFromDimensions(slot.width ?? undefined, slot.height ?? undefined, 3 / 4)}
+					{@const rotation = (
+						(((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 -
+						7
+					).toFixed(1)}
+					{@const layoutAspect = cssAspectRatioFromDimensions(
+						slot.width ?? undefined,
+						slot.height ?? undefined,
+						3 / 4
+					)}
 					<div class="gallery-grid__item">
 						<div class="gallery-grid__tilt" style:transform="rotate({rotation}deg)">
 							<GalleryAlbumPolaroid
@@ -287,36 +298,51 @@
 	</div>
 
 	<Lightbox
-			images={galleryImages}
-			totalCount={totalImageCount}
-			initialIndex={lightboxIndex}
-			bind:open={lightboxOpen}
-			onClose={closeLightbox}
-			onIndexChange={updateUrlForIndex}
-			canLoadMore={hasNextPage}
-			onRequestMore={loadNextImagePage}
-			{useProxy}
-		>
-			{#snippet content({ image, index, total, imageSrc, isLoaded, placeholderSrc, onImageLoad, onClose, onPrevious, onNext, hasPrevious, hasNext, galleryImageId, useProxy })}
-				<GalleryLightboxContent
-					{image}
-					{index}
-					{total}
-					{imageSrc}
-					{isLoaded}
-					{placeholderSrc}
-					{onImageLoad}
-					{onClose}
-					{onPrevious}
-					{onNext}
-					{hasPrevious}
-					{hasNext}
-					gallery={data.gallery as GalleryAlbum}
-					{galleryImageId}
-					{useProxy}
-				/>
-			{/snippet}
-		</Lightbox>
+		images={galleryImages}
+		totalCount={totalImageCount}
+		initialIndex={lightboxIndex}
+		bind:open={lightboxOpen}
+		onClose={closeLightbox}
+		onIndexChange={updateUrlForIndex}
+		canLoadMore={hasNextPage}
+		onRequestMore={loadNextImagePage}
+		{useProxy}
+	>
+		{#snippet content({
+			image,
+			index,
+			total,
+			imageSrc,
+			isLoaded,
+			placeholderSrc,
+			onImageLoad,
+			onClose,
+			onPrevious,
+			onNext,
+			hasPrevious,
+			hasNext,
+			galleryImageId,
+			useProxy
+		})}
+			<GalleryLightboxContent
+				{image}
+				{index}
+				{total}
+				{imageSrc}
+				{isLoaded}
+				{placeholderSrc}
+				{onImageLoad}
+				{onClose}
+				{onPrevious}
+				{onNext}
+				{hasPrevious}
+				{hasNext}
+				gallery={data.gallery as unknown as GalleryAlbum}
+				{galleryImageId}
+				{useProxy}
+			/>
+		{/snippet}
+	</Lightbox>
 {/if}
 
 <style>
@@ -360,7 +386,9 @@
 	.gallery-grid__tilt {
 		width: 100%;
 		transform-origin: center;
-		transition: transform 250ms ease, box-shadow 250ms ease;
+		transition:
+			transform 250ms ease,
+			box-shadow 250ms ease;
 	}
 
 	.gallery-grid__item:hover .gallery-grid__tilt,
@@ -377,7 +405,9 @@
 
 	.gallery-grid__item:hover :global(.polaroid),
 	.gallery-grid__item:focus-within :global(.polaroid) {
-		box-shadow: 0 1.5rem 3rem -0.5rem rgba(0, 0, 0, 0.45), 0 0.75rem 1.5rem -0.25rem rgba(0, 0, 0, 0.3);
+		box-shadow:
+			0 1.5rem 3rem -0.5rem rgba(0, 0, 0, 0.45),
+			0 0.75rem 1.5rem -0.25rem rgba(0, 0, 0, 0.3);
 	}
 
 	.gallery-grid__item:focus-visible {

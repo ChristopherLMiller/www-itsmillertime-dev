@@ -19,23 +19,27 @@ pnpm run build
 ## Development Commands
 
 ### Essential Commands
+
 - `pnpm run dev` - Start development server with automatic Payload type fetching
 - `pnpm run build` - Create production build
 - `pnpm run preview` - Preview production build locally
 
 ### Code Quality
+
 - `pnpm run lint` - Run Prettier and ESLint checks
 - `pnpm run format` - Format code with Prettier
 - `pnpm run check` - Run Svelte type checking
 - `pnpm run check:watch` - Run Svelte type checking in watch mode
 
 ### Type Generation Scripts
+
 - `pnpm run fetch-payload-types` - Fetch TypeScript types from remote Payload CMS
 - `pnpm run generate-zod-schema` - Generate Zod schemas from TypeScript types using Anthropic AI
 
 ## Architecture Overview
 
 ### Core Structure
+
 - **Frontend**: SvelteKit 5 with TypeScript
 - **Styling**: Custom CSS with Stylelint for validation
 - **Content Source**: Payload CMS (external/headless)
@@ -43,6 +47,7 @@ pnpm run build
 - **Type Safety**: TypeScript with automated Zod schema generation
 
 ### Key Directories
+
 - `src/routes/(site)/` - Main website routes using SvelteKit's group layout
 - `src/routes/api/` - API routes for proxying CMS data with caching
 - `src/lib/queries/` - Data fetching functions for different content types
@@ -68,6 +73,7 @@ pnpm run build
 ### API Proxy Pattern
 
 The `/api/payload` endpoint acts as a caching proxy to the external Payload CMS:
+
 - Handles all CMS queries through unified interface
 - Implements automatic background refresh for stale data
 - Provides cache status headers (`X-Cache: HIT|MISS|REFRESHED`)
@@ -75,6 +81,7 @@ The `/api/payload` endpoint acts as a caching proxy to the external Payload CMS:
 ## Environment Variables
 
 Required environment variables:
+
 - `PAYLOAD_TYPES_URL` - URL to fetch TypeScript types (defaults to GitHub)
 - `PUBLIC_PAYLOAD_API_ENDPOINT` - Payload CMS API base URL
 - `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL
@@ -85,22 +92,26 @@ Required environment variables:
 ## Common Development Patterns
 
 ### Adding New Content Types
+
 1. Update CMS schema (external)
 2. Run `pnpm run fetch-payload-types` to sync types
 3. Create query function in `src/lib/queries/`
 4. Add route handlers in `src/routes/`
 
 ### Working with Queries
+
 All query functions follow the pattern:
+
 ```typescript
 export const getContentType = async (fetch, params) => {
-  const response = await fetch(`/api/payload?endpoint=content&${qs.stringify(params)}`);
-  const data = PayloadResponseSchema(ContentSchema).parse(await response.json());
-  return data;
+	const response = await fetch(`/api/payload?endpoint=content&${qs.stringify(params)}`);
+	const data = PayloadResponseSchema(ContentSchema).parse(await response.json());
+	return data;
 };
 ```
 
 ### Cache Management
+
 - Use `?refresh=true` to force cache refresh during development
 - Use `?cache=false` to bypass caching entirely
 - Cache keys automatically include all query parameters

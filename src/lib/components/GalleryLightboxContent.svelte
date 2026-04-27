@@ -36,7 +36,7 @@
 		index,
 		total,
 		imageSrc,
-		isLoaded,
+		isLoaded: _isLoaded,
 		placeholderSrc,
 		onImageLoad,
 		onClose,
@@ -66,7 +66,9 @@
 	} = $props();
 
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
-	const resolvedImageSrc = $derived(imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null));
+	const resolvedImageSrc = $derived(
+		imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
+	);
 	const lightboxSrcsets = $derived(buildSrcsets(image, useProxy ?? false));
 
 	/** Blurhash (or parent-passed placeholder string) for underlay while full image loads */
@@ -80,10 +82,7 @@
 		if (blurPlaceholder) return null;
 		if (!image?.sizes) return null;
 		const fallbackSize =
-			image.sizes.thumbnail?.url ??
-			image.sizes.small?.url ??
-			image.sizes.medium?.url ??
-			null;
+			image.sizes.thumbnail?.url ?? image.sizes.small?.url ?? image.sizes.medium?.url ?? null;
 		return fallbackSize ? getMediaUrl(fallbackSize, useProxy ?? false) : null;
 	});
 
@@ -91,8 +90,8 @@
 	let mainImageLoaded = $state(false);
 
 	$effect(() => {
-		index;
-		resolvedImageSrc;
+		void index;
+		void resolvedImageSrc;
 		mainImageLoaded = false;
 	});
 
@@ -108,8 +107,8 @@
 	}
 
 	$effect(() => {
-		index;
-		resolvedImageSrc;
+		void index;
+		void resolvedImageSrc;
 		mainImgReadyNotified = false;
 	});
 
@@ -166,17 +165,28 @@
 	}
 
 	// Caption (Lexical) or alt as fallback
-	const captionText = $derived(
-		image?.caption ? lexicalToPlainText(image.caption) : null
-	);
+	const captionText = $derived(image?.caption ? lexicalToPlainText(image.caption) : null);
 	const displayCaption = $derived((captionText && captionText.trim()) || image?.alt || '');
 
-	const imageAspectRatio = $derived(
-		image?.width && image?.height ? image.width / image.height : 1
-	);
+	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
 
 	// EXIF metadata: split into camera settings vs date/location
-	type ExifItem = { label: string; value: string; icon: 'camera' | 'lens' | 'aperture' | 'shutter' | 'iso' | 'focal' | 'program' | 'bias' | 'wb' | 'metering' | 'flash' };
+	type ExifItem = {
+		label: string;
+		value: string;
+		icon:
+			| 'camera'
+			| 'lens'
+			| 'aperture'
+			| 'shutter'
+			| 'iso'
+			| 'focal'
+			| 'program'
+			| 'bias'
+			| 'wb'
+			| 'metering'
+			| 'flash';
+	};
 
 	const { cameraSettings, dateTaken, location } = $derived.by(() => {
 		const camera: ExifItem[] = [];
@@ -223,7 +233,11 @@
 		const bias = getDesc('ExposureBiasValue');
 		if (bias) {
 			const ev = parseFloat(bias);
-			add('Exposure bias', Number.isNaN(ev) ? bias : ev === 0 ? '0 EV' : `${ev > 0 ? '+' : ''}${ev} EV`, 'bias');
+			add(
+				'Exposure bias',
+				Number.isNaN(ev) ? bias : ev === 0 ? '0 EV' : `${ev > 0 ? '+' : ''}${ev} EV`,
+				'bias'
+			);
 		}
 
 		add('White balance', getDesc('WhiteBalance'), 'wb');
@@ -260,10 +274,7 @@
 	});
 </script>
 
-<div
-	class="gallery-lightbox"
-	style:--image-aspect-ratio={imageAspectRatio}
->
+<div class="gallery-lightbox" style:--image-aspect-ratio={imageAspectRatio}>
 	<div class="gallery-lightbox__body">
 		<!-- Left 75%: image pane with arrows on edges, close in corner -->
 		<div class="gallery-lightbox__image-pane">
@@ -276,11 +287,23 @@
 
 			<button
 				class="gallery-lightbox__close"
-				onclick={(e) => { e.stopPropagation(); onClose(); }}
+				onclick={(e) => {
+					e.stopPropagation();
+					onClose();
+				}}
 				aria-label="Close lightbox"
 				type="button"
 			>
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
 					<line x1="18" y1="6" x2="6" y2="18"></line>
 					<line x1="6" y1="6" x2="18" y2="18"></line>
 				</svg>
@@ -290,11 +313,23 @@
 				class="gallery-lightbox__nav gallery-lightbox__nav--prev"
 				class:gallery-lightbox__nav--disabled={!hasPrevious}
 				disabled={!hasPrevious}
-				onclick={(e) => { e.stopPropagation(); onPrevious(); }}
+				onclick={(e) => {
+					e.stopPropagation();
+					onPrevious();
+				}}
 				aria-label="Previous image"
 				type="button"
 			>
-				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<svg
+					width="32"
+					height="32"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
 					<polyline points="15 18 9 12 15 6"></polyline>
 				</svg>
 			</button>
@@ -305,7 +340,11 @@
 				role="presentation"
 			>
 				{#if isVideo && image}
-					<GalleryMediaPlayer media={image} useProxy={useProxy ?? false} className="gallery-lightbox__video" />
+					<GalleryMediaPlayer
+						media={image}
+						useProxy={useProxy ?? false}
+						className="gallery-lightbox__video"
+					/>
 				{:else}
 					{#if showImageLoadingUi}
 						<div
@@ -334,8 +373,16 @@
 					{#if resolvedImageSrc}
 						{#key index}
 							<picture class="gallery-lightbox__picture">
-								<source type="image/avif" srcset={lightboxSrcsets.avifSrcset || undefined} sizes="100vw" />
-								<source type="image/jpeg" srcset={lightboxSrcsets.jpegSrcset || undefined} sizes="100vw" />
+								<source
+									type="image/avif"
+									srcset={lightboxSrcsets.avifSrcset || undefined}
+									sizes="100vw"
+								/>
+								<source
+									type="image/jpeg"
+									srcset={lightboxSrcsets.jpegSrcset || undefined}
+									sizes="100vw"
+								/>
 								<img
 									class="gallery-lightbox__image"
 									use:mainLightboxImage
@@ -359,11 +406,23 @@
 				class="gallery-lightbox__nav gallery-lightbox__nav--next"
 				class:gallery-lightbox__nav--disabled={!hasNext}
 				disabled={!hasNext}
-				onclick={(e) => { e.stopPropagation(); onNext(); }}
+				onclick={(e) => {
+					e.stopPropagation();
+					onNext();
+				}}
 				aria-label="Next image"
 				type="button"
 			>
-				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<svg
+					width="32"
+					height="32"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
 					<polyline points="9 18 15 12 9 6"></polyline>
 				</svg>
 			</button>
@@ -393,7 +452,9 @@
 
 			<section class="gallery-lightbox__section">
 				<h3 class="gallery-lightbox__section-title">Caption</h3>
-				<p class="gallery-lightbox__section-text gallery-lightbox__caption">{displayCaption || '—'}</p>
+				<p class="gallery-lightbox__section-text gallery-lightbox__caption">
+					{displayCaption || '—'}
+				</p>
 			</section>
 
 			<section class="gallery-lightbox__section">
@@ -821,5 +882,4 @@
 			border-top-color: rgba(255, 255, 255, 0.6);
 		}
 	}
-
 </style>

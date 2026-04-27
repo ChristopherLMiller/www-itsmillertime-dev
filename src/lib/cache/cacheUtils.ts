@@ -57,7 +57,14 @@ export function getRefreshUrl(endpoint: string, queryParams?: Record<string, str
 export async function getCacheStatus(
 	endpoint: string,
 	queryParams?: Record<string, string>
-): Promise<any> {
+): Promise<
+	| {
+			cacheStatus?: string;
+			responseTime?: string;
+			timestamp: string;
+	  }
+	| { error: string }
+> {
 	try {
 		const params = new URLSearchParams();
 		params.set('endpoint', endpoint);

@@ -13,8 +13,7 @@
 
 	const videoUrl = $derived(media?.url ? getMediaUrl(media.url, useProxy) : '');
 	const isYouTube = $derived(
-		!!videoUrl &&
-			(videoUrl.includes('youtube.com/watch') || videoUrl.includes('youtu.be/'))
+		!!videoUrl && (videoUrl.includes('youtube.com/watch') || videoUrl.includes('youtu.be/'))
 	);
 	const aspectRatio = $derived.by(() => {
 		const thumb = media?.sizes?.thumbnail;
@@ -38,15 +37,11 @@
 >
 	<media-controller noautohide>
 		{#if isYouTube}
-			<youtube-video
-				src={videoUrl}
-				slot="media"
-				controls="0"
-				crossorigin
+			<youtube-video src={videoUrl} slot="media" controls="0" crossorigin="anonymous"
 			></youtube-video>
 		{:else}
 			<!-- svelte-ignore a11y_media_has_caption -->
-			<video slot="media" src={videoUrl} crossorigin playsinline></video>
+			<video slot="media" src={videoUrl} crossorigin="anonymous" playsinline></video>
 		{/if}
 		<media-loading-indicator slot="centered-chrome" noautohide></media-loading-indicator>
 		<media-control-bar>
