@@ -3,7 +3,7 @@
  * Add new resolvers to `payloadSwrKeyResolvers` (append); first match wins.
  */
 import { cacheManager } from '$lib/cache/cache';
-import type { PayloadSwrKeyContext, PayloadSwrKeyResolver } from '$lib/cache/payloadSwrCore';
+import type { PayloadSwrKeyResolver } from '$lib/cache/payloadSwrCore';
 
 function parseWhereSlugEquals(search: string): string | null {
 	const q = search.startsWith('?') ? search.slice(1) : search;

@@ -9,10 +9,10 @@ The **www** site does not call Last.fm directly. It polls **Payload CMS** at **`
 
 ## Environment variables (Payload CMS)
 
-| Variable           | Purpose                                      |
-| ------------------ | -------------------------------------------- |
-| `LASTFM_API_KEY`   | Last.fm API key ([create account / key](https://www.last.fm/api/account/create)) |
-| `LASTFM_USERNAME`  | Last.fm username whose recent tracks are read |
+| Variable          | Purpose                                                                          |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `LASTFM_API_KEY`  | Last.fm API key ([create account / key](https://www.last.fm/api/account/create)) |
+| `LASTFM_USERNAME` | Last.fm username whose recent tracks are read                                    |
 
 Store these as **server-only** secrets on the CMS. They are **not** used by the www repo.
 
@@ -33,13 +33,13 @@ Ensure Payload allows **CORS** for `GET` on that route from your site origin if 
 
 **Query parameters:**
 
-| Parameter | Value        | Notes |
-| --------- | ------------ | ----- |
-| `method`  | `user.getrecenttracks` | Required |
-| `user`    | `LASTFM_USERNAME` | |
-| `api_key` | `LASTFM_API_KEY` | |
-| `format`  | `json`       | JSON instead of XML |
-| `limit`   | `1`          | Only the single most recent track (enough for “now playing”) |
+| Parameter | Value                  | Notes                                                        |
+| --------- | ---------------------- | ------------------------------------------------------------ |
+| `method`  | `user.getrecenttracks` | Required                                                     |
+| `user`    | `LASTFM_USERNAME`      |                                                              |
+| `api_key` | `LASTFM_API_KEY`       |                                                              |
+| `format`  | `json`                 | JSON instead of XML                                          |
+| `limit`   | `1`                    | Only the single most recent track (enough for “now playing”) |
 
 **Request:** plain `GET` (no auth header; key is in query string).
 
@@ -51,23 +51,23 @@ Relevant subset of the response:
 
 ```json
 {
-  "recenttracks": {
-    "track": [
-      {
-        "name": "Track Title",
-        "url": "https://www.last.fm/music/...",
-        "artist": { "name": "Artist" },
-        "album": { "#text": "Album Name" },
-        "image": [
-          { "#text": "https://...", "size": "small" },
-          { "#text": "https://...", "size": "medium" },
-          { "#text": "https://...", "size": "large" },
-          { "#text": "https://...", "size": "extralarge" }
-        ],
-        "@attr": { "nowplaying": "true" }
-      }
-    ]
-  }
+	"recenttracks": {
+		"track": [
+			{
+				"name": "Track Title",
+				"url": "https://www.last.fm/music/...",
+				"artist": { "name": "Artist" },
+				"album": { "#text": "Album Name" },
+				"image": [
+					{ "#text": "https://...", "size": "small" },
+					{ "#text": "https://...", "size": "medium" },
+					{ "#text": "https://...", "size": "large" },
+					{ "#text": "https://...", "size": "extralarge" }
+				],
+				"@attr": { "nowplaying": "true" }
+			}
+		]
+	}
 }
 ```
 
@@ -87,14 +87,14 @@ Payload should return **200** and this body:
 
 ```ts
 type NowPlayingResponse = {
-  isPlaying: boolean;
-  track: {
-    name: string;
-    artist: string;
-    album: string | null;
-    url: string;
-    image: string | null;
-  } | null;
+	isPlaying: boolean;
+	track: {
+		name: string;
+		artist: string;
+		album: string | null;
+		url: string;
+		image: string | null;
+	} | null;
 };
 ```
 
@@ -106,7 +106,7 @@ Consider a short TTL in memory or Redis to limit Last.fm requests when many clie
 
 ## File reference (this repo)
 
-| File | Role |
-| ---- | ---- |
+| File                                         | Role                                                     |
+| -------------------------------------------- | -------------------------------------------------------- |
 | `src/lib/components/LastFmNowPlaying.svelte` | Polls `{PUBLIC_PAYLOAD_API_ENDPOINT}/lastfm/now-playing` |
-| `src/storybook/LastFmStoryWrapper.svelte` | Mocks `fetch` for URLs containing `/api/lastfm/` |
+| `src/storybook/LastFmStoryWrapper.svelte`    | Mocks `fetch` for URLs containing `/api/lastfm/`         |

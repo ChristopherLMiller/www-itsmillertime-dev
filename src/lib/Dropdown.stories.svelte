@@ -1,4 +1,5 @@
 <script module>
+	/* eslint-disable svelte/no-useless-children-snippet -- story must pass both button and panel snippets to Dropdown */
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import Dropdown from './Dropdown.svelte';
 

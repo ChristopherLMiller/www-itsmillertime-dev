@@ -5,7 +5,7 @@ async function fetchBGGCollection(
 	username: string,
 	stats: 0 | 1,
 	retryCount = 0
-): Promise<{ games: any[]; total: number; error?: string }> {
+): Promise<{ games: unknown[]; total: number; error?: string }> {
 	const maxRetries = 5;
 	const retryDelay = 3000;
 	const { BGG_API_TOKEN } = env;

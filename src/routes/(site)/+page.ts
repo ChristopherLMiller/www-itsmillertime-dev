@@ -25,7 +25,9 @@ export async function load({ fetch, url }) {
 	}
 
 	const doc = pageData.docs[0];
-	const meta = doc.meta ? { ...doc.meta, canonicalURL: `${url.origin}/` } : { canonicalURL: `${url.origin}/` };
+	const meta = doc.meta
+		? { ...doc.meta, canonicalURL: `${url.origin}/` }
+		: { canonicalURL: `${url.origin}/` };
 	return {
 		page: doc,
 		meta

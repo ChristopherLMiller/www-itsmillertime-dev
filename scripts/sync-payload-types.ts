@@ -118,7 +118,12 @@ class PayloadTypesSyncer {
 
 			this.ensureDirectoryExists(this.config.outputPath);
 
-			writeFileSync(this.config.outputPath, typesContent, 'utf8');
+			// Module augmentation belongs in `src/payload-module.d.ts` (no `payload` package in this app).
+			const withoutPayloadAugment = typesContent.replace(
+				/\r?\n\s*declare module 'payload'[\s\S]*$/,
+				'\n'
+			);
+			writeFileSync(this.config.outputPath, withoutPayloadAugment, 'utf8');
 			this.saveCache(contentHash);
 
 			const lines = typesContent.split('\n').length;

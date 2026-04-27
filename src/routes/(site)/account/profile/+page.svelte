@@ -118,7 +118,11 @@
 						<div class="detail-row">
 							<dt>Email Verified</dt>
 							<dd>
-								<span class="status" class:active={user.emailVerified} class:inactive={!user.emailVerified}>
+								<span
+									class="status"
+									class:active={user.emailVerified}
+									class:inactive={!user.emailVerified}
+								>
 									{user.emailVerified ? 'Yes' : 'No'}
 								</span>
 							</dd>
@@ -126,7 +130,11 @@
 						<div class="detail-row">
 							<dt>Two-Factor Auth</dt>
 							<dd>
-								<span class="status" class:active={user.twoFactorEnabled} class:inactive={!user.twoFactorEnabled}>
+								<span
+									class="status"
+									class:active={user.twoFactorEnabled}
+									class:inactive={!user.twoFactorEnabled}
+								>
 									{user.twoFactorEnabled ? 'Enabled' : 'Disabled'}
 								</span>
 							</dd>
@@ -147,7 +155,11 @@
 							<div class="detail-row">
 								<dt>BGG Username</dt>
 								<dd>
-									<a href="https://boardgamegeek.com/user/{user.bggUsername}" target="_blank" rel="noopener">
+									<a
+										href="https://boardgamegeek.com/user/{user.bggUsername}"
+										target="_blank"
+										rel="noopener"
+									>
 										{user.bggUsername}
 									</a>
 								</dd>

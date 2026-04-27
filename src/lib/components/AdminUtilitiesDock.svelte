@@ -44,7 +44,6 @@
 	};
 
 	let cacheKeys = $state<{ key: string; ttl: number }[]>([]);
-	let cacheNextCursor = $state<string | null>(null);
 	let cacheHasMore = $state(false);
 	let cacheLoading = $state(false);
 	let cacheConfigured = $state(true);
@@ -174,7 +173,6 @@
 		cacheError = null;
 		try {
 			cacheKeys = [];
-			cacheNextCursor = null;
 			peekKey = null;
 			peekText = null;
 
@@ -198,7 +196,6 @@
 				const newKeys = data.keys ?? [];
 				cacheKeys = [...cacheKeys, ...newKeys];
 				const next = String(data.nextCursor ?? '0');
-				cacheNextCursor = next;
 				cacheHasMore = next !== '0';
 				if (next === '0') break;
 				cursor = next;
@@ -220,8 +217,8 @@
 	});
 
 	$effect(() => {
-		peekKey;
-		peekText;
+		const _runWhenPeekKeyOrTextChanges = [peekKey, peekText];
+		void _runWhenPeekKeyOrTextChanges;
 		peekCopyFeedback = 'idle';
 		if (copyPeekTimeoutId !== undefined) {
 			clearTimeout(copyPeekTimeoutId);
@@ -426,291 +423,305 @@
 					>
 						<h2 id="admin-dock-dialog-title" class="admin-dock-sr-only">Admin tools</h2>
 
-				<div
-					class="admin-dock-tablist"
-					role="tablist"
-					aria-label="Admin tool sections"
-					tabindex="-1"
-					onkeydown={handleTablistKeydown}
-				>
-					<button
-						type="button"
-						class="admin-dock-tab-btn"
-						class:admin-dock-tab-btn--active={activeTab === 'upstash'}
-						role="tab"
-						id="admin-tab-upstash"
-						aria-selected={activeTab === 'upstash'}
-						aria-controls="admin-panel-upstash"
-						tabindex={activeTab === 'upstash' ? 0 : -1}
-						onclick={() => setTab('upstash')}
-					>
-						Upstash
-					</button>
-					<button
-						type="button"
-						class="admin-dock-tab-btn"
-						class:admin-dock-tab-btn--active={activeTab === 'browser'}
-						role="tab"
-						id="admin-tab-browser"
-						aria-selected={activeTab === 'browser'}
-						aria-controls="admin-panel-browser"
-						tabindex={activeTab === 'browser' ? 0 : -1}
-						onclick={() => setTab('browser')}
-					>
-						Browser
-					</button>
-					<button
-						type="button"
-						class="admin-dock-tab-btn"
-						class:admin-dock-tab-btn--active={activeTab === 'cms'}
-						role="tab"
-						id="admin-tab-cms"
-						aria-selected={activeTab === 'cms'}
-						aria-controls="admin-panel-cms"
-						tabindex={activeTab === 'cms' ? 0 : -1}
-						onclick={() => setTab('cms')}
-					>
-						CMS
-					</button>
-					<button
-						type="button"
-						class="admin-dock-tab-btn"
-						class:admin-dock-tab-btn--active={activeTab === 'site'}
-						role="tab"
-						id="admin-tab-site"
-						aria-selected={activeTab === 'site'}
-						aria-controls="admin-panel-site"
-						tabindex={activeTab === 'site' ? 0 : -1}
-						onclick={() => setTab('site')}
-					>
-						Site
-					</button>
-				</div>
+						<div
+							class="admin-dock-tablist"
+							role="tablist"
+							aria-label="Admin tool sections"
+							tabindex="-1"
+							onkeydown={handleTablistKeydown}
+						>
+							<button
+								type="button"
+								class="admin-dock-tab-btn"
+								class:admin-dock-tab-btn--active={activeTab === 'upstash'}
+								role="tab"
+								id="admin-tab-upstash"
+								aria-selected={activeTab === 'upstash'}
+								aria-controls="admin-panel-upstash"
+								tabindex={activeTab === 'upstash' ? 0 : -1}
+								onclick={() => setTab('upstash')}
+							>
+								Upstash
+							</button>
+							<button
+								type="button"
+								class="admin-dock-tab-btn"
+								class:admin-dock-tab-btn--active={activeTab === 'browser'}
+								role="tab"
+								id="admin-tab-browser"
+								aria-selected={activeTab === 'browser'}
+								aria-controls="admin-panel-browser"
+								tabindex={activeTab === 'browser' ? 0 : -1}
+								onclick={() => setTab('browser')}
+							>
+								Browser
+							</button>
+							<button
+								type="button"
+								class="admin-dock-tab-btn"
+								class:admin-dock-tab-btn--active={activeTab === 'cms'}
+								role="tab"
+								id="admin-tab-cms"
+								aria-selected={activeTab === 'cms'}
+								aria-controls="admin-panel-cms"
+								tabindex={activeTab === 'cms' ? 0 : -1}
+								onclick={() => setTab('cms')}
+							>
+								CMS
+							</button>
+							<button
+								type="button"
+								class="admin-dock-tab-btn"
+								class:admin-dock-tab-btn--active={activeTab === 'site'}
+								role="tab"
+								id="admin-tab-site"
+								aria-selected={activeTab === 'site'}
+								aria-controls="admin-panel-site"
+								tabindex={activeTab === 'site' ? 0 : -1}
+								onclick={() => setTab('site')}
+							>
+								Site
+							</button>
+						</div>
 
-				<div class="admin-dock-panels">
-					<div
-						id="admin-panel-upstash"
-						class="admin-dock-panel"
-						role="tabpanel"
-						aria-labelledby="admin-tab-upstash"
-						hidden={activeTab !== 'upstash'}
-					>
-						<p class="admin-dock-section-lead">
-							All keys in Upstash Redis (SCAN until complete). Use Refresh to reload after changes.
-						</p>
-						{#if !cacheConfigured}
-							<p class="admin-dock-note">
-								Redis env vars are not set on this server, so listing keys is unavailable.
-							</p>
-						{:else}
-							<div class="admin-dock-row">
-								<button
-									type="button"
-									class="admin-dock-btn"
-									disabled={cacheLoading}
-									onclick={() => loadAllUpstashKeys()}
-								>
-									{cacheLoading ? 'Loading…' : 'Refresh'}
-								</button>
-								{#if cacheHasMore}
-									<span class="admin-dock-scan-cap" title="SCAN safety limit reached"
-										>Partial list (limit)</span
-									>
+						<div class="admin-dock-panels">
+							<div
+								id="admin-panel-upstash"
+								class="admin-dock-panel"
+								role="tabpanel"
+								aria-labelledby="admin-tab-upstash"
+								hidden={activeTab !== 'upstash'}
+							>
+								<p class="admin-dock-section-lead">
+									All keys in Upstash Redis (SCAN until complete). Use Refresh to reload after
+									changes.
+								</p>
+								{#if !cacheConfigured}
+									<p class="admin-dock-note">
+										Redis env vars are not set on this server, so listing keys is unavailable.
+									</p>
+								{:else}
+									<div class="admin-dock-row">
+										<button
+											type="button"
+											class="admin-dock-btn"
+											disabled={cacheLoading}
+											onclick={() => loadAllUpstashKeys()}
+										>
+											{cacheLoading ? 'Loading…' : 'Refresh'}
+										</button>
+										{#if cacheHasMore}
+											<span class="admin-dock-scan-cap" title="SCAN safety limit reached"
+												>Partial list (limit)</span
+											>
+										{/if}
+									</div>
+									{#if cacheError}
+										<p class="admin-dock-error">{cacheError}</p>
+									{/if}
+									{#if cacheKeys.length > 0}
+										<ul class="admin-dock-cache-list">
+											{#each cacheKeys as row (row.key)}
+												<li class="admin-dock-cache-row">
+													<div class="admin-dock-cache-line">
+														<div class="admin-dock-cache-left">
+															<span class="admin-dock-cache-ttl">{formatTtl(row.ttl)}</span>
+															<span class="admin-dock-cache-key" title={row.key}>{row.key}</span>
+														</div>
+														<div class="admin-dock-cache-actions">
+															<button
+																type="button"
+																class="admin-dock-linkish"
+																disabled={peekLoading}
+																onclick={(e) => {
+																	e.stopPropagation();
+																	void doPeek(row.key);
+																}}
+															>
+																{peekKey === row.key ? 'Hide value' : 'Expand value'}
+															</button>
+															<button
+																type="button"
+																class="admin-dock-linkish danger"
+																onclick={(e) => {
+																	e.stopPropagation();
+																	void doDelete(row.key);
+																}}
+															>
+																Delete
+															</button>
+														</div>
+													</div>
+													{#if peekKey === row.key && peekText !== null}
+														<div class="admin-dock-peek">
+															<div class="admin-dock-peek-toolbar">
+																<button
+																	type="button"
+																	class="admin-dock-linkish"
+																	disabled={!browser}
+																	onclick={(e) => {
+																		e.stopPropagation();
+																		if (peekText !== null) void copyPeekValue(peekText, e);
+																	}}
+																>
+																	{peekCopyFeedback === 'copied'
+																		? 'Copied'
+																		: peekCopyFeedback === 'error'
+																			? 'Copy failed'
+																			: 'Copy value'}
+																</button>
+															</div>
+															<div
+																class="admin-dock-peek-code-wrap"
+																role="region"
+																aria-label="Cached value"
+															>
+																<pre class="admin-dock-peek-pre"><code
+																		class="hljs admin-dock-peek-code"
+																		>{@html highlightPeekHtml(peekText)}</code
+																	></pre>
+															</div>
+														</div>
+													{/if}
+												</li>
+											{/each}
+										</ul>
+									{/if}
 								{/if}
 							</div>
-							{#if cacheError}
-								<p class="admin-dock-error">{cacheError}</p>
-							{/if}
-							{#if cacheKeys.length > 0}
-								<ul class="admin-dock-cache-list">
-									{#each cacheKeys as row (row.key)}
-										<li class="admin-dock-cache-row">
-											<div class="admin-dock-cache-line">
-												<div class="admin-dock-cache-left">
-													<span class="admin-dock-cache-ttl">{formatTtl(row.ttl)}</span>
-													<span class="admin-dock-cache-key" title={row.key}>{row.key}</span>
-												</div>
-												<div class="admin-dock-cache-actions">
-													<button
-														type="button"
-														class="admin-dock-linkish"
-														disabled={peekLoading}
-														onclick={(e) => {
-															e.stopPropagation();
-															void doPeek(row.key);
-														}}
-													>
-														{peekKey === row.key ? 'Hide value' : 'Expand value'}
-													</button>
-													<button
-														type="button"
-														class="admin-dock-linkish danger"
-														onclick={(e) => {
-															e.stopPropagation();
-															void doDelete(row.key);
-														}}
-													>
-														Delete
-													</button>
-												</div>
-											</div>
-											{#if peekKey === row.key && peekText !== null}
-												<div class="admin-dock-peek">
-													<div class="admin-dock-peek-toolbar">
+
+							<div
+								id="admin-panel-browser"
+								class="admin-dock-panel"
+								role="tabpanel"
+								aria-labelledby="admin-tab-browser"
+								hidden={activeTab !== 'browser'}
+							>
+								<p class="admin-dock-section-lead">
+									Client-side IndexedDB used for instant layout navigations.
+								</p>
+								<p class="admin-dock-note admin-dock-idb-meta-line">
+									<code class="admin-dock-idb-code-label">{BROWSER_CACHE_DB_NAME}</code>
+									·
+									<code class="admin-dock-idb-code-label">{BROWSER_CACHE_STORE_NAME}</code>
+								</p>
+								<div class="admin-dock-row">
+									<button
+										type="button"
+										class="admin-dock-btn"
+										disabled={idbLoading || !browser}
+										onclick={() => loadIdbEntries()}
+									>
+										{idbLoading ? 'Loading…' : 'Refresh'}
+									</button>
+									<button
+										type="button"
+										class="admin-dock-btn"
+										disabled={layoutClearBusy || !browser}
+										onclick={clearLayoutBrowserCache}
+									>
+										{layoutClearBusy ? 'Clearing…' : 'Clear layout cache'}
+									</button>
+								</div>
+								{#if layoutClearMsg}
+									<p class="admin-dock-success">{layoutClearMsg}</p>
+								{/if}
+								{#if idbError}
+									<p class="admin-dock-error">{idbError}</p>
+								{/if}
+								{#if idbLoading && idbEntries.length === 0 && !idbError}
+									<p class="admin-dock-note">Reading IndexedDB…</p>
+								{:else if !idbLoading && idbEntries.length === 0 && !idbError}
+									<p class="admin-dock-note">No entries in this store.</p>
+								{:else if idbEntries.length > 0}
+									<ul class="admin-dock-idb-list">
+										{#each idbEntries as row (row.key)}
+											<li class="admin-dock-idb-entry">
+												<div class="admin-dock-idb-entry-head">
+													<span class="admin-dock-idb-key" title={row.key}>{row.key}</span>
+													<div class="admin-dock-idb-head-right">
+														<span class="admin-dock-cache-ttl"
+															>{formatIdbCachedAt(row.cachedAt)}</span
+														>
+														{#if row.schemaVersion !== BROWSER_CACHE_SCHEMA_VERSION}
+															<span
+																class="admin-dock-idb-stale"
+																title="Entry does not match current schema; ignored by reads"
+																>schema v{row.schemaVersion}</span
+															>
+														{/if}
 														<button
 															type="button"
 															class="admin-dock-linkish"
 															disabled={!browser}
 															onclick={(e) => {
 																e.stopPropagation();
-																if (peekText !== null) void copyPeekValue(peekText, e);
+																void copyIdbJson(row.key, stringifyIdbData(row.data), e);
 															}}
 														>
-															{peekCopyFeedback === 'copied'
-																? 'Copied'
-																: peekCopyFeedback === 'error'
-																	? 'Copy failed'
-																	: 'Copy value'}
+															{idbCopyFeedbackKey === row.key ? 'Copied' : 'Copy JSON'}
 														</button>
 													</div>
-													<div
-														class="admin-dock-peek-code-wrap"
-														role="region"
-														aria-label="Cached value"
-													>
-														<pre class="admin-dock-peek-pre"><code class="hljs admin-dock-peek-code"
-															>{@html highlightPeekHtml(peekText)}</code
-														></pre>
-													</div>
 												</div>
-											{/if}
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						{/if}
-					</div>
-
-					<div
-						id="admin-panel-browser"
-						class="admin-dock-panel"
-						role="tabpanel"
-						aria-labelledby="admin-tab-browser"
-						hidden={activeTab !== 'browser'}
-					>
-						<p class="admin-dock-section-lead">
-							Client-side IndexedDB used for instant layout navigations.
-						</p>
-						<p class="admin-dock-note admin-dock-idb-meta-line">
-							<code class="admin-dock-idb-code-label">{BROWSER_CACHE_DB_NAME}</code>
-							·
-							<code class="admin-dock-idb-code-label">{BROWSER_CACHE_STORE_NAME}</code>
-						</p>
-						<div class="admin-dock-row">
-							<button
-								type="button"
-								class="admin-dock-btn"
-								disabled={idbLoading || !browser}
-								onclick={() => loadIdbEntries()}
-							>
-								{idbLoading ? 'Loading…' : 'Refresh'}
-							</button>
-							<button
-								type="button"
-								class="admin-dock-btn"
-								disabled={layoutClearBusy || !browser}
-								onclick={clearLayoutBrowserCache}
-							>
-								{layoutClearBusy ? 'Clearing…' : 'Clear layout cache'}
-							</button>
-						</div>
-						{#if layoutClearMsg}
-							<p class="admin-dock-success">{layoutClearMsg}</p>
-						{/if}
-						{#if idbError}
-							<p class="admin-dock-error">{idbError}</p>
-						{/if}
-						{#if idbLoading && idbEntries.length === 0 && !idbError}
-							<p class="admin-dock-note">Reading IndexedDB…</p>
-						{:else if !idbLoading && idbEntries.length === 0 && !idbError}
-							<p class="admin-dock-note">No entries in this store.</p>
-						{:else if idbEntries.length > 0}
-							<ul class="admin-dock-idb-list">
-								{#each idbEntries as row (row.key)}
-									<li class="admin-dock-idb-entry">
-										<div class="admin-dock-idb-entry-head">
-											<span class="admin-dock-idb-key" title={row.key}>{row.key}</span>
-											<div class="admin-dock-idb-head-right">
-												<span class="admin-dock-cache-ttl">{formatIdbCachedAt(row.cachedAt)}</span>
-												{#if row.schemaVersion !== BROWSER_CACHE_SCHEMA_VERSION}
-													<span class="admin-dock-idb-stale" title="Entry does not match current schema; ignored by reads"
-														>schema v{row.schemaVersion}</span
-													>
-												{/if}
-												<button
-													type="button"
-													class="admin-dock-linkish"
-													disabled={!browser}
-													onclick={(e) => {
-														e.stopPropagation();
-														void copyIdbJson(row.key, stringifyIdbData(row.data), e);
-													}}
+												<div
+													class="admin-dock-peek-code-wrap admin-dock-idb-data-wrap"
+													role="region"
+													aria-label="Entry payload for {row.key}"
 												>
-													{idbCopyFeedbackKey === row.key ? 'Copied' : 'Copy JSON'}
-												</button>
-											</div>
-										</div>
-										<div
-											class="admin-dock-peek-code-wrap admin-dock-idb-data-wrap"
-											role="region"
-											aria-label="Entry payload for {row.key}"
+													<pre class="admin-dock-peek-pre"><code class="hljs admin-dock-peek-code"
+															>{@html highlightPeekHtml(stringifyIdbData(row.data))}</code
+														></pre>
+												</div>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</div>
+
+							<div
+								id="admin-panel-cms"
+								class="admin-dock-panel"
+								role="tabpanel"
+								aria-labelledby="admin-tab-cms"
+								hidden={activeTab !== 'cms'}
+							>
+								<p class="admin-dock-section-lead">Opens Payload admin in a new tab.</p>
+								<ul class="admin-dock-links">
+									<li><a href={cms} target="_blank" rel="noreferrer">Dashboard</a></li>
+									<li><a href={cmsCollections.posts} target="_blank" rel="noreferrer">Posts</a></li>
+									<li><a href={cmsCollections.pages} target="_blank" rel="noreferrer">Pages</a></li>
+									<li><a href={cmsCollections.media} target="_blank" rel="noreferrer">Media</a></li>
+									<li>
+										<a href={cmsCollections.galleryAlbums} target="_blank" rel="noreferrer"
+											>Gallery albums</a
 										>
-											<pre class="admin-dock-peek-pre"><code class="hljs admin-dock-peek-code"
-												>{@html highlightPeekHtml(stringifyIdbData(row.data))}</code
-											></pre>
-										</div>
 									</li>
-								{/each}
-							</ul>
-						{/if}
-					</div>
+									<li>
+										<a href={cmsCollections.galleryImages} target="_blank" rel="noreferrer"
+											>Gallery images</a
+										>
+									</li>
+									<li><a href={cmsCollections.users} target="_blank" rel="noreferrer">Users</a></li>
+								</ul>
+							</div>
 
-					<div
-						id="admin-panel-cms"
-						class="admin-dock-panel"
-						role="tabpanel"
-						aria-labelledby="admin-tab-cms"
-						hidden={activeTab !== 'cms'}
-					>
-						<p class="admin-dock-section-lead">Opens Payload admin in a new tab.</p>
-						<ul class="admin-dock-links">
-							<li><a href={cms} target="_blank" rel="noreferrer">Dashboard</a></li>
-							<li><a href={cmsCollections.posts} target="_blank" rel="noreferrer">Posts</a></li>
-							<li><a href={cmsCollections.pages} target="_blank" rel="noreferrer">Pages</a></li>
-							<li><a href={cmsCollections.media} target="_blank" rel="noreferrer">Media</a></li>
-							<li><a href={cmsCollections.galleryAlbums} target="_blank" rel="noreferrer">Gallery albums</a></li>
-							<li><a href={cmsCollections.galleryImages} target="_blank" rel="noreferrer">Gallery images</a></li>
-							<li><a href={cmsCollections.users} target="_blank" rel="noreferrer">Users</a></li>
-						</ul>
+							<div
+								id="admin-panel-site"
+								class="admin-dock-panel"
+								role="tabpanel"
+								aria-labelledby="admin-tab-site"
+								hidden={activeTab !== 'site'}
+							>
+								<p class="admin-dock-section-lead">This site and SEO endpoints.</p>
+								<ul class="admin-dock-links">
+									<li><a href="/account/profile">Profile</a></li>
+									<li><a href="/account/logout">Sign out</a></li>
+									<li><a href="{PUBLIC_URL}/sitemap.xml">Sitemap</a></li>
+									<li><a href="{PUBLIC_URL}/robots.txt">robots.txt</a></li>
+								</ul>
+							</div>
+						</div>
 					</div>
-
-					<div
-						id="admin-panel-site"
-						class="admin-dock-panel"
-						role="tabpanel"
-						aria-labelledby="admin-tab-site"
-						hidden={activeTab !== 'site'}
-					>
-						<p class="admin-dock-section-lead">This site and SEO endpoints.</p>
-						<ul class="admin-dock-links">
-							<li><a href="/account/profile">Profile</a></li>
-							<li><a href="/account/logout">Sign out</a></li>
-							<li><a href="{PUBLIC_URL}/sitemap.xml">Sitemap</a></li>
-							<li><a href="{PUBLIC_URL}/robots.txt">robots.txt</a></li>
-						</ul>
-					</div>
-				</div>
-				</div>
 					<button
 						type="button"
 						class="admin-dock-tab admin-dock-tab--attached"
@@ -767,8 +778,7 @@
 		align-items: center;
 		justify-content: center;
 		padding: max(0.75rem, env(safe-area-inset-top, 0px))
-			max(0.75rem, env(safe-area-inset-right, 0px))
-			max(0.75rem, env(safe-area-inset-bottom, 0px))
+			max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px))
 			max(0.75rem, env(safe-area-inset-left, 0px));
 		pointer-events: none;
 		overscroll-behavior: contain;
@@ -873,7 +883,11 @@
 		flex-wrap: nowrap;
 		gap: 0;
 		border-bottom: 1px solid color-mix(in oklch, var(--color-tertiary) 50%, transparent);
-		background: color-mix(in oklch, var(--color-tertiary-darkest) 65%, var(--color-secondary-darker));
+		background: color-mix(
+			in oklch,
+			var(--color-tertiary-darkest) 65%,
+			var(--color-secondary-darker)
+		);
 	}
 
 	.admin-dock-tab-btn {

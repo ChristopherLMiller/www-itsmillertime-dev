@@ -145,9 +145,7 @@
 	function handleLookup() {
 		const trimmed = lookupUsername.trim();
 		if (!trimmed) return;
-		goto(
-			`/board-games?username=${encodeURIComponent(trimmed)}&stats=${statsLevel}`
-		);
+		goto(`/board-games?username=${encodeURIComponent(trimmed)}&stats=${statsLevel}`);
 	}
 </script>
 
@@ -160,10 +158,17 @@
 			</p>
 			{#if !data.error && data.games.length > 0}
 				<p class="collection-stats">
-					{data.total} {data.total === 1 ? 'game' : 'games'} in collection
+					{data.total}
+					{data.total === 1 ? 'game' : 'games'} in collection
 				</p>
 			{/if}
-			<form class="lookup" onsubmit={(e) => { e.preventDefault(); handleLookup(); }}>
+			<form
+				class="lookup"
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleLookup();
+				}}
+			>
 				<input
 					class="lookup-input font-special-elite"
 					type="text"
@@ -171,11 +176,7 @@
 					bind:value={lookupUsername}
 				/>
 				<label class="stats-label font-oswald" for="bgg-stats-level">Detail</label>
-				<select
-					id="bgg-stats-level"
-					class="stats-select font-oswald"
-					bind:value={statsLevel}
-				>
+				<select id="bgg-stats-level" class="stats-select font-oswald" bind:value={statsLevel}>
 					<option value="0">Basic</option>
 					<option value="1">Full</option>
 				</select>
@@ -255,12 +256,7 @@
 				<div class="picked-card">
 					<div class="picked-image-wrap">
 						{#if g.thumbnail && g.image}
-							<img
-								class="picked-image"
-								src={g.image}
-								alt={g.name ?? 'Game cover'}
-								loading="lazy"
-							/>
+							<img class="picked-image" src={g.image} alt={g.name ?? 'Game cover'} loading="lazy" />
 						{:else}
 							<div class="picked-placeholder font-oswald">No image</div>
 						{/if}
@@ -323,10 +319,7 @@
 				{/if}
 				{#each displayedGames as game, i (`${game.id}-${i}`)}
 					{@const g = game as BggGame}
-					<div
-						class="game-card-wrap"
-						class:game-card-wrap--popover={data.stats === 1 && g.stats}
-					>
+					<div class="game-card-wrap" class:game-card-wrap--popover={data.stats === 1 && g.stats}>
 						{#if data.stats === 1 && g.stats}
 							<div class="game-popover font-oswald" role="tooltip">
 								<p class="game-popover-title">{g.name ?? 'Game'}</p>
@@ -774,7 +767,9 @@
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
-		transition: opacity 0.15s ease, visibility 0.15s ease;
+		transition:
+			opacity 0.15s ease,
+			visibility 0.15s ease;
 	}
 
 	.game-popover::after {

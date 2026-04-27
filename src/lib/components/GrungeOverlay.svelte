@@ -15,12 +15,7 @@
 		speed?: number;
 	}
 
-	let {
-		mode: modeProp,
-		opacity = 1,
-		scale = 0.5,
-		speed = 0.5
-	}: Props = $props();
+	let { mode: modeProp, opacity = 1, scale = 0.5, speed = 0.5 }: Props = $props();
 
 	let canvas: HTMLCanvasElement;
 	let host: HTMLDivElement;

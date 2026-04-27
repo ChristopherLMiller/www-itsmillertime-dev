@@ -81,7 +81,8 @@
 			try {
 				const res = await fetch(`/api/gallery/images/${id}?data=basic`, { signal: ac.signal });
 				if (!res.ok) {
-					if (!cancelled) loadError = res.status === 404 ? 'Image unavailable' : 'Could not load image';
+					if (!cancelled)
+						loadError = res.status === 404 ? 'Image unavailable' : 'Could not load image';
 					return;
 				}
 				const data: unknown = await res.json();
@@ -109,23 +110,23 @@
 {:else}
 	{@const cover = primaryForStack}
 	{#key `${cover.id}-${cover.url ?? ''}`}
-	<PolaroidStack
-		primary={cover}
-		images={[cover, ...extraImages.filter((m) => m.id !== cover.id)]}
-		{caption}
-		{primaryAspectRatio}
-		{enableViewTransition}
-		{hoverFlip}
-		albumTitle={caption}
-		albumDescription={albumDescription}
-		{useProxy}
-		{isNsfw}
-		{nsfwImageIds}
-		{albumId}
-		{onHoverExpand}
-		{onNavigate}
-		{polaroidResponsiveSizes}
-	/>
+		<PolaroidStack
+			primary={cover}
+			images={[cover, ...extraImages.filter((m) => m.id !== cover.id)]}
+			{caption}
+			{primaryAspectRatio}
+			{enableViewTransition}
+			{hoverFlip}
+			albumTitle={caption}
+			{albumDescription}
+			{useProxy}
+			{isNsfw}
+			{nsfwImageIds}
+			{albumId}
+			{onHoverExpand}
+			{onNavigate}
+			{polaroidResponsiveSizes}
+		/>
 	{/key}
 {/if}
 
@@ -137,5 +138,4 @@
 		text-align: center;
 		padding: 2rem 1rem;
 	}
-
 </style>

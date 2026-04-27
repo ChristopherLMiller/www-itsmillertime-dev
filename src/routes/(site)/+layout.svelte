@@ -63,24 +63,24 @@
 	});
 </script>
 
-		<div class="site-foreground">
-			<GrungeOverlay />
-			<div class="site-content-layer">
-				<NavigationProgress />
-				<Meta />
-				<TopBar />
-				<Header />
-				<Navigation />
-				<div class="layout">
-					<main>
-						{@render children?.()}
-					</main>
-				</div>
-				<Footer />
-				<LastFmNowPlaying />
-				<AdminUtilitiesDock />
-			</div>
+<div class="site-foreground">
+	<GrungeOverlay />
+	<div class="site-content-layer">
+		<NavigationProgress />
+		<Meta />
+		<TopBar />
+		<Header />
+		<Navigation />
+		<div class="layout">
+			<main>
+				{@render children?.()}
+			</main>
 		</div>
+		<Footer />
+		<LastFmNowPlaying />
+		<AdminUtilitiesDock />
+	</div>
+</div>
 
 <style lang="postcss">
 	.site-foreground {

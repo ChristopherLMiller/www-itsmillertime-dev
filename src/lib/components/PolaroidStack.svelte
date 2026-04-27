@@ -154,7 +154,7 @@
 				rotate,
 				zIndex: array.length - index,
 				isPrimary,
-				caption: isPrimary ? caption ?? media.alt ?? '' : media.alt ?? ''
+				caption: isPrimary ? (caption ?? media.alt ?? '') : (media.alt ?? '')
 			};
 		});
 	});
@@ -219,16 +219,18 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-		bind:this={container}
-		class="polaroid-stack {className} {isHovering ? 'polaroid-stack--expanded' : ''}"
-		onmouseenter={handleMouseEnter}
-		onmouseleave={handleMouseLeave}
-		use:polaroidStackTouch
-	>
+	bind:this={container}
+	class="polaroid-stack {className} {isHovering ? 'polaroid-stack--expanded' : ''}"
+	onmouseenter={handleMouseEnter}
+	onmouseleave={handleMouseLeave}
+	use:polaroidStackTouch
+>
 	{#each stackLayout as item (item.key)}
 		{#if item.isPrimary || hasBeenHovered}
 			<div
-				class="polaroid-stack__item {item.isPrimary ? 'polaroid-stack__item--primary' : ''} {expandedItemKeys.has(item.key) ? 'polaroid-stack__item--expanded' : ''}"
+				class="polaroid-stack__item {item.isPrimary
+					? 'polaroid-stack__item--primary'
+					: ''} {expandedItemKeys.has(item.key) ? 'polaroid-stack__item--expanded' : ''}"
 				style={`z-index: ${item.zIndex}; --target-translate-x: ${item.translateX}px; --target-translate-y: ${item.translateY}px; --target-rotate: ${item.rotate}deg;`}
 			>
 				<Polaroid
@@ -236,7 +238,7 @@
 					caption={item.caption}
 					interactive={item.isPrimary}
 					className="polaroid-stack__polaroid"
-					enableViewTransition={enableViewTransition}
+					{enableViewTransition}
 					hoverFlip={item.isPrimary && hoverFlip}
 					flipped={item.isPrimary && hoverFlip && isHovering}
 					albumTitle={item.isPrimary ? albumTitle : undefined}
@@ -282,7 +284,10 @@
 		--rotate: 0deg;
 		transform: translate3d(var(--translate-x), var(--translate-y), 0) rotate(var(--rotate));
 		opacity: 0;
-		transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease, z-index 200ms ease;
+		transition:
+			transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 180ms ease,
+			z-index 200ms ease;
 	}
 
 	.polaroid-stack:hover .polaroid-stack__item--expanded:not(.polaroid-stack__item--primary),
@@ -310,4 +315,3 @@
 		width: 100%;
 	}
 </style>
-

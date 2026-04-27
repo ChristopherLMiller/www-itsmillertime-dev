@@ -15,7 +15,9 @@
 						type: 'text' as const,
 						text:
 							`Lead paragraph ${i + 1}. ` +
-							'The lead body is capped by NEWSPAPER_LEAD_MAX_WORDS; multicol flows naturally. '.repeat(5)
+							'The lead body is capped by NEWSPAPER_LEAD_MAX_WORDS; multicol flows naturally. '.repeat(
+								5
+							)
 					}
 				],
 				direction: 'ltr' as const,

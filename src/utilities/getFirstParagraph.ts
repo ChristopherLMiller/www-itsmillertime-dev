@@ -15,7 +15,10 @@ export function paragraphPlainText(paragraph: unknown): string {
 	if (paragraph == null || typeof paragraph !== 'object') return '';
 	const n = paragraph as Record<string, unknown>;
 	if (n.type !== 'paragraph' || !Array.isArray(n.children)) return '';
-	return n.children.map((c) => plainTextFromLexicalNode(c)).join('').trim();
+	return n.children
+		.map((c) => plainTextFromLexicalNode(c))
+		.join('')
+		.trim();
 }
 
 export interface LeadingParagraphsOptions {
@@ -114,13 +117,19 @@ export function mapRestPrefixToParagraphParts(
 }
 
 export const getFirstParagraph = (contents: unknown) => {
-	if (!contents || !contents.root || !contents.root.children) return '';
-	const paragraphs = contents.root.children.filter((child) => child.type === 'paragraph');
-
-	if (paragraphs.length > 0) {
-		if (paragraphs[0].children.length > 0) {
-			return paragraphs[0].children[0].text;
-		}
+	if (contents == null || typeof contents !== 'object') return '';
+	const root = (contents as { root?: { children?: unknown[] } }).root;
+	if (!root?.children?.length) return '';
+	const paragraphs = root.children.filter(
+		(child) =>
+			typeof child === 'object' &&
+			child !== null &&
+			(child as { type?: string }).type === 'paragraph'
+	);
+	if (paragraphs.length === 0) return '';
+	const first = paragraphs[0] as { children?: { text?: string }[] };
+	if (first.children && first.children.length > 0 && typeof first.children[0].text === 'string') {
+		return first.children[0].text;
 	}
 	return '';
 };

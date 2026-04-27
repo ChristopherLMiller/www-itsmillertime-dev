@@ -14,17 +14,19 @@
 	const { title, url }: YouTubeEmbedProps = $props();
 
 	const videoId = $derived(extractYouTubeId(url));
-	let videoElement: HTMLVideoElement;
+	let videoElement = $state<HTMLVideoElement | undefined>(undefined);
 	let player: Player | null = null;
 
 	onMount(() => {
 		if (videoId && videoElement) {
 			player = videojs(videoElement, {
 				techOrder: ['youtube'],
-				sources: [{
-					type: 'video/youtube',
-					src: `https://www.youtube.com/watch?v=${videoId}`
-				}],
+				sources: [
+					{
+						type: 'video/youtube',
+						src: `https://www.youtube.com/watch?v=${videoId}`
+					}
+				],
 				youtube: {
 					ytControls: 0
 				}
@@ -45,11 +47,7 @@
 			<h3 class="video-title">{title}</h3>
 		{/if}
 		<div class="video-container">
-			<video
-				bind:this={videoElement}
-				class="video-js vjs-default-skin"
-				controls
-				preload="auto"
+			<video bind:this={videoElement} class="video-js vjs-default-skin" controls preload="auto"
 			></video>
 		</div>
 	</div>

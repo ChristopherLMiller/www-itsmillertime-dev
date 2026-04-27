@@ -5,18 +5,28 @@
 	import Panel from '$lib/Panel.svelte';
 	import StickyNote from '$lib/components/StickyNote.svelte';
 	import TimelineCard from '$lib/components/TimelineCard.svelte';
-	import { type Media } from '$lib/types/payload-types.js';
+	import { type Kit, type Media } from '$lib/types/payload-types.js';
 	import { convertDate } from '../../../../utilities/convertDate';
 	import { makeClockifyDurationFriendly } from '../../../../utilities/makeClockifyDurationFriendly';
 	import Disqus from '$lib/components/Disqus.svelte';
 	import ShareButtons from '$lib/components/ShareButtons.svelte';
 	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
-	
-	let clockifyProject = $state(null);
+
+	type ClockifyProject = { duration: string };
+
+	let clockifyProject = $state<ClockifyProject | null>(null);
 	const { data } = $props();
 
 	// Derived values
 	const model = $derived(data.model);
+	const kit = $derived(
+		typeof model.model_meta.kit === 'object' && model.model_meta.kit != null
+			? (model.model_meta.kit as Kit)
+			: null
+	);
+	const modelGalleryImages = $derived(
+		(model.image ?? []).filter((img): img is Media => typeof img === 'object' && img !== null)
+	);
 	const status = $derived(model.model_meta.status);
 	const statusDisplay = $derived(status.replace('_', ' ').toLowerCase());
 	const statusClass = $derived(status.toLowerCase());
@@ -24,9 +34,7 @@
 		model.model_meta.completionDate ? convertDate(model.model_meta.completionDate) : null
 	);
 	const clockifyDuration = $derived(
-		clockifyProject
-			? makeClockifyDurationFriendly(clockifyProject.duration, false, true)
-			: null
+		clockifyProject ? makeClockifyDurationFriendly(clockifyProject.duration, false, true) : null
 	);
 
 	$effect(() => {
@@ -41,7 +49,6 @@
 
 		getClockifyProject();
 	});
-
 </script>
 
 <article style:view-transition-name={`model-${model.slug}`}>
@@ -53,100 +60,108 @@
 				<div class="hero-fade"></div>
 			</div>
 			<div class="hero-content">
-			<h1>{model.title}</h1>
-			<div class="hero-meta">
-				<div class="meta-left">
-					<span class="status-badge {statusClass}">{statusDisplay}</span>
-					{#if completionDate}
-						<span class="meta-item">
-							<Icon name="calendar" size={18} />
-							<span>{completionDate}</span>
-						</span>
-					{/if}
-					{#if clockifyDuration}
-						<span class="meta-item">
-							<Icon name="clock" size={18} />
-							<span>{clockifyDuration}</span>
-						</span>
-					{/if}
-				</div>
-				<div class="hero-share-wrapper">
-					<ShareButtons url={page.url.href} title={model.title} className="hero-share" />
+				<h1>{model.title}</h1>
+				<div class="hero-meta">
+					<div class="meta-left">
+						<span class="status-badge {statusClass}">{statusDisplay}</span>
+						{#if completionDate}
+							<span class="meta-item">
+								<Icon name="calendar" size={18} />
+								<span>{completionDate}</span>
+							</span>
+						{/if}
+						{#if clockifyDuration}
+							<span class="meta-item">
+								<Icon name="clock" size={18} />
+								<span>{clockifyDuration}</span>
+							</span>
+						{/if}
+					</div>
+					<div class="hero-share-wrapper">
+						<ShareButtons url={page.url.href} title={model.title} className="hero-share" />
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 
-	<!-- Mobile Share Buttons (shown only on smaller screens) -->
-	<div class="mobile-share-wrapper">
-		<ShareButtons url={page.url.href} title={model.title} className="mobile-share" />
-	</div>
-
-	<!-- Two-Column Content -->
-	<div class="content-grid">
-		<!-- Left Column: Build Log Timeline -->
-		<div class="main-column">
-			{#if model.buildLog && model.buildLog.length > 0}
-				<section class="build-log-wrapper">
-					<div class="build-log">
-						<h2 class="build-log-title">Build Log</h2>
-						<hr class="build-log-divider" />
-						{#each model.buildLog as entry, i}
-							<TimelineCard
-								title={entry.title}
-								content={entry.content}
-								isLast={i === model.buildLog.length - 1}
-							/>
-						{/each}
-					</div>
-				</section>
-			{/if}
+		<!-- Mobile Share Buttons (shown only on smaller screens) -->
+		<div class="mobile-share-wrapper">
+			<ShareButtons url={page.url.href} title={model.title} className="mobile-share" />
 		</div>
 
-		<!-- Right Column: Sidebar -->
-		<aside class="sidebar-column">
-			<!-- Kit Info -->
-			<StickyNote title="About the Kit">
-				<div><strong>Manufacturer:</strong> {model.model_meta.kit?.manufacturer?.title}</div>
-				<div><strong>Scale:</strong> {model.model_meta.kit?.scale?.title}</div>
-				<div><strong>Year Released:</strong> {model.model_meta.kit?.year_released}</div>
-				<div><strong>Kit Number:</strong> {model.model_meta.kit?.kit_number}</div>
-				{#if model.model_meta.kit?.scalemates}
-					<div><a href={model.model_meta.kit.scalemates}>Scalemates Link</a></div>
+		<!-- Two-Column Content -->
+		<div class="content-grid">
+			<!-- Left Column: Build Log Timeline -->
+			<div class="main-column">
+				{#if model.buildLog && model.buildLog.length > 0}
+					<section class="build-log-wrapper">
+						<div class="build-log">
+							<h2 class="build-log-title">Build Log</h2>
+							<hr class="build-log-divider" />
+							{#each model.buildLog as entry, i}
+								<TimelineCard
+									title={entry.title}
+									content={entry.content}
+									isLast={i === model.buildLog.length - 1}
+								/>
+							{/each}
+						</div>
+					</section>
 				{/if}
-				{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
+			</div>
+
+			<!-- Right Column: Sidebar -->
+			<aside class="sidebar-column">
+				<!-- Kit Info -->
+				<StickyNote title="About the Kit">
 					<div>
-						<strong>Tags:</strong>
-						{#each model.model_meta.tags as tag, i}
-							{#if typeof tag === 'object' && tag !== null}
-								{tag.title}{i < model.model_meta.tags.length - 1 ? ', ' : ''}
+						<strong>Manufacturer:</strong>
+						{kit && typeof kit.manufacturer === 'object' && kit.manufacturer !== null
+							? kit.manufacturer.title
+							: ''}
+					</div>
+					<div>
+						<strong>Scale:</strong>
+						{kit && typeof kit.scale === 'object' && kit.scale !== null ? kit.scale.title : ''}
+					</div>
+					<div><strong>Year Released:</strong> {kit?.year_released}</div>
+					<div><strong>Kit Number:</strong> {kit?.kit_number}</div>
+					{#if kit?.scalemates}
+						<div><a href={kit.scalemates}>Scalemates Link</a></div>
+					{/if}
+					{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
+						<div>
+							<strong>Tags:</strong>
+							{#each model.model_meta.tags as tag, i}
+								{#if typeof tag === 'object' && tag !== null}
+									{tag.title}{i < model.model_meta.tags.length - 1 ? ', ' : ''}
+								{/if}
+							{/each}
+						</div>
+					{/if}
+				</StickyNote>
+
+				<!-- Videos -->
+				{#if model.model_meta?.videos && model.model_meta.videos.length > 0}
+					<div class="videos-section">
+						{#each model.model_meta.videos as video}
+							{#if video.url}
+								<VideoPlayer title={video.title} url={video.url} />
 							{/if}
 						{/each}
 					</div>
 				{/if}
-			</StickyNote>
 
-			<!-- Videos -->
-			{#if model.model_meta?.videos && model.model_meta.videos.length > 0}
-				<div class="videos-section">
-					{#each model.model_meta.videos as video}
-						{#if video.url}
-							<VideoPlayer title={video.title} url={video.url} />
-						{/if}
-					{/each}
-				</div>
-			{/if}
-
-			<!-- Photos -->
-			{#if model.image && model.image.length > 0}
-				<div class="photo-grid">
-					{#each model.image as image, index}
-						<Image {image} hasLightbox gallery={model.image} galleryIndex={index} />
-					{/each}
-				</div>
-			{/if}
-		</aside>
-	</div>
+				<!-- Photos -->
+				{#if modelGalleryImages.length > 0}
+					<div class="photo-grid">
+						{#each modelGalleryImages as image, index}
+							<Image {image} hasLightbox gallery={modelGalleryImages} galleryIndex={index} />
+						{/each}
+					</div>
+				{/if}
+			</aside>
+		</div>
 
 		<!-- Comments Section -->
 		<section class="comments-section">
@@ -183,7 +198,7 @@
 	.hero-fade {
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(180deg,rgba(228, 228, 228, 0) 50%, rgba(228, 228, 228, 1) 90%);
+		background: linear-gradient(180deg, rgba(228, 228, 228, 0) 50%, rgba(228, 228, 228, 1) 90%);
 		pointer-events: none;
 	}
 
@@ -352,7 +367,12 @@
 	/* Responsive Design */
 	@media (max-width: 768px) {
 		.hero-fade {
-			background: linear-gradient(180deg,rgba(228, 228, 228, 0) 30%, rgba(228, 228, 228, 0.95) 70%, rgba(228, 228, 228, 1) 90%);
+			background: linear-gradient(
+				180deg,
+				rgba(228, 228, 228, 0) 30%,
+				rgba(228, 228, 228, 0.95) 70%,
+				rgba(228, 228, 228, 1) 90%
+			);
 		}
 
 		.hero-content {
@@ -397,7 +417,12 @@
 
 	@media (max-width: 480px) {
 		.hero-fade {
-			background: linear-gradient(180deg,rgba(228, 228, 228, 0) 20%, rgba(228, 228, 228, 0.98) 60%, rgba(228, 228, 228, 1) 85%);
+			background: linear-gradient(
+				180deg,
+				rgba(228, 228, 228, 0) 20%,
+				rgba(228, 228, 228, 0.98) 60%,
+				rgba(228, 228, 228, 1) 85%
+			);
 		}
 
 		.hero-content {

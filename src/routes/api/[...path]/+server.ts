@@ -1,5 +1,4 @@
 import { PAYLOAD_INTERNAL_URL } from '$env/static/private';
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
 import { error, type RequestHandler } from '@sveltejs/kit';
 
 const proxyRequest = async (request: Request, path: string): Promise<Response> => {

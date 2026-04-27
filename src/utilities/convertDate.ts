@@ -1,7 +1,7 @@
 import { Temporal } from '@js-temporal/polyfill';
 
-export function convertDate(dateStr: string | null): string {
-	if (!dateStr) return 'Invalid Date';
+export function convertDate(dateStr: string | null | undefined): string {
+	if (dateStr == null || dateStr === '') return 'Invalid Date';
 	try {
 		const date = Temporal.Instant.from(dateStr);
 

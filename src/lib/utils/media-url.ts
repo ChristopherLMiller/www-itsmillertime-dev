@@ -13,7 +13,9 @@ export function getMediaUrl(path: string | null | undefined, proxy = false): str
 /**
  * Returns true if the media is a video (by mimeType or YouTube URL).
  */
-export function isVideoMedia(media: { mimeType?: string | null; url?: string | null } | null): boolean {
+export function isVideoMedia(
+	media: { mimeType?: string | null; url?: string | null } | null
+): boolean {
 	if (!media) return false;
 	if (media.mimeType?.startsWith('video/')) return true;
 	const url = media.url ?? '';

@@ -2,3 +2,6 @@
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# Local tool config (may be unreadable in some environments)
+.claude/

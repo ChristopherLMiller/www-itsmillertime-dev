@@ -23,7 +23,10 @@
 
 	const leadPubLabel = $derived(
 		article.originalPublicationDate || article.createdAt
-			? new Date(article.originalPublicationDate ?? article.createdAt!).toLocaleDateString('en-US', dateOpts)
+			? new Date(article.originalPublicationDate ?? article.createdAt!).toLocaleDateString(
+					'en-US',
+					dateOpts
+				)
 			: ''
 	);
 
@@ -74,7 +77,9 @@
 					<div class="main-headline-body-column-flow main-headline-body-column-flow--three">
 						<div
 							class="main-headline-dateline"
-							class:main-headline-dateline--empty={!leadPubLabel && !leadCreatedLabel && !leadCategoryTitle}
+							class:main-headline-dateline--empty={!leadPubLabel &&
+								!leadCreatedLabel &&
+								!leadCategoryTitle}
 							style:view-transition-name={article.slug
 								? `article-dateline-${article.slug}`
 								: undefined}

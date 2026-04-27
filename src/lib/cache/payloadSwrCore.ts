@@ -171,7 +171,14 @@ export function createPayloadSwrFetch(
 			const stale = unwrapped.ageSeconds >= swr.staleSeconds;
 			config.debug?.(stale ? 'STALE + revalidate' : 'HIT', redisKey);
 			if (stale) {
-				void refreshSwrInBackground(redisKey, urlStr, forwardInit, innerFetch, cache, swr.ttlSeconds);
+				void refreshSwrInBackground(
+					redisKey,
+					urlStr,
+					forwardInit,
+					innerFetch,
+					cache,
+					swr.ttlSeconds
+				);
 			}
 			return new Response(JSON.stringify(unwrapped.data), {
 				status: 200,

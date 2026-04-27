@@ -54,11 +54,17 @@
 		></path>
 	{:else if name === 'npm'}
 		<path d="M1 8h22v8H12v2H8v-2H1z" fill={color} stroke="none"></path>
-		<path d="M5 12h2v4H5zm4-2h4v6h-2v-4h-1v4h-1zm6 0h4v6h-2v-4h-1v4h-1z" fill="var(--color-white-lighter)" stroke="none"></path>
+		<path
+			d="M5 12h2v4H5zm4-2h4v6h-2v-4h-1v4h-1zm6 0h4v6h-2v-4h-1v4h-1z"
+			fill="var(--color-white-lighter)"
+			stroke="none"
+		></path>
 	{:else if name === 'globe'}
 		<circle cx="12" cy="12" r="10"></circle>
 		<line x1="2" y1="12" x2="22" y2="12"></line>
-		<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+		<path
+			d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+		></path>
 	{:else if name === 'play'}
 		<polygon points="5 3 19 12 5 21 5 3"></polygon>
 	{:else if name === 'book'}

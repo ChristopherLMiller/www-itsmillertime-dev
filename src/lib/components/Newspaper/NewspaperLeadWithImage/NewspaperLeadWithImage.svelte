@@ -25,7 +25,10 @@
 
 	const leadPubLabel = $derived(
 		article.originalPublicationDate || article.createdAt
-			? new Date(article.originalPublicationDate ?? article.createdAt!).toLocaleDateString('en-US', dateOpts)
+			? new Date(article.originalPublicationDate ?? article.createdAt!).toLocaleDateString(
+					'en-US',
+					dateOpts
+				)
 			: ''
 	);
 
@@ -81,9 +84,7 @@
 								priority
 								objectFit="contain"
 								sizes="(min-width: 768px) min(32rem, 45vw), 100vw"
-								transitionName={article.slug
-									? `article-featured-image-${article.slug}`
-									: undefined}
+								transitionName={article.slug ? `article-featured-image-${article.slug}` : undefined}
 							/>
 						{/key}
 					</div>
@@ -93,7 +94,9 @@
 					<div class="main-headline-body-column-flow">
 						<div
 							class="main-headline-dateline"
-							class:main-headline-dateline--empty={!leadPubLabel && !leadCreatedLabel && !leadCategoryTitle}
+							class:main-headline-dateline--empty={!leadPubLabel &&
+								!leadCreatedLabel &&
+								!leadCategoryTitle}
 							style:view-transition-name={article.slug
 								? `article-dateline-${article.slug}`
 								: undefined}

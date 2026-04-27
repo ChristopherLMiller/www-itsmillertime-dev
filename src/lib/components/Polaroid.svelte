@@ -55,7 +55,7 @@
 	let isFlipped = $state(false);
 	let isHovering = $state(false);
 
-	function handleMainClick(e: MouseEvent) {
+	function handleMainClick() {
 		onNavigate?.();
 	}
 
@@ -106,14 +106,14 @@
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__card">
 					{#if isVideo}
-						<GalleryMediaPlayer media={media} {useProxy} className="polaroid__image" />
+						<GalleryMediaPlayer {media} {useProxy} className="polaroid__image" />
 					{:else}
 						<Image
 							image={media}
 							transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
 							className="polaroid__image"
 							objectFit={adaptiveHeight ? 'contain' : 'cover'}
-							fixedAspectRatio={fixedAspectRatio}
+							{fixedAspectRatio}
 							cursorPointer={!!onNavigate}
 							{useProxy}
 							{isNsfw}
@@ -146,7 +146,9 @@
 {:else}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="polaroid {className} polaroid--static {clickable ? 'polaroid--clickable' : ''} {shouldBeFlipped ? 'flipped' : ''}"
+		class="polaroid {className} polaroid--static {clickable
+			? 'polaroid--clickable'
+			: ''} {shouldBeFlipped ? 'flipped' : ''}"
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
 	>
@@ -154,14 +156,14 @@
 			<div class="polaroid__face polaroid__face--front">
 				<div class="polaroid__card">
 					{#if isVideo}
-						<GalleryMediaPlayer media={media} {useProxy} className="polaroid__image" />
+						<GalleryMediaPlayer {media} {useProxy} className="polaroid__image" />
 					{:else}
 						<Image
 							image={media}
 							transitionName={enableViewTransition ? `gallery-image-${media.id}` : undefined}
 							className="polaroid__image"
 							objectFit={adaptiveHeight ? 'contain' : 'cover'}
-							fixedAspectRatio={fixedAspectRatio}
+							{fixedAspectRatio}
 							cursorPointer={clickable}
 							{useProxy}
 							{isNsfw}
@@ -208,7 +210,9 @@
 		padding: 0;
 		perspective: 1200px;
 		cursor: pointer;
-		transition: transform 250ms ease, box-shadow 250ms ease;
+		transition:
+			transform 250ms ease,
+			box-shadow 250ms ease;
 		transform-origin: center;
 	}
 
@@ -246,7 +250,6 @@
 	.polaroid__face {
 		backface-visibility: hidden;
 	}
-
 
 	.polaroid__face--back {
 		position: absolute;
@@ -303,6 +306,7 @@
 		min-height: 1.5em;
 		/* Single-line clamp with ellipsis (modern CSS) */
 		display: -webkit-box;
+		line-clamp: 1;
 		-webkit-line-clamp: 1;
 		-webkit-box-orient: vertical;
 		overflow: hidden;

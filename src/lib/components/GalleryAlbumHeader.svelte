@@ -21,7 +21,9 @@
 
 	const dateFormatted = $derived.by(() => {
 		const d = gallery.createdAt ? new Date(gallery.createdAt) : null;
-		return d ? new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(d) : null;
+		return d
+			? new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(d)
+			: null;
 	});
 </script>
 
@@ -42,20 +44,42 @@
 		<div class="album-header__meta">
 			<div class="album-header__meta-item">
 				<span class="album-header__meta-icon">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
 						<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
 						<circle cx="8.5" cy="8.5" r="1.5"></circle>
 						<polyline points="21 15 16 10 5 21"></polyline>
 					</svg>
 				</span>
 				<span class="album-header__meta-label">Photos</span>
-				<span class="album-header__meta-value">{imageCount} {imageCount === 1 ? 'photo' : 'photos'}</span>
+				<span class="album-header__meta-value"
+					>{imageCount} {imageCount === 1 ? 'photo' : 'photos'}</span
+				>
 			</div>
 
 			{#if dateFormatted}
 				<div class="album-header__meta-item">
 					<span class="album-header__meta-icon">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
 							<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
 							<line x1="16" y1="2" x2="16" y2="6"></line>
 							<line x1="8" y1="2" x2="8" y2="6"></line>

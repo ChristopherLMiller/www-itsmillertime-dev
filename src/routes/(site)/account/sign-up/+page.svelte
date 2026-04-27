@@ -24,7 +24,8 @@
 		email = (form.querySelector('[name="email"]') as HTMLInputElement)?.value ?? email;
 		password = (form.querySelector('[name="password"]') as HTMLInputElement)?.value ?? password;
 		confirmPassword =
-			(form.querySelector('[name="confirmPassword"]') as HTMLInputElement)?.value ?? confirmPassword;
+			(form.querySelector('[name="confirmPassword"]') as HTMLInputElement)?.value ??
+			confirmPassword;
 
 		if (!name || !email || !password || !confirmPassword) {
 			error = 'Please fill in all fields.';
@@ -81,7 +82,13 @@
 				</div>
 			{/if}
 
-			<form class="signup-form" onsubmit={(e) => { e.preventDefault(); signUp(e); }}>
+			<form
+				class="signup-form"
+				onsubmit={(e) => {
+					e.preventDefault();
+					signUp(e);
+				}}
+			>
 				<input
 					type="text"
 					name="name"

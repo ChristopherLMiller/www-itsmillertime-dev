@@ -1,8 +1,10 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	type StickyNoteProps = {
 		className?: string;
 		title?: string;
-		children?: any;
+		children?: Snippet;
 	};
 
 	const { className = '', title, children }: StickyNoteProps = $props();
@@ -36,7 +38,9 @@
 		width: min(20rem, 90vw);
 		aspect-ratio: 1;
 		transform: rotate(-1deg);
-		transition: transform 250ms ease, box-shadow 250ms ease;
+		transition:
+			transform 250ms ease,
+			box-shadow 250ms ease;
 	}
 
 	.sticky-note::before {

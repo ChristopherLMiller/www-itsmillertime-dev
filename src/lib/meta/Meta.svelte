@@ -54,7 +54,6 @@
 	}
 
 	function generateDescription(description: string) {
-
 		if (meta.description) {
 			return meta.description;
 		}
@@ -93,7 +92,6 @@
 </script>
 
 <svelte:head>
-
 	<title>{pageTitle}</title>
 	<meta name="description" content={pageDescription} />
 	<meta name="image" property="og:image" content={pageImage} />

@@ -3,7 +3,10 @@
 	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying.svelte';
 
 	const origFetch = globalThis.fetch.bind(globalThis);
-	globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+	globalThis.fetch = (
+		input: Parameters<typeof globalThis.fetch>[0],
+		init?: Parameters<typeof globalThis.fetch>[1]
+	) => {
 		if (String(input).includes('/api/lastfm/')) {
 			return Promise.resolve(
 				new Response(

@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import { sveltekit } from '@sveltejs/kit/vite';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';

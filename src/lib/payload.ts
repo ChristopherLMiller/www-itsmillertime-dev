@@ -62,7 +62,7 @@ const baseInit = { credentials: 'include' as RequestCredentials };
 export function createPayloadInnerFetch(
 	fetch?: typeof globalThis.fetch,
 	request?: Request
-): { innerFetch: typeof fetch; baseURL: string } {
+): { innerFetch: typeof globalThis.fetch; baseURL: string } {
 	const baseFetcher =
 		request && fetch ? createPayloadFetch(fetch, request) : (fetch ?? globalThis.fetch);
 

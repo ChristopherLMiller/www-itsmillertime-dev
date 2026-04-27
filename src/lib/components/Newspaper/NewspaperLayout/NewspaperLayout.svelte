@@ -115,9 +115,13 @@
 						{ signal: abort.signal }
 					);
 					if (!abort.signal.aborted) weatherSummary = summary;
-				} catch {}
+				} catch {
+					void 0;
+				}
 			},
-			() => {},
+			() => {
+				void 0;
+			},
 			{ enableHighAccuracy: false, maximumAge: 600_000, timeout: 20_000 }
 		);
 		return () => abort.abort();
@@ -138,10 +142,7 @@
 		>
 			{title}
 		</svelte:element>
-		<div
-			class="masthead-subtitle"
-			style:view-transition-name={subtitleTransitionName ?? undefined}
-		>
+		<div class="masthead-subtitle" style:view-transition-name={subtitleTransitionName ?? undefined}>
 			"{subtitle}"
 		</div>
 	</div>
@@ -173,7 +174,8 @@
 					type="button"
 					class="filter-link filter-link--section"
 					class:filter-link--active={!selectedCategory}
-					onclick={() => handleCategoryClick('all')}>All</button>
+					onclick={() => handleCategoryClick('all')}>All</button
+				>
 				{#each categories as category (category.id)}
 					<button
 						type="button"
@@ -191,7 +193,8 @@
 					type="button"
 					class="filter-link filter-link--tag"
 					class:filter-link--active={!selectedTag}
-					onclick={() => handleTagClick('all')}>All</button>
+					onclick={() => handleTagClick('all')}>All</button
+				>
 				{#each tags as tag (tag.id)}
 					<button
 						type="button"
@@ -223,20 +226,23 @@
 					type="button"
 					class="page-link"
 					disabled={currentPage <= 1}
-					onclick={() => goToPage(1)}>« First</button>
+					onclick={() => goToPage(1)}>« First</button
+				>
 				<span class="page-sep">|</span>
 				<button
 					type="button"
 					class="page-link"
 					disabled={currentPage <= 1}
-					onclick={() => goToPage(Math.max(1, currentPage - 1))}>‹ Previous</button>
+					onclick={() => goToPage(Math.max(1, currentPage - 1))}>‹ Previous</button
+				>
 				<span class="page-sep">|</span>
 				{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
 					<button
 						type="button"
 						class="page-link"
 						class:page-link--active={p === currentPage}
-						onclick={() => goToPage(p)}>{p}</button>
+						onclick={() => goToPage(p)}>{p}</button
+					>
 					{#if p < totalPages}
 						<span class="page-sep page-sep--dot">·</span>
 					{/if}
@@ -246,18 +252,18 @@
 					type="button"
 					class="page-link"
 					disabled={currentPage >= totalPages}
-					onclick={() => goToPage(Math.min(totalPages, currentPage + 1))}>Next ›</button>
+					onclick={() => goToPage(Math.min(totalPages, currentPage + 1))}>Next ›</button
+				>
 				<span class="page-sep">|</span>
 				<button
 					type="button"
 					class="page-link"
 					disabled={currentPage >= totalPages}
-					onclick={() => goToPage(totalPages)}>Last »</button>
+					onclick={() => goToPage(totalPages)}>Last »</button
+				>
 			</nav>
 		{/if}
-		<div class="footer-text">
-			Editorial: built with care. Thanks for reading.
-		</div>
+		<div class="footer-text">Editorial: built with care. Thanks for reading.</div>
 	</footer>
 </div>
 

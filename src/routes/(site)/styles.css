@@ -1,7 +1,6 @@
 /* Define our layers */
 @layer reset, base, utilites;
 
-
 @import '../../styles/base.css';
 @import '../../styles/reset.css';
 @import '../../styles/variables.css';
@@ -10,7 +9,7 @@
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.2s;
+	animation-duration: 0.2s;
 }
 
 /* Newspaper layout + article cards — match duration with root navigation */
@@ -30,5 +29,5 @@
 ::view-transition-new(newspaper-main),
 ::view-transition-old(newspaper-footer),
 ::view-transition-new(newspaper-footer) {
-  animation-duration: 0.2s;
+	animation-duration: 0.2s;
 }

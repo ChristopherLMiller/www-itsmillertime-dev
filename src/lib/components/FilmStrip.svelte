@@ -20,9 +20,7 @@
 		...categories.map((c) => ({ slug: c.slug ?? '', title: c.title }))
 	]);
 
-	const selectedIndex = $derived(
-		items.findIndex((item) => item.slug === selectedSlug)
-	);
+	const selectedIndex = $derived(items.findIndex((item) => item.slug === selectedSlug));
 
 	function frameRefAction(node: HTMLAnchorElement, index: number) {
 		frameRefs = { ...frameRefs, [index]: node };
@@ -113,11 +111,7 @@
 		width: 100%;
 		height: 10px;
 		margin: 4px 0;
-		background-image: linear-gradient(
-			to right,
-			var(--sprocket-color) 0 8px,
-			transparent 8px 20px
-		);
+		background-image: linear-gradient(to right, var(--sprocket-color) 0 8px, transparent 8px 20px);
 		background-repeat: repeat-x;
 		background-size: 20px 100%;
 		background-position: center;
@@ -136,7 +130,9 @@
 		border: 2px solid var(--film-frame-selected);
 		border-radius: 2px;
 		pointer-events: none;
-		transition: left 0.3s ease, width 0.3s ease;
+		transition:
+			left 0.3s ease,
+			width 0.3s ease;
 		z-index: 1;
 	}
 
@@ -168,7 +164,9 @@
 		font-family: var(--font-permanent-marker), cursive;
 		font-size: var(--fs-xs);
 		cursor: pointer;
-		transition: background 0.2s, border-color 0.2s;
+		transition:
+			background 0.2s,
+			border-color 0.2s;
 		display: flex;
 		align-items: center;
 		justify-content: center;

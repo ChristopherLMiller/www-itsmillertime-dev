@@ -18,16 +18,8 @@
 
 	const leadArticle = $derived(articles?.[0]);
 	const secondaryArticles = $derived(articles?.slice(1, 1 + SECONDARY_COUNT) ?? []);
-	const columnArticles = $derived(
-		articles?.slice(1 + SECONDARY_COUNT, HERO_ARTICLE_COUNT) ?? []
-	);
+	const columnArticles = $derived(articles?.slice(1 + SECONDARY_COUNT, HERO_ARTICLE_COUNT) ?? []);
 	const remainingArticles = $derived(articles?.slice(HERO_ARTICLE_COUNT) ?? []);
-
-	const dateOpts: Intl.DateTimeFormatOptions = {
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
-	};
 
 	function mediaFromPost(post: Post): Media | null {
 		const fi = post.featuredImage;
@@ -72,163 +64,163 @@
 
 {#if articles && articles.length > 0}
 	<div class="newspaper-articles">
-	{#if leadArticle?.slug}
-		{#key leadArticle.slug}
-			{#if leadFeaturedMedia}
-				<NewspaperLeadWithImage article={leadArticle} image={leadFeaturedMedia} />
-			{:else}
-				<NewspaperLeadNoImage article={leadArticle} />
-			{/if}
-		{/key}
-	{/if}
-
-	{#if secondaryArticles.length > 0}
-		<div class="secondary-headlines">
-			{#each secondaryArticles as article (article.id)}
-				{#if article.slug}
-					<a href={`/articles/${article.slug}`} class="secondary-article">
-						{#if mediaFromPost(article)}
-							<div class="secondary-article-image">
-								<Image
-									image={mediaFromPost(article)!}
-									objectFit="cover"
-									sizes="(min-width: 768px) 18vw, 90vw"
-									transitionName={`article-featured-image-${article.slug}`}
-								/>
-							</div>
-						{/if}
-						<div class="secondary-article-body">
-							<div
-								class="article-meta"
-								style:view-transition-name={`article-meta-${article.slug}`}
-							>
-								<span style:view-transition-name={`article-category-${article.slug}`}>
-									{typeof article.category === 'object' && article.category?.title
-										? article.category.title
-										: '—'}
-								</span>
-							</div>
-							<h3
-								class="secondary-article-title"
-								style:view-transition-name={`article-headline-${article.slug}`}
-							>
-								{article.title}
-							</h3>
-							<p
-								class="article-excerpt"
-								style:view-transition-name={`article-content-${article.slug}`}
-							>
-								{excerpt(article, 280)}
-							</p>
-							{#if article.tags?.length}
-								<div
-									class="tags-inline"
-									style:view-transition-name={`article-tags-${article.slug}`}
-								>
-									{#each article.tags as tag, i (tagKey(tag, i))}
-										<span class="article-tag">{tagLabel(tag)}</span>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					</a>
+		{#if leadArticle?.slug}
+			{#key leadArticle.slug}
+				{#if leadFeaturedMedia}
+					<NewspaperLeadWithImage article={leadArticle} image={leadFeaturedMedia} />
+				{:else}
+					<NewspaperLeadNoImage article={leadArticle} />
 				{/if}
-			{/each}
-		</div>
-	{/if}
+			{/key}
+		{/if}
 
-	{#if columnArticles.length > 0}
-		<div class="columns-section">
-			{#each columnArticles as article, index (article.id)}
-				<div class="column">
+		{#if secondaryArticles.length > 0}
+			<div class="secondary-headlines">
+				{#each secondaryArticles as article (article.id)}
 					{#if article.slug}
-						<a href={`/articles/${article.slug}`} class="column-article-link">
+						<a href={`/articles/${article.slug}`} class="secondary-article">
 							{#if mediaFromPost(article)}
-								<div class="column-article-image">
+								<div class="secondary-article-image">
 									<Image
 										image={mediaFromPost(article)!}
 										objectFit="cover"
-										sizes="(min-width: 768px) 30vw, 100vw"
+										sizes="(min-width: 768px) 18vw, 90vw"
 										transitionName={`article-featured-image-${article.slug}`}
 									/>
 								</div>
 							{/if}
-							<div
-								class="article-meta"
-								style:view-transition-name={`article-meta-${article.slug}`}
-							>
-								<span style:view-transition-name={`article-category-${article.slug}`}>
-									{typeof article.category === 'object' && article.category?.title
-										? article.category.title
-										: '—'}
-								</span>
-								<span aria-hidden="true"> • </span>
-								<span style:view-transition-name={`article-pub-date-${article.slug}`}>
-									{formatPostDate(article)}
-								</span>
-							</div>
-							<h3
-								class="column-article-title"
-								style:view-transition-name={`article-headline-${article.slug}`}
-							>
-								{article.title}
-							</h3>
-							<p
-								class="article-excerpt"
-								style:view-transition-name={`article-content-${article.slug}`}
-							>
-								{excerpt(article)}
-							</p>
-							{#if article.tags?.length}
+							<div class="secondary-article-body">
 								<div
-									class="tags-inline"
-									style:view-transition-name={`article-tags-${article.slug}`}
+									class="article-meta"
+									style:view-transition-name={`article-meta-${article.slug}`}
 								>
-									{#each article.tags as tag, i (tagKey(tag, i))}
-										<span class="article-tag">{tagLabel(tag)}</span>
-									{/each}
+									<span style:view-transition-name={`article-category-${article.slug}`}>
+										{typeof article.category === 'object' && article.category?.title
+											? article.category.title
+											: '—'}
+									</span>
 								</div>
-							{/if}
-						</a>
-					{/if}
-					{#if index < columnArticles.length - 1}
-						<hr class="column-divider-mobile" />
-					{/if}
-				</div>
-			{/each}
-		</div>
-	{/if}
-
-	{#if remainingArticles.length > 0}
-		<section class="more-stories" aria-labelledby="more-stories-heading">
-			<h2 id="more-stories-heading" class="more-stories-heading">More from this edition</h2>
-			<ul class="more-stories-list">
-				{#each remainingArticles as article (article.id)}
-					{#if article.slug}
-						{@const dateStr = formatPostDate(article)}
-						<li>
-							<a href={`/articles/${article.slug}`} class="more-stories-link">
-								<span
-									class="more-stories-title"
+								<h3
+									class="secondary-article-title"
 									style:view-transition-name={`article-headline-${article.slug}`}
 								>
 									{article.title}
-								</span>
-								{#if dateStr}
-									<span
-										class="more-stories-date"
-										style:view-transition-name={`article-pub-date-${article.slug}`}
+								</h3>
+								<p
+									class="article-excerpt"
+									style:view-transition-name={`article-content-${article.slug}`}
+								>
+									{excerpt(article, 280)}
+								</p>
+								{#if article.tags?.length}
+									<div
+										class="tags-inline"
+										style:view-transition-name={`article-tags-${article.slug}`}
 									>
-										{dateStr}
-									</span>
+										{#each article.tags as tag, i (tagKey(tag, i))}
+											<span class="article-tag">{tagLabel(tag)}</span>
+										{/each}
+									</div>
 								{/if}
-							</a>
-						</li>
+							</div>
+						</a>
 					{/if}
 				{/each}
-			</ul>
-		</section>
-	{/if}
+			</div>
+		{/if}
+
+		{#if columnArticles.length > 0}
+			<div class="columns-section">
+				{#each columnArticles as article, index (article.id)}
+					<div class="column">
+						{#if article.slug}
+							<a href={`/articles/${article.slug}`} class="column-article-link">
+								{#if mediaFromPost(article)}
+									<div class="column-article-image">
+										<Image
+											image={mediaFromPost(article)!}
+											objectFit="cover"
+											sizes="(min-width: 768px) 30vw, 100vw"
+											transitionName={`article-featured-image-${article.slug}`}
+										/>
+									</div>
+								{/if}
+								<div
+									class="article-meta"
+									style:view-transition-name={`article-meta-${article.slug}`}
+								>
+									<span style:view-transition-name={`article-category-${article.slug}`}>
+										{typeof article.category === 'object' && article.category?.title
+											? article.category.title
+											: '—'}
+									</span>
+									<span aria-hidden="true"> • </span>
+									<span style:view-transition-name={`article-pub-date-${article.slug}`}>
+										{formatPostDate(article)}
+									</span>
+								</div>
+								<h3
+									class="column-article-title"
+									style:view-transition-name={`article-headline-${article.slug}`}
+								>
+									{article.title}
+								</h3>
+								<p
+									class="article-excerpt"
+									style:view-transition-name={`article-content-${article.slug}`}
+								>
+									{excerpt(article)}
+								</p>
+								{#if article.tags?.length}
+									<div
+										class="tags-inline"
+										style:view-transition-name={`article-tags-${article.slug}`}
+									>
+										{#each article.tags as tag, i (tagKey(tag, i))}
+											<span class="article-tag">{tagLabel(tag)}</span>
+										{/each}
+									</div>
+								{/if}
+							</a>
+						{/if}
+						{#if index < columnArticles.length - 1}
+							<hr class="column-divider-mobile" />
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+		{#if remainingArticles.length > 0}
+			<section class="more-stories" aria-labelledby="more-stories-heading">
+				<h2 id="more-stories-heading" class="more-stories-heading">More from this edition</h2>
+				<ul class="more-stories-list">
+					{#each remainingArticles as article (article.id)}
+						{#if article.slug}
+							{@const dateStr = formatPostDate(article)}
+							<li>
+								<a href={`/articles/${article.slug}`} class="more-stories-link">
+									<span
+										class="more-stories-title"
+										style:view-transition-name={`article-headline-${article.slug}`}
+									>
+										{article.title}
+									</span>
+									{#if dateStr}
+										<span
+											class="more-stories-date"
+											style:view-transition-name={`article-pub-date-${article.slug}`}
+										>
+											{dateStr}
+										</span>
+									{/if}
+								</a>
+							</li>
+						{/if}
+					{/each}
+				</ul>
+			</section>
+		{/if}
 	</div>
 {:else}
 	<div class="no-results">

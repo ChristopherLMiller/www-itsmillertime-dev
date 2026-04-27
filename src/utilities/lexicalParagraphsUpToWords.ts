@@ -13,7 +13,10 @@ function paragraphPlainTextFromRootChild(paragraph: unknown): string {
 	if (paragraph == null || typeof paragraph !== 'object') return '';
 	const n = paragraph as Record<string, unknown>;
 	if (n.type !== 'paragraph' || !Array.isArray(n.children)) return '';
-	return n.children.map((c) => plainTextFromLexicalNode(c)).join('').trim();
+	return n.children
+		.map((c) => plainTextFromLexicalNode(c))
+		.join('')
+		.trim();
 }
 
 export interface LexicalParagraphExcerpt {
@@ -32,7 +35,10 @@ export interface LexicalParagraphsUpToWordsOptions {
 
 function splitWordTokens(plain: string): string[] {
 	if (!plain.trim()) return [];
-	return plain.trim().split(/\s+/).filter((t) => t.length > 0);
+	return plain
+		.trim()
+		.split(/\s+/)
+		.filter((t) => t.length > 0);
 }
 
 /**
@@ -47,7 +53,10 @@ export function getLexicalParagraphsUpToWords(
 ): { blocks: LexicalParagraphExcerpt[]; hasMore: boolean } {
 	const maxParagraphs = options?.maxParagraphs ?? 40;
 	const maxChars = options?.maxChars ?? 16000;
-	const empty: { blocks: LexicalParagraphExcerpt[]; hasMore: boolean } = { blocks: [], hasMore: false };
+	const empty: { blocks: LexicalParagraphExcerpt[]; hasMore: boolean } = {
+		blocks: [],
+		hasMore: false
+	};
 
 	if (!contents || typeof contents !== 'object' || maxWords <= 0) return empty;
 
