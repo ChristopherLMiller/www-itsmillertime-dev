@@ -15,9 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # SvelteKit generates `$env/static/*` from `.env`; CI has no secrets file otherwise.
+      - name: Env file for SvelteKit sync and checks
+        run: cp .env.example .env
+
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
