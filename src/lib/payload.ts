@@ -103,5 +103,3 @@ export function getPayloadSDK(fetch?: typeof globalThis.fetch, request?: Request
 }
 
 export { baseInit as payloadSdkBaseInit };
-
-export const payloadSDK = () => getPayloadSDK();

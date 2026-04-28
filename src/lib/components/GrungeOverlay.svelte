@@ -168,13 +168,36 @@
 			mode = modeProp;
 		}
 
+		/** Narrow viewports + touch / coarse pointer: throttle cost (shader is fill-rate heavy). */
+		const mqPerf = window.matchMedia('(max-width: 768px), (pointer: coarse)');
+
+		/** `?grungePerf=mobile` | `low` or `desktop` | `high` — preview tier on any device (local QA). */
+		const perfOverride = ((): 'mobile' | 'desktop' | null => {
+			const q = new URLSearchParams(window.location.search).get('grungePerf');
+			if (q === 'mobile' || q === 'low') return 'mobile';
+			if (q === 'desktop' || q === 'high') return 'desktop';
+			return null;
+		})();
+		function perfTierActive(): boolean {
+			if (perfOverride === 'mobile') return true;
+			if (perfOverride === 'desktop') return false;
+			return mqPerf.matches;
+		}
+		if (perfOverride !== null && import.meta.env.DEV) {
+			console.info(
+				`[GrungeOverlay] grungePerf=${perfOverride} — canvas uses ${perfTierActive() ? 'mobile (lower DPR, ~30fps cap)' : 'desktop'} tier`
+			);
+		}
+
 		const gl = (canvas.getContext('webgl', {
 			alpha: true,
-			premultipliedAlpha: false
+			premultipliedAlpha: false,
+			powerPreference: perfTierActive() ? 'low-power' : 'default'
 		}) ??
 			canvas.getContext('experimental-webgl', {
 				alpha: true,
-				premultipliedAlpha: false
+				premultipliedAlpha: false,
+				powerPreference: perfTierActive() ? 'low-power' : 'default'
 			})) as WebGLRenderingContext | null;
 
 		if (!gl) {
@@ -240,6 +263,15 @@
 
 		const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+		function effectiveDevicePixelRatio(): number {
+			const raw = devicePixelRatio || 1;
+			if (perfTierActive()) {
+				/* Mobile GPUs choke on full 2× retina over the whole viewport; ~1–1.25× is enough for grain. */
+				return Math.min(1.25, raw);
+			}
+			return Math.min(2, raw);
+		}
+
 		function render(t: number) {
 			g.useProgram(prog);
 			g.bindBuffer(g.ARRAY_BUFFER, buf);
@@ -261,7 +293,7 @@
 		}
 
 		const setSize = () => {
-			const dpr = Math.min(2, devicePixelRatio || 1);
+			const dpr = effectiveDevicePixelRatio();
 			const rect = host.getBoundingClientRect();
 			let cssW = rect.width;
 			let cssH = rect.height;
@@ -289,11 +321,45 @@
 		});
 
 		let tStart = performance.now();
-		function tick() {
+		let lastFrameAt = 0;
+
+		function frameBudgetMs(): number {
+			return perfTierActive() ? 1000 / 30 : 0;
+		}
+
+		function tick(now: number) {
 			if (mqMotion.matches) return;
+			if (document.visibilityState === 'hidden') {
+				return;
+			}
+			const minMs = frameBudgetMs();
+			if (minMs > 0 && now - lastFrameAt < minMs) {
+				animId = requestAnimationFrame(tick);
+				return;
+			}
+			lastFrameAt = now;
 			const t = (performance.now() - tStart) / 1000;
 			render(t);
 			animId = requestAnimationFrame(tick);
+		}
+
+		function onVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				cancelAnimationFrame(animId);
+			} else if (!mqMotion.matches) {
+				tStart = performance.now();
+				lastFrameAt = 0;
+				cancelAnimationFrame(animId);
+				animId = requestAnimationFrame(tick);
+			}
+		}
+
+		function onPerfTierChange() {
+			setSize();
+			if (!mqMotion.matches && document.visibilityState !== 'hidden') {
+				tStart = performance.now();
+				lastFrameAt = 0;
+			}
 		}
 
 		function onMotionChange() {
@@ -302,7 +368,8 @@
 				render(0);
 			} else {
 				tStart = performance.now();
-				tick();
+				lastFrameAt = 0;
+				animId = requestAnimationFrame(tick);
 			}
 		}
 
@@ -317,15 +384,19 @@
 		}
 
 		mqMotion.addEventListener('change', onMotionChange);
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		mqPerf.addEventListener('change', onPerfTierChange);
 
 		if (mqMotion.matches) {
 			render(0);
 		} else {
-			tick();
+			animId = requestAnimationFrame(tick);
 		}
 
 		return () => {
 			offMql?.();
+			document.removeEventListener('visibilitychange', onVisibilityChange);
+			mqPerf.removeEventListener('change', onPerfTierChange);
 			mqMotion.removeEventListener('change', onMotionChange);
 			cancelAnimationFrame(animId);
 			ro.disconnect();
