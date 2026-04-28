@@ -1,5 +1,13 @@
 import { PUBLIC_FACEBOOK_APP_ID } from '$env/static/public';
 
+/** Facebook Share Dialog when `facebookAppId` is set; otherwise the legacy sharer URL. */
+export function buildFacebookShareUrl(pageUrl: string, facebookAppId: string | undefined): string {
+	const encodedUrl = encodeURIComponent(pageUrl);
+	return facebookAppId
+		? `https://www.facebook.com/dialog/share?app_id=${facebookAppId}&href=${encodedUrl}&display=popup`
+		: `https://www.facebook.com/sharer.php?u=${encodedUrl}`;
+}
+
 /**
  * Generates share URLs for various social platforms
  *
@@ -16,10 +24,7 @@ export function generateShareUrl(
 	const encodedUrl = encodeURIComponent(url);
 	const encodedTitle = title ? encodeURIComponent(title) : '';
 
-	// Use Facebook Share Dialog if app ID is available, otherwise fall back to basic sharer
-	const facebookUrl = PUBLIC_FACEBOOK_APP_ID
-		? `https://www.facebook.com/dialog/share?app_id=${PUBLIC_FACEBOOK_APP_ID}&href=${encodedUrl}&display=popup`
-		: `https://www.facebook.com/sharer.php?u=${encodedUrl}`;
+	const facebookUrl = buildFacebookShareUrl(url, PUBLIC_FACEBOOK_APP_ID || undefined);
 
 	const shareUrls = {
 		facebook: facebookUrl,

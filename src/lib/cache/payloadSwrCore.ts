@@ -24,7 +24,7 @@ const DEFAULT_TTL = 3600;
 
 export { DEFAULT_STALE, DEFAULT_TTL };
 
-export function getHeader(init: RequestInit | undefined, name: string): string | null {
+function getHeader(init: RequestInit | undefined, name: string): string | null {
 	if (!init?.headers) return null;
 	const h = init.headers;
 	if (h instanceof Headers) return h.get(name);
@@ -36,7 +36,7 @@ export function getHeader(init: RequestInit | undefined, name: string): string |
 	return null;
 }
 
-export function withoutSwrHeader(init: RequestInit | undefined): RequestInit | undefined {
+function withoutSwrHeader(init: RequestInit | undefined): RequestInit | undefined {
 	if (!init?.headers) return init;
 	const h = init.headers;
 	if (h instanceof Headers) {
@@ -51,7 +51,7 @@ export function withoutSwrHeader(init: RequestInit | undefined): RequestInit | u
 	return { ...init, headers: record };
 }
 
-export function parseSwrFromInit(
+function parseSwrFromInit(
 	init: RequestInit | undefined,
 	defaultStaleSeconds: number,
 	defaultTtlSeconds: number,
@@ -76,7 +76,7 @@ export function parseSwrFromInit(
 	}
 }
 
-export function pathAndSearchFromPayloadUrl(
+function pathAndSearchFromPayloadUrl(
 	fullUrl: string,
 	baseURL: string
 ): PayloadSwrKeyContext | null {
@@ -91,11 +91,11 @@ export function pathAndSearchFromPayloadUrl(
 
 type SwrEnvelope = { _swrAt: number; data: unknown };
 
-export function wrapForSwrCache(data: unknown): SwrEnvelope {
+function wrapForSwrCache(data: unknown): SwrEnvelope {
 	return { _swrAt: Math.floor(Date.now() / 1000), data };
 }
 
-export function unwrapSwrCache(
+function unwrapSwrCache(
 	raw: unknown,
 	staleThreshold: number
 ): { data: unknown; ageSeconds: number } | null {
