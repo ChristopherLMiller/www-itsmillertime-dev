@@ -35,7 +35,7 @@
 	let spinTick = $state(0);
 	let spinTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	const SPIN_VISIBLE_RADIUS = 4;
+	const SPIN_VISIBLE_RADIUS = 2;
 	const SPIN_MIN_TICKS = 28;
 	const SPIN_EXTRA_TICKS = 18;
 
@@ -697,44 +697,33 @@
 		padding: 1.5rem clamp(0.75rem, 2vw, 1.5rem) 1.75rem;
 		text-align: center;
 		border: 3px solid var(--color-primary-darker);
-		background:
-			linear-gradient(135deg, rgb(255 255 255 / 0.86), rgb(255 255 255 / 0.68)),
-			repeating-linear-gradient(
-				45deg,
-				var(--color-tertiary-darkest) 0 0.75rem,
-				var(--color-primary-darker) 0.75rem 1.5rem
-			);
+		background: var(--color-white-lightest);
 		box-shadow: 8px 8px 0 var(--color-primary);
 		overflow: hidden;
+		--wheel-slot-gap: clamp(0.35rem, 1.5vw, 0.75rem);
+		--wheel-slot-width: clamp(5.5rem, 16vw, 8rem);
 	}
 
 	.wheel-window {
 		position: relative;
 		margin-inline: auto;
 		padding-block: 1.5rem 1rem;
+		width: fit-content;
 		max-width: 100%;
 		overflow: hidden;
 	}
 
-	.wheel-window::before,
-	.wheel-window::after {
+	.wheel-window::before {
 		content: '';
 		position: absolute;
 		z-index: 2;
 		top: 0;
 		bottom: 0;
-		width: clamp(1.5rem, 8vw, 6rem);
+		left: 50%;
+		width: 2px;
+		transform: translateX(-50%);
+		background: rgb(0 0 0 / 0.12);
 		pointer-events: none;
-	}
-
-	.wheel-window::before {
-		left: 0;
-		background: linear-gradient(90deg, var(--color-white-lightest), transparent);
-	}
-
-	.wheel-window::after {
-		right: 0;
-		background: linear-gradient(270deg, var(--color-white-lightest), transparent);
 	}
 
 	.wheel-pointer {
@@ -765,12 +754,14 @@
 		display: flex;
 		justify-content: center;
 		align-items: stretch;
-		gap: clamp(0.35rem, 1.5vw, 0.75rem);
-		min-width: max-content;
+		gap: var(--wheel-slot-gap);
+		width: calc((var(--wheel-slot-width) * 5) + (var(--wheel-slot-gap) * 4));
+		max-width: 100%;
 	}
 
 	.wheel-slot {
-		width: clamp(5.5rem, 16vw, 8rem);
+		width: var(--wheel-slot-width);
+		flex: 0 0 var(--wheel-slot-width);
 		padding: 0.55rem;
 		border: 2px solid var(--color-tertiary-lighter);
 		background: var(--color-white-lightest);
