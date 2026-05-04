@@ -38,6 +38,7 @@
 	const SPIN_VISIBLE_RADIUS = 2;
 	const SPIN_MIN_TICKS = 28;
 	const SPIN_EXTRA_TICKS = 18;
+	const SPIN_SETTLE_DELAY_MS = 450;
 
 	$effect(() => {
 		lookupUsername = data.username;
@@ -174,24 +175,30 @@
 		});
 	}
 
-	function scheduleSpinTick(finalIndex: number, totalTicks: number) {
+	function scheduleSpinTick(totalTicks: number) {
 		const progress = spinTick / totalTicks;
 		const delay = 55 + Math.pow(progress, 3) * 190;
 
 		spinTimeout = setTimeout(() => {
 			if (spinGames.length === 0) return;
 
+			const nextIndex = (highlightedSpinIndex + 1) % spinGames.length;
+
 			spinTick += 1;
-			highlightedSpinIndex = (highlightedSpinIndex + 1) % spinGames.length;
+			highlightedSpinIndex = nextIndex;
 
 			if (spinTick >= totalTicks) {
+				const selectedGame = spinGames[nextIndex] ?? null;
 				clearSpinTimer();
-				isSpinning = false;
-				pickedGame = spinGames[finalIndex] ?? spinGames[highlightedSpinIndex] ?? null;
+				spinTimeout = setTimeout(() => {
+					spinTimeout = null;
+					isSpinning = false;
+					pickedGame = selectedGame;
+				}, SPIN_SETTLE_DELAY_MS);
 				return;
 			}
 
-			scheduleSpinTick(finalIndex, totalTicks);
+			scheduleSpinTick(totalTicks);
 		}, delay);
 	}
 
@@ -209,7 +216,7 @@
 		spinTick = 0;
 		pickedGame = null;
 		isSpinning = true;
-		scheduleSpinTick(finalIndex, totalTicks);
+		scheduleSpinTick(totalTicks);
 	}
 
 	function clearPick() {
