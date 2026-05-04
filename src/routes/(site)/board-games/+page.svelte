@@ -1036,48 +1036,53 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
 		grid-auto-rows: var(--shelf-row-height);
-		align-items: end;
-		gap: 0.75rem 0.85rem;
+		align-items: stretch;
+		gap: 0.85rem 0;
 		max-width: 1400px;
 		margin-inline: auto;
-		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 2.15rem;
+		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.35rem;
 		border: 7px solid #5f2f19;
 		background:
-			linear-gradient(90deg, rgb(52 23 10 / 0.18), transparent 8%, transparent 92%, rgb(52 23 10 / 0.18)),
 			repeating-linear-gradient(
-				to bottom,
-				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.18rem),
-				rgb(255 231 185 / 0.16) calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.18rem)
-					calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.24rem),
-				transparent calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.24rem)
-					calc(var(--shelf-row-height) - 0.9rem),
-				rgb(55 24 10 / 0.14) calc(var(--shelf-row-height) - 0.9rem)
-					calc(var(--shelf-row-height) - 0.84rem),
-				transparent calc(var(--shelf-row-height) - 0.84rem) var(--shelf-row-height)
+				0deg,
+				rgb(255 230 180 / 0.08) 0 1px,
+				transparent 1px 9px,
+				rgb(58 25 10 / 0.08) 9px 10px,
+				transparent 10px 24px
 			),
-			repeating-linear-gradient(
-				to bottom,
-				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
-				#bf733b calc(var(--shelf-row-height) - var(--shelf-board-height))
-					calc(var(--shelf-row-height) - 1rem),
-				#7b3d20 calc(var(--shelf-row-height) - 1rem)
-					calc(var(--shelf-row-height) - 0.28rem),
-				#3d1d10 calc(var(--shelf-row-height) - 0.28rem) var(--shelf-row-height)
-			),
+			radial-gradient(ellipse at 20% 18%, rgb(255 223 164 / 0.14), transparent 32%),
+			radial-gradient(ellipse at 78% 64%, rgb(54 24 10 / 0.16), transparent 34%),
+			linear-gradient(90deg, rgb(52 23 10 / 0.16), transparent 9%, transparent 91%, rgb(52 23 10 / 0.16)),
 			#925028;
 		box-shadow:
 			inset 0 0 0 2px rgb(255 255 255 / 0.1),
 			0 0.9rem 0 #3d1d10,
 			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
 		--shelf-row-height: clamp(13rem, 20vw, 15.5rem);
-		--shelf-board-height: 2.35rem;
+		--shelf-board-height: 2.25rem;
 	}
 
 	.game-card-wrap {
 		position: relative;
-		align-self: end;
-		justify-self: center;
-		padding-bottom: var(--shelf-board-height);
+		box-sizing: border-box;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		padding-inline: 0.35rem;
+		border-bottom: var(--shelf-board-height) solid #7b3d20;
+		box-shadow:
+			inset 0 -0.42rem 0 #3d1d10,
+			inset 0 -0.95rem 0 #9a5529;
+		background:
+			linear-gradient(
+				to bottom,
+				transparent 0 calc(100% - var(--shelf-board-height)),
+				rgb(255 225 172 / 0.16) calc(100% - var(--shelf-board-height) + 0.25rem)
+					calc(100% - var(--shelf-board-height) + 0.32rem),
+				transparent calc(100% - var(--shelf-board-height) + 0.32rem) 100%
+			);
 	}
 
 	.game-card-wrap:hover .game-popover,
@@ -1092,7 +1097,7 @@
 		position: absolute;
 		z-index: 20;
 		left: 50%;
-		bottom: calc(100% + 0.55rem);
+		bottom: calc(var(--shelf-board-height) + 100% - var(--shelf-row-height) + 0.55rem);
 		transform: translate(-50%, 0);
 		width: min(15.5rem, 78vw);
 		padding: 0.8rem 0.9rem;
