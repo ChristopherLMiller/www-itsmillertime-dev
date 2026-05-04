@@ -1040,33 +1040,44 @@
 		gap: 0.75rem 0.85rem;
 		max-width: 1400px;
 		margin-inline: auto;
-		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.85rem;
+		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 2.15rem;
 		border: 7px solid #5f2f19;
 		background:
 			linear-gradient(90deg, rgb(52 23 10 / 0.18), transparent 8%, transparent 92%, rgb(52 23 10 / 0.18)),
 			repeating-linear-gradient(
 				to bottom,
+				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.18rem),
+				rgb(255 231 185 / 0.16) calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.18rem)
+					calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.24rem),
+				transparent calc(var(--shelf-row-height) - var(--shelf-board-height) + 0.24rem)
+					calc(var(--shelf-row-height) - 0.9rem),
+				rgb(55 24 10 / 0.14) calc(var(--shelf-row-height) - 0.9rem)
+					calc(var(--shelf-row-height) - 0.84rem),
+				transparent calc(var(--shelf-row-height) - 0.84rem) var(--shelf-row-height)
+			),
+			repeating-linear-gradient(
+				to bottom,
 				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
 				#bf733b calc(var(--shelf-row-height) - var(--shelf-board-height))
-					calc(var(--shelf-row-height) - 0.8rem),
-				#7b3d20 calc(var(--shelf-row-height) - 0.8rem)
-					calc(var(--shelf-row-height) - 0.22rem),
-				#3d1d10 calc(var(--shelf-row-height) - 0.22rem) var(--shelf-row-height)
+					calc(var(--shelf-row-height) - 1rem),
+				#7b3d20 calc(var(--shelf-row-height) - 1rem)
+					calc(var(--shelf-row-height) - 0.28rem),
+				#3d1d10 calc(var(--shelf-row-height) - 0.28rem) var(--shelf-row-height)
 			),
 			#925028;
 		box-shadow:
 			inset 0 0 0 2px rgb(255 255 255 / 0.1),
 			0 0.9rem 0 #3d1d10,
 			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
-		--shelf-row-height: clamp(12.5rem, 19vw, 14.75rem);
-		--shelf-board-height: 2rem;
+		--shelf-row-height: clamp(13rem, 20vw, 15.5rem);
+		--shelf-board-height: 2.35rem;
 	}
 
 	.game-card-wrap {
 		position: relative;
 		align-self: end;
 		justify-self: center;
-		padding-bottom: calc(var(--shelf-board-height) - 0.2rem);
+		padding-bottom: var(--shelf-board-height);
 	}
 
 	.game-card-wrap:hover .game-popover,
