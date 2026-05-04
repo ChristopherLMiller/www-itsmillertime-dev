@@ -1034,84 +1034,41 @@
 		isolation: isolate;
 		margin-block-start: 1.75rem;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-		gap: 1.45rem 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+		grid-auto-rows: var(--shelf-row-height);
+		align-items: end;
+		gap: 0.75rem 0.85rem;
 		max-width: 1400px;
 		margin-inline: auto;
-		padding: clamp(1rem, 2vw, 1.5rem);
-		border: 10px solid #6f351c;
-		border-image: linear-gradient(90deg, #4f2414, #a75b2a, #5f2c18) 1;
+		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.5rem;
+		border: 7px solid #5f2f19;
 		background:
-			linear-gradient(90deg, rgb(57 26 12 / 0.24), transparent 12%, transparent 88%, rgb(57 26 12 / 0.24)),
+			linear-gradient(90deg, rgb(52 23 10 / 0.3), transparent 8%, transparent 92%, rgb(52 23 10 / 0.3)),
+			repeating-linear-gradient(90deg, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 34px),
 			repeating-linear-gradient(
-				90deg,
-				rgb(255 255 255 / 0.05) 0 2px,
-				transparent 2px 28px
+				to bottom,
+				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
+				#b86a34 calc(var(--shelf-row-height) - var(--shelf-board-height))
+					calc(var(--shelf-row-height) - 0.46rem),
+				#7a3d20 calc(var(--shelf-row-height) - 0.46rem)
+					calc(var(--shelf-row-height) - 0.1rem),
+				#3d1d10 calc(var(--shelf-row-height) - 0.1rem) var(--shelf-row-height)
 			),
-			linear-gradient(180deg, #8a4c27 0%, #5f2f19 100%);
+			linear-gradient(180deg, #a85e2f 0%, #81411f 100%);
 		box-shadow:
-			inset 0 0 0 3px rgb(255 255 255 / 0.08),
-			0 10px 0 #3d1d10,
-			0 16px 24px rgb(0 0 0 / 0.22);
-	}
-
-	.games-flex::before,
-	.games-flex::after {
-		content: '';
-		position: absolute;
-		z-index: -1;
-		left: 0.65rem;
-		right: 0.65rem;
-		height: 0.75rem;
-		border-radius: 999px;
-		background: rgb(49 22 10 / 0.32);
-		filter: blur(5px);
-		pointer-events: none;
-	}
-
-	.games-flex::before {
-		top: 0.45rem;
-	}
-
-	.games-flex::after {
-		bottom: 0.45rem;
+			inset 0 0 0 2px rgb(255 255 255 / 0.1),
+			inset 0 0 2rem rgb(50 22 9 / 0.22),
+			0 0.7rem 0 #3d1d10,
+			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
+		--shelf-row-height: clamp(12.5rem, 19vw, 14.75rem);
+		--shelf-board-height: 1.45rem;
 	}
 
 	.game-card-wrap {
 		position: relative;
-		isolation: isolate;
 		align-self: end;
 		justify-self: center;
-		padding: 0 0.35rem 0.65rem;
-	}
-
-	.game-card-wrap::after {
-		content: '';
-		position: absolute;
-		z-index: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		height: 0.9rem;
-		border-radius: 0.15rem;
-		background:
-			linear-gradient(180deg, #b66a34, #6e351b 70%, #3f1d0f),
-			repeating-linear-gradient(90deg, rgb(255 255 255 / 0.12) 0 2px, transparent 2px 22px);
-		box-shadow:
-			0 0.35rem 0 #3a1b0d,
-			0 0.7rem 1rem rgb(0 0 0 / 0.28);
-	}
-
-	.game-card-wrap::before {
-		content: '';
-		position: absolute;
-		z-index: 0;
-		left: 0.35rem;
-		right: 0.35rem;
-		bottom: 1.05rem;
-		height: 0.55rem;
-		background: linear-gradient(180deg, rgb(0 0 0 / 0.2), transparent);
-		pointer-events: none;
+		padding-bottom: calc(var(--shelf-board-height) - 0.2rem);
 	}
 
 	.game-card-wrap:hover .game-popover,
