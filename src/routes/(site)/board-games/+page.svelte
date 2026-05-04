@@ -465,10 +465,10 @@
 				{/if}
 				{#each displayedGames as game, i (`${game.id}-${i}`)}
 					{@const g = game as BggGame}
-					<div class="game-card-wrap" class:game-card-wrap--popover={data.stats === 1 && g.stats}>
-						{#if data.stats === 1 && g.stats}
-							<div class="game-popover font-oswald" role="tooltip">
-								<p class="game-popover-title">{g.name ?? 'Game'}</p>
+					<div class="game-card-wrap">
+						<div class="game-popover font-oswald" role="tooltip">
+							<p class="game-popover-title">{g.name ?? 'Game'}</p>
+							{#if data.stats === 1 && g.stats}
 								<dl class="game-popover-dl">
 									<dt>Your plays</dt>
 									<dd>{g.numplays ?? '—'}</dd>
@@ -492,8 +492,12 @@
 										{/if}
 									</dd>
 								</dl>
-							</div>
-						{/if}
+							{:else}
+								<p class="game-popover-note">
+									Open full details for players, play time, and ratings.
+								</p>
+							{/if}
+						</div>
 						<a
 							href="https://boardgamegeek.com/boardgame/{g.id}"
 							target="_blank"
@@ -1026,58 +1030,122 @@
 	}
 
 	.games-flex {
-		margin-block-start: 1.5rem;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0;
+		position: relative;
+		isolation: isolate;
+		margin-block-start: 1.75rem;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+		gap: 1.45rem 1rem;
 		max-width: 1400px;
-		align-items: flex-end;
-		border-left: 15px solid #a0522d;
-		border-right: 15px solid #a0522d;
+		margin-inline: auto;
+		padding: clamp(1rem, 2vw, 1.5rem);
+		border: 10px solid #6f351c;
+		border-image: linear-gradient(90deg, #4f2414, #a75b2a, #5f2c18) 1;
+		background:
+			linear-gradient(90deg, rgb(57 26 12 / 0.24), transparent 12%, transparent 88%, rgb(57 26 12 / 0.24)),
+			repeating-linear-gradient(
+				90deg,
+				rgb(255 255 255 / 0.05) 0 2px,
+				transparent 2px 28px
+			),
+			linear-gradient(180deg, #8a4c27 0%, #5f2f19 100%);
+		box-shadow:
+			inset 0 0 0 3px rgb(255 255 255 / 0.08),
+			0 10px 0 #3d1d10,
+			0 16px 24px rgb(0 0 0 / 0.22);
+	}
+
+	.games-flex::before,
+	.games-flex::after {
+		content: '';
+		position: absolute;
+		z-index: -1;
+		left: 0.65rem;
+		right: 0.65rem;
+		height: 0.75rem;
+		border-radius: 999px;
+		background: rgb(49 22 10 / 0.32);
+		filter: blur(5px);
+		pointer-events: none;
+	}
+
+	.games-flex::before {
+		top: 0.45rem;
+	}
+
+	.games-flex::after {
+		bottom: 0.45rem;
 	}
 
 	.game-card-wrap {
 		position: relative;
+		isolation: isolate;
+		align-self: end;
+		justify-self: center;
+		padding: 0 0.35rem 0.65rem;
 	}
 
-	/* Bridge hover gap so the pointer can reach the tooltip without flicker */
-	.game-card-wrap--popover::before {
+	.game-card-wrap::after {
 		content: '';
 		position: absolute;
+		z-index: 0;
 		left: 0;
 		right: 0;
-		bottom: 100%;
-		height: 0.85rem;
-		z-index: 19;
+		bottom: 0;
+		height: 0.9rem;
+		border-radius: 0.15rem;
+		background:
+			linear-gradient(180deg, #b66a34, #6e351b 70%, #3f1d0f),
+			repeating-linear-gradient(90deg, rgb(255 255 255 / 0.12) 0 2px, transparent 2px 22px);
+		box-shadow:
+			0 0.35rem 0 #3a1b0d,
+			0 0.7rem 1rem rgb(0 0 0 / 0.28);
 	}
 
-	.game-card-wrap--popover:hover .game-popover,
-	.game-card-wrap--popover:focus-within .game-popover {
+	.game-card-wrap::before {
+		content: '';
+		position: absolute;
+		z-index: 0;
+		left: 0.35rem;
+		right: 0.35rem;
+		bottom: 1.05rem;
+		height: 0.55rem;
+		background: linear-gradient(180deg, rgb(0 0 0 / 0.2), transparent);
+		pointer-events: none;
+	}
+
+	.game-card-wrap:hover .game-popover,
+	.game-card-wrap:focus-within .game-popover {
 		opacity: 1;
 		visibility: visible;
 		pointer-events: auto;
+		transform: translate(-50%, -0.35rem);
 	}
 
 	.game-popover {
 		position: absolute;
 		z-index: 20;
 		left: 50%;
-		bottom: calc(100% + 0.35rem);
-		transform: translateX(-50%);
-		min-width: 11.5rem;
-		max-width: 16rem;
-		padding: 0.65rem 0.75rem;
-		font-size: 0.72rem;
+		bottom: calc(100% + 0.55rem);
+		transform: translate(-50%, 0);
+		width: min(15.5rem, 78vw);
+		padding: 0.8rem 0.9rem;
+		font-size: 0.74rem;
 		line-height: 1.35;
 		color: var(--color-white-lightest);
-		background: var(--color-tertiary-darkest);
-		border: 1px solid var(--color-primary);
-		box-shadow: 4px 4px 0 var(--color-primary-darker);
+		background:
+			linear-gradient(135deg, rgb(255 255 255 / 0.06), transparent),
+			var(--color-tertiary-darkest);
+		border: 2px solid var(--color-primary);
+		box-shadow:
+			5px 5px 0 var(--color-primary-darker),
+			0 10px 22px rgb(0 0 0 / 0.28);
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
 		transition:
 			opacity 0.15s ease,
+			transform 0.15s ease,
 			visibility 0.15s ease;
 	}
 
@@ -1085,26 +1153,30 @@
 		content: '';
 		position: absolute;
 		left: 50%;
-		bottom: -6px;
-		transform: translateX(-50%);
-		border: 6px solid transparent;
-		border-top-color: var(--color-primary);
+		bottom: -8px;
+		transform: translateX(-50%) rotate(45deg);
+		width: 0.85rem;
+		height: 0.85rem;
+		background: var(--color-tertiary-darkest);
+		border-right: 2px solid var(--color-primary);
+		border-bottom: 2px solid var(--color-primary);
 	}
 
 	.game-popover-title {
-		margin: 0 0 0.4rem;
+		margin: 0 0 0.5rem;
 		font-family: var(--font-special-elite);
-		font-size: 0.8rem;
+		font-size: 0.9rem;
+		line-height: 1.2;
 		color: var(--color-white-lightest);
-		border-bottom: 1px solid var(--color-tertiary);
-		padding-bottom: 0.35rem;
+		border-bottom: 1px solid rgb(255 255 255 / 0.24);
+		padding-bottom: 0.45rem;
 	}
 
 	.game-popover-dl {
 		margin: 0;
 		display: grid;
 		grid-template-columns: auto 1fr;
-		gap: 0.15rem 0.65rem;
+		gap: 0.22rem 0.75rem;
 		align-items: baseline;
 	}
 
@@ -1112,6 +1184,8 @@
 		margin: 0;
 		color: var(--color-tertiary-lighter);
 		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 
 	.game-popover-dl dd {
@@ -1126,22 +1200,38 @@
 		margin-top: 0.1rem;
 	}
 
+	.game-popover-note {
+		margin: 0;
+		color: var(--color-tertiary-lighter);
+	}
+
 	.game-card {
+		position: relative;
+		z-index: 1;
 		display: block;
-		width: 150px;
+		width: clamp(96px, 12vw, 145px);
 		flex-shrink: 0;
 		text-decoration: none;
 		transition:
 			transform 0.2s ease,
-			box-shadow 0.2s ease;
+			box-shadow 0.2s ease,
+			filter 0.2s ease;
 		overflow: hidden;
-		border-bottom: 15px solid #a0522d;
-		margin-bottom: 1.5rem;
+		border: 3px solid #efe1c7;
+		background: var(--color-white-lightest);
+		box-shadow:
+			0 0.25rem 0 rgb(55 24 11 / 0.38),
+			0 0.7rem 0.85rem rgb(0 0 0 / 0.22);
+		transform-origin: bottom center;
 	}
 
-	.game-card:hover {
-		transform: translateY(-4px);
-		box-shadow: 8px 8px 0 var(--color-primary);
+	.game-card:hover,
+	.game-card:focus-visible {
+		transform: translateY(-8px) rotate(-1deg);
+		box-shadow:
+			0 0 0 3px var(--color-primary),
+			0 0.85rem 1rem rgb(0 0 0 / 0.3);
+		filter: saturate(1.05);
 	}
 
 	.game-image {
