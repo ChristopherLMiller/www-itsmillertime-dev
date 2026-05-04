@@ -29,6 +29,15 @@
 	let playerCountFilter = $state<'all' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
 	let playtimeFilter = $state<'all' | '30' | '60' | '90' | '120' | '150' | '180'>('all');
 	let pickedGame = $state<BggGame | null>(null);
+	let isSpinning = $state(false);
+	let spinGames = $state<BggGame[]>([]);
+	let highlightedSpinIndex = $state(0);
+	let spinTick = $state(0);
+	let spinTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	const SPIN_VISIBLE_RADIUS = 4;
+	const SPIN_MIN_TICKS = 28;
+	const SPIN_EXTRA_TICKS = 18;
 
 	$effect(() => {
 		lookupUsername = data.username;
@@ -43,6 +52,9 @@
 		playFilter = 'all';
 		playerCountFilter = 'all';
 		playtimeFilter = 'all';
+		clearSpinTimer();
+		isSpinning = false;
+		spinGames = [];
 		pickedGame = null;
 	});
 
@@ -111,15 +123,99 @@
 		if (pickedGame && !list.some((g) => g.id === pickedGame!.id)) {
 			pickedGame = null;
 		}
+		if (isSpinning && spinGames.some((spinGame) => !list.some((g) => g.id === spinGame.id))) {
+			clearSpinTimer();
+			isSpinning = false;
+			spinGames = [];
+			pickedGame = null;
+		}
 	});
+
+	$effect(() => {
+		return () => {
+			clearSpinTimer();
+		};
+	});
+
+	function clearSpinTimer() {
+		if (spinTimeout) {
+			clearTimeout(spinTimeout);
+			spinTimeout = null;
+		}
+	}
+
+	function positiveModulo(value: number, length: number): number {
+		return ((value % length) + length) % length;
+	}
+
+	function shuffleGames(games: BggGame[]): BggGame[] {
+		const shuffled = [...games];
+		for (let i = shuffled.length - 1; i > 0; i -= 1) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		}
+		return shuffled;
+	}
+
+	function getSpinSlots() {
+		if (spinGames.length === 0) return [];
+
+		return Array.from({ length: SPIN_VISIBLE_RADIUS * 2 + 1 }, (_, index) => {
+			const offset = index - SPIN_VISIBLE_RADIUS;
+			const gameIndex = positiveModulo(highlightedSpinIndex + offset, spinGames.length);
+			const game = spinGames[gameIndex];
+
+			return {
+				game,
+				offset,
+				isCenter: offset === 0,
+				key: `${game.id}-${offset}`
+			};
+		});
+	}
+
+	function scheduleSpinTick(finalIndex: number, totalTicks: number) {
+		const progress = spinTick / totalTicks;
+		const delay = 55 + Math.pow(progress, 3) * 190;
+
+		spinTimeout = setTimeout(() => {
+			if (spinGames.length === 0) return;
+
+			spinTick += 1;
+			highlightedSpinIndex = (highlightedSpinIndex + 1) % spinGames.length;
+
+			if (spinTick >= totalTicks) {
+				clearSpinTimer();
+				isSpinning = false;
+				pickedGame = spinGames[finalIndex] ?? spinGames[highlightedSpinIndex] ?? null;
+				return;
+			}
+
+			scheduleSpinTick(finalIndex, totalTicks);
+		}, delay);
+	}
 
 	function pickRandomGame() {
 		const list = displayedGames;
 		if (list.length === 0) return;
-		pickedGame = list[Math.floor(Math.random() * list.length)] as BggGame;
+
+		clearSpinTimer();
+		const wheelGames = shuffleGames(list);
+		const finalIndex = Math.floor(Math.random() * wheelGames.length);
+		const totalTicks = SPIN_MIN_TICKS + Math.floor(Math.random() * SPIN_EXTRA_TICKS);
+
+		spinGames = wheelGames;
+		highlightedSpinIndex = positiveModulo(finalIndex - (totalTicks % wheelGames.length), wheelGames.length);
+		spinTick = 0;
+		pickedGame = null;
+		isSpinning = true;
+		scheduleSpinTick(finalIndex, totalTicks);
 	}
 
 	function clearPick() {
+		clearSpinTimer();
+		isSpinning = false;
+		spinGames = [];
 		pickedGame = null;
 	}
 
@@ -240,15 +336,45 @@
 				<button
 					type="button"
 					class="pick-btn font-oswald"
-					disabled={displayedGames.length === 0}
+					disabled={displayedGames.length === 0 || isSpinning}
 					onclick={pickRandomGame}
 				>
-					Pick a game for me
+					{isSpinning ? 'Spinning...' : 'Find me a game'}
 				</button>
 			</div>
 		{/if}
 
-		{#if pickedGame}
+		{#if isSpinning}
+			<section class="pick-wheel" aria-live="polite" aria-busy="true">
+				<p class="picked-kicker font-oswald">Game roulette</p>
+				<p class="picked-tagline font-special-elite">
+					Spinning {displayedGames.length}
+					{displayedGames.length === 1 ? 'eligible game' : 'eligible games'}...
+				</p>
+				<div class="wheel-window">
+					<div class="wheel-pointer" aria-hidden="true"></div>
+					<div class="wheel-strip">
+						{#each getSpinSlots() as slot (slot.key)}
+							<div class="wheel-slot" class:wheel-slot--active={slot.isCenter}>
+								<div class="wheel-image-frame">
+									{#if slot.game.thumbnail || slot.game.image}
+										<img
+											class="wheel-image"
+											src={slot.game.thumbnail ?? slot.game.image}
+											alt={slot.game.name ?? 'Game cover'}
+											loading="lazy"
+										/>
+									{:else}
+										<div class="wheel-image-placeholder font-oswald">No image</div>
+									{/if}
+								</div>
+								<p class="wheel-title font-oswald">{slot.game.name ?? 'Mystery game'}</p>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</section>
+		{:else if pickedGame}
 			{@const g = pickedGame}
 			<section class="picked-hero" aria-live="polite">
 				<p class="picked-kicker font-oswald">Your pick</p>
@@ -562,6 +688,154 @@
 	.pick-btn:disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
+	}
+
+	.pick-wheel {
+		margin-block-start: 1.75rem;
+		max-width: 58rem;
+		margin-inline: auto;
+		padding: 1.5rem clamp(0.75rem, 2vw, 1.5rem) 1.75rem;
+		text-align: center;
+		border: 3px solid var(--color-primary-darker);
+		background:
+			linear-gradient(135deg, rgb(255 255 255 / 0.86), rgb(255 255 255 / 0.68)),
+			repeating-linear-gradient(
+				45deg,
+				var(--color-tertiary-darkest) 0 0.75rem,
+				var(--color-primary-darker) 0.75rem 1.5rem
+			);
+		box-shadow: 8px 8px 0 var(--color-primary);
+		overflow: hidden;
+	}
+
+	.wheel-window {
+		position: relative;
+		margin-inline: auto;
+		padding-block: 1.5rem 1rem;
+		max-width: 100%;
+		overflow: hidden;
+	}
+
+	.wheel-window::before,
+	.wheel-window::after {
+		content: '';
+		position: absolute;
+		z-index: 2;
+		top: 0;
+		bottom: 0;
+		width: clamp(1.5rem, 8vw, 6rem);
+		pointer-events: none;
+	}
+
+	.wheel-window::before {
+		left: 0;
+		background: linear-gradient(90deg, var(--color-white-lightest), transparent);
+	}
+
+	.wheel-window::after {
+		right: 0;
+		background: linear-gradient(270deg, var(--color-white-lightest), transparent);
+	}
+
+	.wheel-pointer {
+		position: absolute;
+		z-index: 4;
+		top: 0.15rem;
+		left: 50%;
+		width: 0;
+		height: 0;
+		transform: translateX(-50%);
+		border-inline: 0.75rem solid transparent;
+		border-top: 1rem solid var(--color-primary);
+		filter: drop-shadow(0 2px 0 var(--color-tertiary-darkest));
+	}
+
+	.wheel-pointer::after {
+		content: '';
+		position: absolute;
+		top: -1.35rem;
+		left: -0.35rem;
+		width: 0.7rem;
+		height: 0.7rem;
+		border-radius: 50%;
+		background: var(--color-tertiary-darkest);
+	}
+
+	.wheel-strip {
+		display: flex;
+		justify-content: center;
+		align-items: stretch;
+		gap: clamp(0.35rem, 1.5vw, 0.75rem);
+		min-width: max-content;
+	}
+
+	.wheel-slot {
+		width: clamp(5.5rem, 16vw, 8rem);
+		padding: 0.55rem;
+		border: 2px solid var(--color-tertiary-lighter);
+		background: var(--color-white-lightest);
+		box-shadow: 4px 4px 0 rgb(0 0 0 / 0.16);
+		opacity: 0.54;
+		transform: scale(0.86) rotate(var(--slot-tilt, 0deg));
+		transition:
+			opacity 0.12s ease,
+			transform 0.12s ease,
+			border-color 0.12s ease;
+	}
+
+	.wheel-slot:nth-child(odd) {
+		--slot-tilt: -2deg;
+	}
+
+	.wheel-slot:nth-child(even) {
+		--slot-tilt: 2deg;
+	}
+
+	.wheel-slot--active {
+		position: relative;
+		z-index: 3;
+		border-color: var(--color-primary);
+		opacity: 1;
+		transform: scale(1.08) rotate(0deg);
+		box-shadow: 0 0 0 4px var(--color-primary-darker), 8px 8px 0 rgb(0 0 0 / 0.2);
+	}
+
+	.wheel-image-frame {
+		aspect-ratio: 1 / 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		background: var(--color-white-lightest);
+		border-bottom: 0.55rem solid #a0522d;
+	}
+
+	.wheel-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.wheel-image-placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		font-size: 0.7rem;
+		color: var(--color-tertiary);
+	}
+
+	.wheel-title {
+		margin: 0.45rem 0 0;
+		font-size: 0.72rem;
+		line-height: 1.2;
+		color: var(--color-tertiary-darkest);
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
 	}
 
 	.picked-hero {
