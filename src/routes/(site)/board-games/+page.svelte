@@ -1040,28 +1040,26 @@
 		gap: 0.75rem 0.85rem;
 		max-width: 1400px;
 		margin-inline: auto;
-		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.5rem;
+		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.85rem;
 		border: 7px solid #5f2f19;
 		background:
-			linear-gradient(90deg, rgb(52 23 10 / 0.3), transparent 8%, transparent 92%, rgb(52 23 10 / 0.3)),
-			repeating-linear-gradient(90deg, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 34px),
+			linear-gradient(90deg, rgb(52 23 10 / 0.18), transparent 8%, transparent 92%, rgb(52 23 10 / 0.18)),
 			repeating-linear-gradient(
 				to bottom,
 				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
-				#b86a34 calc(var(--shelf-row-height) - var(--shelf-board-height))
-					calc(var(--shelf-row-height) - 0.46rem),
-				#7a3d20 calc(var(--shelf-row-height) - 0.46rem)
-					calc(var(--shelf-row-height) - 0.1rem),
-				#3d1d10 calc(var(--shelf-row-height) - 0.1rem) var(--shelf-row-height)
+				#bf733b calc(var(--shelf-row-height) - var(--shelf-board-height))
+					calc(var(--shelf-row-height) - 0.8rem),
+				#7b3d20 calc(var(--shelf-row-height) - 0.8rem)
+					calc(var(--shelf-row-height) - 0.22rem),
+				#3d1d10 calc(var(--shelf-row-height) - 0.22rem) var(--shelf-row-height)
 			),
-			linear-gradient(180deg, #a85e2f 0%, #81411f 100%);
+			#925028;
 		box-shadow:
 			inset 0 0 0 2px rgb(255 255 255 / 0.1),
-			inset 0 0 2rem rgb(50 22 9 / 0.22),
-			0 0.7rem 0 #3d1d10,
+			0 0.9rem 0 #3d1d10,
 			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
 		--shelf-row-height: clamp(12.5rem, 19vw, 14.75rem);
-		--shelf-board-height: 1.45rem;
+		--shelf-board-height: 2rem;
 	}
 
 	.game-card-wrap {
@@ -1174,20 +1172,15 @@
 			box-shadow 0.2s ease,
 			filter 0.2s ease;
 		overflow: hidden;
-		border: 3px solid #efe1c7;
-		background: var(--color-white-lightest);
-		box-shadow:
-			0 0.25rem 0 rgb(55 24 11 / 0.38),
-			0 0.7rem 0.85rem rgb(0 0 0 / 0.22);
+		background: transparent;
+		box-shadow: 0 0.7rem 0.85rem rgb(0 0 0 / 0.22);
 		transform-origin: bottom center;
 	}
 
 	.game-card:hover,
 	.game-card:focus-visible {
 		transform: translateY(-8px) rotate(-1deg);
-		box-shadow:
-			0 0 0 3px var(--color-primary),
-			0 0.85rem 1rem rgb(0 0 0 / 0.3);
+		box-shadow: 0 0.85rem 1rem rgb(0 0 0 / 0.3);
 		filter: saturate(1.05);
 	}
 
