@@ -351,6 +351,11 @@
 						Find me a game
 					{/if}
 				</button>
+				{#if pickedGame && !isSpinning}
+					<button type="button" class="collection-btn font-oswald" onclick={clearPick}>
+						View full collection
+					</button>
+				{/if}
 			</div>
 		{/if}
 
@@ -397,6 +402,7 @@
 					{@const g = centeredSpinGame}
 					<div class="wheel-result">
 						<div class="picked-meta">
+							<p class="result-eyebrow font-oswald">Tonight's game</p>
 							<h2 class="picked-title font-special-elite">{g.name ?? 'Game'}</h2>
 							{#if data.stats === 1 && g.stats}
 								<dl class="picked-dl font-oswald">
@@ -430,6 +436,10 @@
 										</dd>
 									</div>
 								</dl>
+							{:else}
+								<p class="result-note font-oswald">
+									Fetch full details to see player count, play time, and ratings here.
+								</p>
 							{/if}
 							<div class="picked-actions">
 								<a
@@ -441,7 +451,7 @@
 									Open on BoardGameGeek
 								</a>
 								<button type="button" class="picked-back font-oswald" onclick={clearPick}>
-									Back to collection
+									View full collection
 								</button>
 							</div>
 						</div>
@@ -672,7 +682,9 @@
 
 	.pick-row {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: center;
+		gap: 0.65rem;
 		margin-block-start: 1rem;
 	}
 
@@ -698,6 +710,25 @@
 	.pick-btn:disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
+	}
+
+	.collection-btn {
+		padding: 0.55rem 1.1rem;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		background: var(--color-white-lightest);
+		color: var(--color-tertiary-darkest);
+		border: 2px solid var(--color-tertiary-lighter);
+		cursor: pointer;
+		transition:
+			border-color 0.2s,
+			transform 0.15s ease;
+	}
+
+	.collection-btn:hover {
+		border-color: var(--color-primary);
+		transform: translateY(-2px);
 	}
 
 	.pick-wheel {
@@ -851,8 +882,12 @@
 	.wheel-result {
 		max-width: 34rem;
 		margin: 1.75rem auto 0;
-		padding: 1.15rem 1rem;
-		border-top: 2px solid var(--color-primary);
+		padding: 1.25rem;
+		background:
+			linear-gradient(135deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.76)),
+			var(--color-white-lightest);
+		border: 2px solid var(--color-primary);
+		box-shadow: 6px 6px 0 rgb(0 0 0 / 0.12);
 		animation: wheel-result-in 0.28s ease-out both;
 	}
 
@@ -882,53 +917,77 @@
 		color: var(--color-tertiary-darker);
 	}
 
-	.picked-meta {
-		flex: 1;
-		min-width: 0;
-	}
-
 	.picked-title {
-		margin: 0 0 0.75rem;
-		font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+		margin: 0;
+		font-size: clamp(1.35rem, 2.75vw, 1.8rem);
 		color: var(--color-primary-darker);
 		line-height: 1.2;
 	}
 
+	.picked-meta {
+		max-width: 38rem;
+		margin-inline: auto;
+	}
+
+	.result-eyebrow {
+		margin: 0 0 0.25rem;
+		font-family: var(--font-oswald);
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: var(--color-primary);
+	}
+
+	.result-note {
+		margin: 1rem auto 1.25rem;
+		max-width: 24rem;
+		padding: 0.8rem 1rem;
+		color: var(--color-tertiary-darker);
+		background: rgb(255 255 255 / 0.72);
+		border: 1px solid var(--color-tertiary-lighter);
+	}
+
 	.picked-dl {
-		margin: 0 0 1.25rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		font-size: 0.85rem;
+		margin: 1rem 0 1.25rem;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
+		gap: 0.65rem;
 		color: var(--color-tertiary-darker);
 	}
 
 	.picked-dl-row {
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 0.35rem 0.75rem;
-	}
-
-	@media (min-width: 640px) {
-		.picked-dl-row {
-			justify-content: flex-start;
-		}
+		flex-direction: column;
+		gap: 0.2rem;
+		padding: 0.65rem 0.75rem;
+		text-align: left;
+		background: rgb(255 255 255 / 0.72);
+		border: 1px solid var(--color-tertiary-lighter);
+		box-shadow: 3px 3px 0 rgb(0 0 0 / 0.08);
 	}
 
 	.picked-dl-row dt {
 		margin: 0;
-		font-weight: 600;
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 		color: var(--color-tertiary);
 	}
 
 	.picked-dl-row dd {
 		margin: 0;
+		font-family: var(--font-special-elite);
+		font-size: clamp(1rem, 1.75vw, 1.2rem);
+		line-height: 1.15;
+		color: var(--color-tertiary-darkest);
 	}
 
 	.picked-dl-sub {
 		display: block;
-		font-size: 0.75rem;
+		margin-top: 0.2rem;
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
 		color: var(--color-tertiary);
 	}
 
@@ -936,14 +995,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		gap: 0.65rem;
+		gap: 0.75rem;
 		align-items: center;
-	}
-
-	@media (min-width: 640px) {
-		.picked-actions {
-			justify-content: flex-start;
-		}
 	}
 
 	.picked-bgg-link {
@@ -956,18 +1009,20 @@
 		font-size: 0.85rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		background: transparent;
+		background: var(--color-white-lightest);
 		color: var(--color-tertiary-darker);
-		border: 1px solid var(--color-tertiary-lighter);
+		border: 2px solid var(--color-tertiary-lighter);
 		cursor: pointer;
 		transition:
 			background 0.2s,
-			border-color 0.2s;
+			border-color 0.2s,
+			transform 0.15s ease;
 	}
 
 	.picked-back:hover {
 		background: var(--color-white-lightest);
 		border-color: var(--color-tertiary);
+		transform: translateY(-2px);
 	}
 
 	.games-flex {
