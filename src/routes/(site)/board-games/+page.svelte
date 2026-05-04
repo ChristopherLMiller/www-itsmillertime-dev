@@ -1040,7 +1040,7 @@
 		gap: 0.85rem 0;
 		max-width: 1400px;
 		margin-inline: auto;
-		padding: 1rem clamp(0.75rem, 2vw, 1.25rem) 1.35rem;
+		padding: 1rem 0 1.35rem;
 		border: 7px solid #5f2f19;
 		background:
 			repeating-linear-gradient(
@@ -1097,7 +1097,7 @@
 		position: absolute;
 		z-index: 20;
 		left: 50%;
-		bottom: calc(var(--shelf-board-height) + 100% - var(--shelf-row-height) + 0.55rem);
+		bottom: calc(100% + 0.55rem);
 		transform: translate(-50%, 0);
 		width: min(15.5rem, 78vw);
 		padding: 0.8rem 0.9rem;
