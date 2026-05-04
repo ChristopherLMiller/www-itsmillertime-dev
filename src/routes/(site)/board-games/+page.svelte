@@ -38,7 +38,6 @@
 	const SPIN_VISIBLE_RADIUS = 2;
 	const SPIN_MIN_TICKS = 28;
 	const SPIN_EXTRA_TICKS = 18;
-	const SPIN_SETTLE_DELAY_MS = 450;
 
 	$effect(() => {
 		lookupUsername = data.username;
@@ -175,6 +174,8 @@
 		});
 	}
 
+	const centeredSpinGame = $derived(spinGames[highlightedSpinIndex] ?? null);
+
 	function scheduleSpinTick(totalTicks: number) {
 		const progress = spinTick / totalTicks;
 		const delay = 55 + Math.pow(progress, 3) * 190;
@@ -188,13 +189,9 @@
 			highlightedSpinIndex = nextIndex;
 
 			if (spinTick >= totalTicks) {
-				const selectedGame = spinGames[nextIndex] ?? null;
 				clearSpinTimer();
-				spinTimeout = setTimeout(() => {
-					spinTimeout = null;
-					isSpinning = false;
-					pickedGame = selectedGame;
-				}, SPIN_SETTLE_DELAY_MS);
+				isSpinning = false;
+				pickedGame = spinGames[nextIndex] ?? null;
 				return;
 			}
 
@@ -346,17 +343,32 @@
 					disabled={displayedGames.length === 0 || isSpinning}
 					onclick={pickRandomGame}
 				>
-					{isSpinning ? 'Spinning...' : 'Find me a game'}
+					{#if isSpinning}
+						Spinning...
+					{:else if pickedGame}
+						Spin again
+					{:else}
+						Find me a game
+					{/if}
 				</button>
 			</div>
 		{/if}
 
-		{#if isSpinning}
-			<section class="pick-wheel" aria-live="polite" aria-busy="true">
-				<p class="picked-kicker font-oswald">Game roulette</p>
+		{#if isSpinning || pickedGame}
+			<section
+				class="pick-wheel"
+				class:pick-wheel--settled={pickedGame && !isSpinning}
+				aria-live="polite"
+				aria-busy={isSpinning}
+			>
+				<p class="picked-kicker font-oswald">{isSpinning ? 'Game roulette' : 'Your pick'}</p>
 				<p class="picked-tagline font-special-elite">
-					Spinning {displayedGames.length}
-					{displayedGames.length === 1 ? 'eligible game' : 'eligible games'}...
+					{#if isSpinning}
+						Spinning {displayedGames.length}
+						{displayedGames.length === 1 ? 'eligible game' : 'eligible games'}...
+					{:else}
+						The wheel has spoken.
+					{/if}
 				</p>
 				<div class="wheel-window">
 					<div class="wheel-pointer" aria-hidden="true"></div>
@@ -380,70 +392,61 @@
 						{/each}
 					</div>
 				</div>
-			</section>
-		{:else if pickedGame}
-			{@const g = pickedGame}
-			<section class="picked-hero" aria-live="polite">
-				<p class="picked-kicker font-oswald">Your pick</p>
-				<p class="picked-tagline font-special-elite">Here—go play this.</p>
-				<div class="picked-card">
-					<div class="picked-image-wrap">
-						{#if g.thumbnail && g.image}
-							<img class="picked-image" src={g.image} alt={g.name ?? 'Game cover'} loading="lazy" />
-						{:else}
-							<div class="picked-placeholder font-oswald">No image</div>
-						{/if}
-					</div>
-					<div class="picked-meta">
-						<h2 class="picked-title font-special-elite">{g.name ?? 'Game'}</h2>
-						{#if data.stats === 1 && g.stats}
-							<dl class="picked-dl font-oswald">
-								<div class="picked-dl-row">
-									<dt>Your plays</dt>
-									<dd>{g.numplays ?? '—'}</dd>
-								</div>
-								<div class="picked-dl-row">
-									<dt>Players</dt>
-									<dd>
-										{#if g.stats.minplayers != null && g.stats.maxplayers != null}
-											{g.stats.minplayers}–{g.stats.maxplayers}
-										{:else}
-											—
-										{/if}
-									</dd>
-								</div>
-								<div class="picked-dl-row">
-									<dt>Play time</dt>
-									<dd>{formatPlayTime(g)}</dd>
-								</div>
-								<div class="picked-dl-row">
-									<dt>Avg rating</dt>
-									<dd>
-										{formatAvg(g.stats.rating?.average)}
-										{#if g.stats.rating?.usersrated != null}
-											<span class="picked-dl-sub">
-												({g.stats.rating.usersrated.toLocaleString()} votes)
-											</span>
-										{/if}
-									</dd>
-								</div>
-							</dl>
-						{/if}
-						<div class="picked-actions">
-							<a
-								class="picked-bgg-link lookup-btn font-oswald"
-								href="https://boardgamegeek.com/boardgame/{g.id}"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								Open on BoardGameGeek
-							</a>
-							<button type="button" class="picked-back font-oswald" onclick={clearPick}>
-								Back to collection
-							</button>
+
+				{#if pickedGame && !isSpinning && centeredSpinGame}
+					{@const g = centeredSpinGame}
+					<div class="wheel-result">
+						<div class="picked-meta">
+							<h2 class="picked-title font-special-elite">{g.name ?? 'Game'}</h2>
+							{#if data.stats === 1 && g.stats}
+								<dl class="picked-dl font-oswald">
+									<div class="picked-dl-row">
+										<dt>Your plays</dt>
+										<dd>{g.numplays ?? '—'}</dd>
+									</div>
+									<div class="picked-dl-row">
+										<dt>Players</dt>
+										<dd>
+											{#if g.stats.minplayers != null && g.stats.maxplayers != null}
+												{g.stats.minplayers}–{g.stats.maxplayers}
+											{:else}
+												—
+											{/if}
+										</dd>
+									</div>
+									<div class="picked-dl-row">
+										<dt>Play time</dt>
+										<dd>{formatPlayTime(g)}</dd>
+									</div>
+									<div class="picked-dl-row">
+										<dt>Avg rating</dt>
+										<dd>
+											{formatAvg(g.stats.rating?.average)}
+											{#if g.stats.rating?.usersrated != null}
+												<span class="picked-dl-sub">
+													({g.stats.rating.usersrated.toLocaleString()} votes)
+												</span>
+											{/if}
+										</dd>
+									</div>
+								</dl>
+							{/if}
+							<div class="picked-actions">
+								<a
+									class="picked-bgg-link lookup-btn font-oswald"
+									href="https://boardgamegeek.com/boardgame/{g.id}"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Open on BoardGameGeek
+								</a>
+								<button type="button" class="picked-back font-oswald" onclick={clearPick}>
+									Back to collection
+								</button>
+							</div>
 						</div>
 					</div>
-				</div>
+				{/if}
 			</section>
 		{:else}
 			<div class="games-flex">
@@ -798,6 +801,15 @@
 		box-shadow: 0 0 0 4px var(--color-primary-darker), 8px 8px 0 rgb(0 0 0 / 0.2);
 	}
 
+	.pick-wheel--settled .wheel-slot:not(.wheel-slot--active) {
+		opacity: 0.16;
+		transform: scale(0.72);
+	}
+
+	.pick-wheel--settled .wheel-slot--active {
+		transform: scale(1.14);
+	}
+
 	.wheel-image-frame {
 		aspect-ratio: 1 / 1;
 		display: flex;
@@ -836,15 +848,24 @@
 		-webkit-line-clamp: 2;
 	}
 
-	.picked-hero {
-		margin-block-start: 1.75rem;
-		max-width: 42rem;
-		margin-inline: auto;
-		padding: 1.5rem 1.25rem 2rem;
-		text-align: center;
-		border: 3px solid var(--color-primary-darker);
-		background: var(--color-white-lightest);
-		box-shadow: 8px 8px 0 var(--color-primary);
+	.wheel-result {
+		max-width: 34rem;
+		margin: 1.75rem auto 0;
+		padding: 1.15rem 1rem;
+		border-top: 2px solid var(--color-primary);
+		animation: wheel-result-in 0.28s ease-out both;
+	}
+
+	@keyframes wheel-result-in {
+		from {
+			opacity: 0;
+			transform: translateY(-0.5rem);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.picked-kicker {
@@ -859,45 +880,6 @@
 		margin: 0 0 1.25rem;
 		font-size: clamp(1.1rem, 2vw, 1.35rem);
 		color: var(--color-tertiary-darker);
-	}
-
-	.picked-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.25rem;
-	}
-
-	@media (min-width: 640px) {
-		.picked-card {
-			flex-direction: row;
-			align-items: flex-start;
-			text-align: left;
-		}
-	}
-
-	.picked-image-wrap {
-		flex-shrink: 0;
-		width: 100%;
-		max-width: 220px;
-		border: 2px solid #a0522d;
-		overflow: hidden;
-		border-bottom: 15px solid #a0522d;
-	}
-
-	.picked-image {
-		width: 100%;
-		display: block;
-	}
-
-	.picked-placeholder {
-		min-height: 220px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		background: var(--color-white-lightest);
 	}
 
 	.picked-meta {
