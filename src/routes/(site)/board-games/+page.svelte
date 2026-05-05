@@ -24,7 +24,6 @@
 	const { data } = $props();
 
 	let lookupUsername = $state('');
-	let statsLevel = $state<'0' | '1'>('0');
 	let playFilter = $state<'all' | 'played' | 'unplayed'>('all');
 	let playerCountFilter = $state<'all' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
 	let playtimeFilter = $state<'all' | '30' | '60' | '90' | '120' | '150' | '180'>('all');
@@ -41,13 +40,11 @@
 
 	$effect(() => {
 		lookupUsername = data.username;
-		statsLevel = data.stats === 1 ? '1' : '0';
 	});
 
 	/** Reset filters when the loaded collection changes (new fetch / navigation). */
 	$effect(() => {
 		void data.username;
-		void data.stats;
 		void data.total;
 		playFilter = 'all';
 		playerCountFilter = 'all';
@@ -93,7 +90,6 @@
 
 	const displayedGames = $derived.by(() => {
 		const games = data.games as BggGame[];
-		if (data.stats !== 1) return games;
 
 		let list = games;
 
@@ -245,7 +241,11 @@
 	function handleLookup() {
 		const trimmed = lookupUsername.trim();
 		if (!trimmed) return;
-		goto(`/board-games?username=${encodeURIComponent(trimmed)}&stats=${statsLevel}`);
+		goto(`/board-games?username=${encodeURIComponent(trimmed)}`);
+	}
+
+	function getBgStatsAddPlayHref(game: BggGame): string {
+		return `https://app.bgstatsapp.com/addPlay.html?gameId=${encodeURIComponent(String(game.id))}`;
 	}
 </script>
 
@@ -275,11 +275,6 @@
 					placeholder="BGG username..."
 					bind:value={lookupUsername}
 				/>
-				<label class="stats-label font-oswald" for="bgg-stats-level">Detail</label>
-				<select id="bgg-stats-level" class="stats-select font-oswald" bind:value={statsLevel}>
-					<option value="0">Basic</option>
-					<option value="1">Full</option>
-				</select>
 				<button class="lookup-btn font-oswald" type="submit">Fetch</button>
 			</form>
 		</header>
@@ -294,7 +289,7 @@
 			</div>
 		{/if}
 
-		{#if data.stats === 1 && !data.error && data.games.length > 0}
+		{#if !data.error && data.games.length > 0}
 			<div class="filters-bar font-oswald">
 				<div class="filter-group">
 					<label class="filter-label" for="bgg-play-filter">Play status</label>
@@ -404,44 +399,46 @@
 						<div class="picked-meta">
 							<p class="result-eyebrow font-oswald">Tonight's game</p>
 							<h2 class="picked-title font-special-elite">{g.name ?? 'Game'}</h2>
-							{#if data.stats === 1 && g.stats}
-								<dl class="picked-dl font-oswald">
-									<div class="picked-dl-row">
-										<dt>Your plays</dt>
-										<dd>{g.numplays ?? '—'}</dd>
-									</div>
-									<div class="picked-dl-row">
-										<dt>Players</dt>
-										<dd>
-											{#if g.stats.minplayers != null && g.stats.maxplayers != null}
-												{g.stats.minplayers}–{g.stats.maxplayers}
-											{:else}
-												—
-											{/if}
-										</dd>
-									</div>
-									<div class="picked-dl-row">
-										<dt>Play time</dt>
-										<dd>{formatPlayTime(g)}</dd>
-									</div>
-									<div class="picked-dl-row">
-										<dt>Avg rating</dt>
-										<dd>
-											{formatAvg(g.stats.rating?.average)}
-											{#if g.stats.rating?.usersrated != null}
-												<span class="picked-dl-sub">
-													({g.stats.rating.usersrated.toLocaleString()} votes)
-												</span>
-											{/if}
-										</dd>
-									</div>
-								</dl>
-							{:else}
-								<p class="result-note font-oswald">
-									Fetch full details to see player count, play time, and ratings here.
-								</p>
-							{/if}
+							<dl class="picked-dl font-oswald">
+								<div class="picked-dl-row">
+									<dt>Your plays</dt>
+									<dd>{g.numplays ?? '—'}</dd>
+								</div>
+								<div class="picked-dl-row">
+									<dt>Players</dt>
+									<dd>
+										{#if g.stats?.minplayers != null && g.stats.maxplayers != null}
+											{g.stats.minplayers}–{g.stats.maxplayers}
+										{:else}
+											—
+										{/if}
+									</dd>
+								</div>
+								<div class="picked-dl-row">
+									<dt>Play time</dt>
+									<dd>{formatPlayTime(g)}</dd>
+								</div>
+								<div class="picked-dl-row">
+									<dt>Avg rating</dt>
+									<dd>
+										{formatAvg(g.stats?.rating?.average)}
+										{#if g.stats?.rating?.usersrated != null}
+											<span class="picked-dl-sub">
+												({g.stats.rating.usersrated.toLocaleString()} votes)
+											</span>
+										{/if}
+									</dd>
+								</div>
+							</dl>
 							<div class="picked-actions">
+								<a
+									class="picked-bgstats-link lookup-btn font-oswald"
+									href={getBgStatsAddPlayHref(g)}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Open in BG Stats
+								</a>
 								<a
 									class="picked-bgg-link lookup-btn font-oswald"
 									href="https://boardgamegeek.com/boardgame/{g.id}"
@@ -468,35 +465,29 @@
 					<div class="game-card-wrap">
 						<div class="game-popover font-oswald" role="tooltip">
 							<p class="game-popover-title">{g.name ?? 'Game'}</p>
-							{#if data.stats === 1 && g.stats}
-								<dl class="game-popover-dl">
-									<dt>Your plays</dt>
-									<dd>{g.numplays ?? '—'}</dd>
-									<dt>Players</dt>
-									<dd>
-										{#if g.stats.minplayers != null && g.stats.maxplayers != null}
-											{g.stats.minplayers}–{g.stats.maxplayers}
-										{:else}
-											—
-										{/if}
-									</dd>
-									<dt>Play time</dt>
-									<dd>{formatPlayTime(g)}</dd>
-									<dt>Avg rating</dt>
-									<dd>
-										{formatAvg(g.stats.rating?.average)}
-										{#if g.stats.rating?.usersrated != null}
-											<span class="game-popover-sub">
-												({g.stats.rating.usersrated.toLocaleString()} votes)
-											</span>
-										{/if}
-									</dd>
-								</dl>
-							{:else}
-								<p class="game-popover-note">
-									Open full details for players, play time, and ratings.
-								</p>
-							{/if}
+							<dl class="game-popover-dl">
+								<dt>Your plays</dt>
+								<dd>{g.numplays ?? '—'}</dd>
+								<dt>Players</dt>
+								<dd>
+									{#if g.stats?.minplayers != null && g.stats.maxplayers != null}
+										{g.stats.minplayers}–{g.stats.maxplayers}
+									{:else}
+										—
+									{/if}
+								</dd>
+								<dt>Play time</dt>
+								<dd>{formatPlayTime(g)}</dd>
+								<dt>Avg rating</dt>
+								<dd>
+									{formatAvg(g.stats?.rating?.average)}
+									{#if g.stats?.rating?.usersrated != null}
+										<span class="game-popover-sub">
+											({g.stats.rating.usersrated.toLocaleString()} votes)
+										</span>
+									{/if}
+								</dd>
+							</dl>
 						</div>
 						<a
 							href="https://boardgamegeek.com/boardgame/{g.id}"
@@ -578,22 +569,6 @@
 
 	.lookup-input::placeholder {
 		color: var(--color-tertiary-lighter);
-	}
-
-	.stats-label {
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-tertiary);
-	}
-
-	.stats-select {
-		padding: 0.45rem 0.5rem;
-		font-size: 0.85rem;
-		border: 1px solid var(--color-tertiary-lighter);
-		background: var(--color-white-lightest);
-		color: var(--color-tertiary-darkest);
-		cursor: pointer;
 	}
 
 	.lookup-btn {
@@ -942,15 +917,6 @@
 		color: var(--color-primary);
 	}
 
-	.result-note {
-		margin: 1rem auto 1.25rem;
-		max-width: 24rem;
-		padding: 0.8rem 1rem;
-		color: var(--color-tertiary-darker);
-		background: rgb(255 255 255 / 0.72);
-		border: 1px solid var(--color-tertiary-lighter);
-	}
-
 	.picked-dl {
 		margin: 1rem 0 1.25rem;
 		display: grid;
@@ -1006,6 +972,18 @@
 	.picked-bgg-link {
 		text-decoration: none;
 		display: inline-block;
+	}
+
+	.picked-bgstats-link {
+		text-decoration: none;
+		display: inline-block;
+		background: var(--color-tertiary-darkest);
+		border-color: var(--color-tertiary-darkest);
+	}
+
+	.picked-bgstats-link:hover {
+		background: var(--color-primary-darker);
+		border-color: var(--color-primary-darker);
 	}
 
 	.picked-back {
@@ -1169,11 +1147,6 @@
 		font-size: 0.65rem;
 		color: var(--color-tertiary-lighter);
 		margin-top: 0.1rem;
-	}
-
-	.game-popover-note {
-		margin: 0;
-		color: var(--color-tertiary-lighter);
 	}
 
 	.game-card {
