@@ -990,7 +990,7 @@
 		grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
 		grid-auto-rows: var(--shelf-row-height);
 		align-items: stretch;
-		gap: 0.85rem 0;
+		gap: var(--shelf-row-gap) 0;
 		max-width: 1400px;
 		margin-inline: auto;
 		padding: 1rem 0 1.35rem;
@@ -1013,6 +1013,25 @@
 			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
 		--shelf-row-height: clamp(13rem, 20vw, 15.5rem);
 		--shelf-board-height: 2.25rem;
+		--shelf-row-gap: 0.85rem;
+		--game-side-gap: 0.35rem;
+	}
+
+	.games-flex::before {
+		content: '';
+		position: absolute;
+		z-index: -1;
+		inset: 1rem 0 1.35rem;
+		background: repeating-linear-gradient(
+			to bottom,
+			transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
+			#7b3d20 calc(var(--shelf-row-height) - var(--shelf-board-height))
+				calc(var(--shelf-row-height) - 0.95rem),
+			#9a5529 calc(var(--shelf-row-height) - 0.95rem) calc(var(--shelf-row-height) - 0.42rem),
+			#3d1d10 calc(var(--shelf-row-height) - 0.42rem) var(--shelf-row-height),
+			transparent var(--shelf-row-height) calc(var(--shelf-row-height) + var(--shelf-row-gap))
+		);
+		pointer-events: none;
 	}
 
 	.game-card-wrap {
@@ -1023,11 +1042,8 @@
 		justify-content: center;
 		width: 100%;
 		height: 100%;
-		padding-inline: 0.35rem;
-		border-bottom: var(--shelf-board-height) solid #7b3d20;
-		box-shadow:
-			inset 0 -0.42rem 0 #3d1d10,
-			inset 0 -0.95rem 0 #9a5529;
+		padding-inline: var(--game-side-gap);
+		padding-bottom: calc(var(--shelf-board-height) + 0.2rem);
 		background:
 			linear-gradient(
 				to bottom,
