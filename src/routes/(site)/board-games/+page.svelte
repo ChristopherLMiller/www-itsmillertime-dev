@@ -262,21 +262,6 @@
 					{data.total === 1 ? 'game' : 'games'} in collection
 				</p>
 			{/if}
-			<form
-				class="lookup"
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleLookup();
-				}}
-			>
-				<input
-					class="lookup-input font-special-elite"
-					type="text"
-					placeholder="BGG username..."
-					bind:value={lookupUsername}
-				/>
-				<button class="lookup-btn font-oswald" type="submit">Fetch</button>
-			</form>
 		</header>
 
 		{#if data.error}
@@ -289,8 +274,28 @@
 			</div>
 		{/if}
 
-		{#if !data.error && data.games.length > 0}
-			<div class="filters-bar font-oswald">
+		<form
+			class="controls-panel font-oswald"
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleLookup();
+			}}
+		>
+			<div class="filter-group username-filter-group">
+				<label class="filter-label" for="bgg-username">BGG username</label>
+				<div class="lookup-inline">
+					<input
+						id="bgg-username"
+						class="lookup-input font-special-elite"
+						type="text"
+						placeholder="BGG username..."
+						bind:value={lookupUsername}
+					/>
+					<button class="lookup-btn font-oswald" type="submit">Fetch</button>
+				</div>
+			</div>
+
+			{#if !data.error && data.games.length > 0}
 				<div class="filter-group">
 					<label class="filter-label" for="bgg-play-filter">Play status</label>
 					<select id="bgg-play-filter" class="filter-select" bind:value={playFilter}>
@@ -327,32 +332,27 @@
 					{displayedGames.length}
 					{displayedGames.length === 1 ? 'game' : 'games'} displaying
 				</span>
-			</div>
-		{/if}
-
-		{#if !data.error && data.games.length > 0}
-			<div class="pick-row">
-				<button
-					type="button"
-					class="pick-btn font-oswald"
-					disabled={displayedGames.length === 0 || isSpinning}
-					onclick={pickRandomGame}
-				>
-					{#if isSpinning}
-						Spinning...
-					{:else if pickedGame}
-						Spin again
-					{:else}
-						Find me a game
+				<div class="controls-actions">
+					{#if pickedGame && !isSpinning}
+						<button type="button" class="collection-btn font-oswald" onclick={clearPick}>
+							View full collection
+						</button>
 					{/if}
-				</button>
-				{#if pickedGame && !isSpinning}
-					<button type="button" class="collection-btn font-oswald" onclick={clearPick}>
-						View full collection
+					<button
+						type="button"
+						class="pick-btn font-oswald"
+						disabled={displayedGames.length === 0 || isSpinning}
+						onclick={pickRandomGame}
+					>
+						{#if isSpinning}
+							Spinning...
+						{:else}
+							Pick a game for me
+						{/if}
 					</button>
-				{/if}
-			</div>
-		{/if}
+				</div>
+			{/if}
+		</form>
 
 		{#if isSpinning || pickedGame}
 			<section
@@ -447,9 +447,6 @@
 								>
 									Open on BoardGameGeek
 								</a>
-								<button type="button" class="picked-back font-oswald" onclick={clearPick}>
-									View full collection
-								</button>
 							</div>
 						</div>
 					</div>
@@ -547,14 +544,27 @@
 		margin: 0 0 1.25rem;
 	}
 
-	.lookup {
+	.controls-panel {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		align-items: center;
-		gap: 0.5rem;
-		max-width: 32rem;
+		align-items: flex-end;
+		gap: 0.75rem 1rem;
+		max-width: 68rem;
 		margin-inline: auto;
+		padding: 0.85rem 1rem;
+		border: 1px solid var(--color-tertiary-lighter);
+		background: var(--color-white-lightest);
+	}
+
+	.username-filter-group {
+		flex: 1 1 16rem;
+	}
+
+	.lookup-inline {
+		display: flex;
+		width: 100%;
+		gap: 0.5rem;
 	}
 
 	.lookup-input {
@@ -594,20 +604,6 @@
 		font-family: var(--font-oswald);
 		font-size: var(--fs-base);
 		color: var(--color-tertiary);
-	}
-
-	.filters-bar {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-items: flex-end;
-		gap: 0.5rem 1rem;
-		margin-block-start: 1rem;
-		padding: 0.75rem 1rem;
-		max-width: 52rem;
-		margin-inline: auto;
-		border: 1px solid var(--color-tertiary-lighter);
-		background: var(--color-white-lightest);
 	}
 
 	.filter-group {
@@ -659,7 +655,7 @@
 		color: var(--color-tertiary);
 	}
 
-	.pick-row {
+	.controls-actions {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
@@ -984,27 +980,6 @@
 	.picked-bgstats-link:hover {
 		background: var(--color-primary-darker);
 		border-color: var(--color-primary-darker);
-	}
-
-	.picked-back {
-		padding: 0.5rem 1rem;
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: var(--color-white-lightest);
-		color: var(--color-tertiary-darker);
-		border: 2px solid var(--color-tertiary-lighter);
-		cursor: pointer;
-		transition:
-			background 0.2s,
-			border-color 0.2s,
-			transform 0.15s ease;
-	}
-
-	.picked-back:hover {
-		background: var(--color-white-lightest);
-		border-color: var(--color-tertiary);
-		transform: translateY(-2px);
 	}
 
 	.games-flex {
