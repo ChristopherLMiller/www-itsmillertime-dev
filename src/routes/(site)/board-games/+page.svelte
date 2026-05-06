@@ -247,6 +247,10 @@
 	function getBgStatsAddPlayHref(game: BggGame): string {
 		return `https://app.bgstatsapp.com/addPlay.html?gameId=${encodeURIComponent(String(game.id))}`;
 	}
+
+	function getGamePopoverId(game: BggGame, index: number): string {
+		return `game-popover-${game.id}-${index}`;
+	}
 </script>
 
 <Panel hasBorder hasTexture={false}>
@@ -459,8 +463,15 @@
 				{/if}
 				{#each displayedGames as game, i (`${game.id}-${i}`)}
 					{@const g = game as BggGame}
+					{@const popoverId = getGamePopoverId(g, i)}
 					<div class="game-card-wrap">
-						<div class="game-popover font-oswald" role="tooltip">
+						<div
+							id={popoverId}
+							class="game-popover font-oswald"
+							popover="auto"
+							role="dialog"
+							aria-label={g.name ? `${g.name} details` : 'Game details'}
+						>
 							<p class="game-popover-title">{g.name ?? 'Game'}</p>
 							<dl class="game-popover-dl">
 								<dt>Your plays</dt>
@@ -485,12 +496,20 @@
 									{/if}
 								</dd>
 							</dl>
+							<a
+								class="game-popover-link lookup-btn font-oswald"
+								href="https://boardgamegeek.com/boardgame/{g.id}"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								Open on BGG
+							</a>
 						</div>
-						<a
-							href="https://boardgamegeek.com/boardgame/{g.id}"
-							target="_blank"
-							rel="noopener noreferrer"
+						<button
+							type="button"
 							class="game-card"
+							aria-haspopup="dialog"
+							popovertarget={popoverId}
 						>
 							{#if g.thumbnail}
 								<img src={g.image} alt={g.name ?? ''} class="game-image" loading="lazy" />
@@ -499,7 +518,7 @@
 									<span>No Image</span>
 								</div>
 							{/if}
-						</a>
+						</button>
 					</div>
 				{/each}
 			</div>
@@ -1054,21 +1073,9 @@
 		padding-bottom: calc(var(--shelf-board-height) + 0.38rem);
 	}
 
-	.game-card-wrap:hover .game-popover,
-	.game-card-wrap:focus-within .game-popover {
-		opacity: 1;
-		visibility: visible;
-		pointer-events: auto;
-		transform: translate(-50%, -0.35rem);
-	}
-
 	.game-popover {
-		position: absolute;
-		z-index: 20;
-		left: 50%;
-		bottom: calc(100% + 0.55rem);
-		transform: translate(-50%, 0);
 		width: min(15.5rem, 78vw);
+		max-width: calc(100vw - 2rem);
 		padding: 0.8rem 0.9rem;
 		font-size: 0.74rem;
 		line-height: 1.35;
@@ -1081,25 +1088,15 @@
 			5px 5px 0 var(--color-primary-darker),
 			0 10px 22px rgb(0 0 0 / 0.28);
 		opacity: 0;
-		visibility: hidden;
-		pointer-events: none;
+		transform: translateY(0.35rem);
 		transition:
 			opacity 0.15s ease,
-			transform 0.15s ease,
-			visibility 0.15s ease;
+			transform 0.15s ease;
 	}
 
-	.game-popover::after {
-		content: '';
-		position: absolute;
-		left: 50%;
-		bottom: -8px;
-		transform: translateX(-50%) rotate(45deg);
-		width: 0.85rem;
-		height: 0.85rem;
-		background: var(--color-tertiary-darkest);
-		border-right: 2px solid var(--color-primary);
-		border-bottom: 2px solid var(--color-primary);
+	.game-popover:popover-open {
+		opacity: 1;
+		transform: translateY(0);
 	}
 
 	.game-popover-title {
@@ -1138,6 +1135,14 @@
 		font-size: 0.65rem;
 		color: var(--color-tertiary-lighter);
 		margin-top: 0.1rem;
+	}
+
+	.game-popover-link {
+		display: inline-block;
+		margin-block-start: 0.6rem;
+		color: var(--color-white-lightest);
+		text-decoration: underline;
+		text-underline-offset: 0.15em;
 	}
 
 	.game-card {
