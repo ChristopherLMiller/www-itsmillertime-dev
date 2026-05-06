@@ -33,6 +33,8 @@
 	let highlightedSpinIndex = $state(0);
 	let spinTick = $state(0);
 	let spinTimeout: ReturnType<typeof setTimeout> | null = null;
+	let activeGamePopover: HTMLElement | null = null;
+	let popoverHideTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const SPIN_VISIBLE_RADIUS = 2;
 	const SPIN_MIN_TICKS = 28;
@@ -50,6 +52,7 @@
 		playerCountFilter = 'all';
 		playtimeFilter = 'all';
 		clearSpinTimer();
+		closeActiveGamePopover();
 		isSpinning = false;
 		spinGames = [];
 		pickedGame = null;
@@ -130,6 +133,7 @@
 	$effect(() => {
 		return () => {
 			clearSpinTimer();
+			clearPopoverHideTimer();
 		};
 	});
 
@@ -250,6 +254,47 @@
 
 	function getGamePopoverId(game: BggGame, index: number): string {
 		return `game-popover-${game.id}-${index}`;
+	}
+
+	function getGamePopoverAnchor(game: BggGame, index: number): string {
+		return `--game-popover-${game.id}-${index}`;
+	}
+
+	function clearPopoverHideTimer() {
+		if (popoverHideTimeout) {
+			clearTimeout(popoverHideTimeout);
+			popoverHideTimeout = null;
+		}
+	}
+
+	function closeActiveGamePopover() {
+		clearPopoverHideTimer();
+		if (activeGamePopover?.matches(':popover-open')) {
+			activeGamePopover.hidePopover();
+		}
+		activeGamePopover = null;
+	}
+
+	function showGamePopover(popoverId: string) {
+		clearPopoverHideTimer();
+		const popover = document.getElementById(popoverId);
+		if (!popover) return;
+
+		if (activeGamePopover && activeGamePopover !== popover) {
+			closeActiveGamePopover();
+		}
+
+		if (!popover.matches(':popover-open')) {
+			popover.showPopover();
+		}
+		activeGamePopover = popover;
+	}
+
+	function queueHideGamePopover() {
+		clearPopoverHideTimer();
+		popoverHideTimeout = setTimeout(() => {
+			closeActiveGamePopover();
+		}, 120);
 	}
 </script>
 
@@ -456,85 +501,96 @@
 					</div>
 				{/if}
 			</section>
-		{:else}
-			<div class="games-flex">
-				{#if displayedGames.length === 0 && data.games.length > 0}
-					<p class="filter-empty font-oswald">No games match this filter.</p>
-				{/if}
-				{#each displayedGames as game, i (`${game.id}-${i}`)}
-					{@const g = game as BggGame}
-					{@const popoverId = getGamePopoverId(g, i)}
-					<div class="game-card-wrap">
-						<div
-							id={popoverId}
-							class="game-popover font-oswald"
-							popover="auto"
-							role="dialog"
-							aria-label={g.name ? `${g.name} details` : 'Game details'}
-						>
-							<p class="game-popover-title">{g.name ?? 'Game'}</p>
-							<dl class="game-popover-dl">
-								<dt>Your plays</dt>
-								<dd>{g.numplays ?? '—'}</dd>
-								<dt>Players</dt>
-								<dd>
-									{#if g.stats?.minplayers != null && g.stats.maxplayers != null}
-										{g.stats.minplayers}–{g.stats.maxplayers}
-									{:else}
-										—
-									{/if}
-								</dd>
-								<dt>Play time</dt>
-								<dd>{formatPlayTime(g)}</dd>
-								<dt>Avg rating</dt>
-								<dd>
-									{formatAvg(g.stats?.rating?.average)}
-									{#if g.stats?.rating?.usersrated != null}
-										<span class="game-popover-sub">
-											({g.stats.rating.usersrated.toLocaleString()} votes)
-										</span>
-									{/if}
-								</dd>
-							</dl>
-							<a
-								class="game-popover-link lookup-btn font-oswald"
-								href="https://boardgamegeek.com/boardgame/{g.id}"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								Open on BGG
-							</a>
-						</div>
-						<button
-							type="button"
-							class="game-card"
-							aria-haspopup="dialog"
-							popovertarget={popoverId}
-						>
-							{#if g.thumbnail}
-								<img src={g.image} alt={g.name ?? ''} class="game-image" loading="lazy" />
-							{:else}
-								<div class="game-image-placeholder">
-									<span>No Image</span>
-								</div>
-							{/if}
-						</button>
-					</div>
-				{/each}
-			</div>
 		{/if}
 	</div>
 </Panel>
 
+{#if !isSpinning && !pickedGame && !data.error && data.games.length > 0}
+	<div class="games-flex">
+		{#if displayedGames.length === 0}
+			<p class="filter-empty font-oswald">No games match this filter.</p>
+		{/if}
+		{#each displayedGames as game, i (`${game.id}-${i}`)}
+			{@const g = game as BggGame}
+			{@const popoverId = getGamePopoverId(g, i)}
+			{@const popoverAnchor = getGamePopoverAnchor(g, i)}
+			<div class="game-card-wrap">
+				<div
+					id={popoverId}
+					class="game-popover font-oswald"
+					style={`--popover-anchor: ${popoverAnchor}`}
+					popover="auto"
+					role="dialog"
+					aria-label={g.name ? `${g.name} details` : 'Game details'}
+					onmouseenter={clearPopoverHideTimer}
+					onmouseleave={queueHideGamePopover}
+				>
+					<p class="game-popover-title">{g.name ?? 'Game'}</p>
+					<dl class="game-popover-dl">
+						<dt>Your plays</dt>
+						<dd>{g.numplays ?? '—'}</dd>
+						<dt>Players</dt>
+						<dd>
+							{#if g.stats?.minplayers != null && g.stats.maxplayers != null}
+								{g.stats.minplayers}–{g.stats.maxplayers}
+							{:else}
+								—
+							{/if}
+						</dd>
+						<dt>Play time</dt>
+						<dd>{formatPlayTime(g)}</dd>
+						<dt>Avg rating</dt>
+						<dd>
+							{formatAvg(g.stats?.rating?.average)}
+							{#if g.stats?.rating?.usersrated != null}
+								<span class="game-popover-sub">
+									({g.stats.rating.usersrated.toLocaleString()} votes)
+								</span>
+							{/if}
+						</dd>
+					</dl>
+					<a
+						class="game-popover-link lookup-btn font-oswald"
+						href="https://boardgamegeek.com/boardgame/{g.id}"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Open on BGG
+					</a>
+				</div>
+				<button
+					type="button"
+					class="game-card"
+					style={`anchor-name: ${popoverAnchor}`}
+					aria-haspopup="dialog"
+					popovertarget={popoverId}
+					onmouseenter={() => showGamePopover(popoverId)}
+					onmouseleave={queueHideGamePopover}
+					onfocus={() => showGamePopover(popoverId)}
+					onblur={queueHideGamePopover}
+				>
+					{#if g.thumbnail}
+						<img src={g.image} alt={g.name ?? ''} class="game-image" loading="lazy" />
+					{:else}
+						<div class="game-image-placeholder">
+							<span>No Image</span>
+						</div>
+					{/if}
+				</button>
+			</div>
+		{/each}
+	</div>
+{/if}
+
 <style>
 	.board-games-page {
-		padding: clamp(1rem, 1rem + 1vw, 2rem);
+		padding: clamp(0.9rem, 0.8rem + 0.8vw, 1.5rem);
 	}
 
 	.page-header {
 		text-align: center;
-		margin-bottom: 3rem;
-		padding-bottom: 2rem;
+		margin-bottom: 1.25rem;
+		padding-bottom: 1rem;
 		border-bottom: 3px solid var(--color-primary-darker);
 	}
 
@@ -568,10 +624,10 @@
 		flex-wrap: wrap;
 		justify-content: center;
 		align-items: flex-end;
-		gap: 0.75rem 1rem;
+		gap: 0.65rem 0.85rem;
 		max-width: 68rem;
 		margin-inline: auto;
-		padding: 0.85rem 1rem;
+		padding: 0.75rem 0.85rem;
 		border: 1px solid var(--color-tertiary-lighter);
 		background: var(--color-white-lightest);
 	}
@@ -1074,6 +1130,10 @@
 	}
 
 	.game-popover {
+		position: absolute;
+		position-anchor: var(--popover-anchor);
+		position-area: top;
+		margin: 0 0 0.75rem;
 		width: min(15.5rem, 78vw);
 		max-width: calc(100vw - 2rem);
 		padding: 0.8rem 0.9rem;
@@ -1154,19 +1214,24 @@
 		width: var(--game-cover-width);
 		max-height: calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem);
 		flex-shrink: 0;
+		padding: 0;
 		text-decoration: none;
 		transition:
 			transform 0.2s ease,
 			box-shadow 0.2s ease,
 			filter 0.2s ease;
 		overflow: hidden;
+		appearance: none;
+		border: 0;
 		background: transparent;
 		box-shadow: 0 0.7rem 0.85rem rgb(0 0 0 / 0.22);
+		cursor: pointer;
 		transform-origin: bottom center;
 	}
 
 	.game-card:hover,
 	.game-card:focus-visible {
+		outline: 0;
 		transform: translateY(-8px) rotate(-1deg);
 		box-shadow: 0 0.85rem 1rem rgb(0 0 0 / 0.3);
 		filter: saturate(1.05);
