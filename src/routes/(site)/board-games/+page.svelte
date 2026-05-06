@@ -998,7 +998,7 @@
 		border: clamp(0.75rem, 1.5vw, 1rem) solid #5f2f19;
 		background-color: #8b4723;
 		background-image: var(--wood-grain-texture);
-		background-size: 260px 120px;
+		background-size: 360px 270px;
 		box-shadow:
 			inset 0 0 0 3px rgb(255 235 190 / 0.12),
 			inset 0 0 2rem rgb(50 22 9 / 0.24),
@@ -1010,7 +1010,7 @@
 		--shelf-board-height: 2.35rem;
 		--shelf-row-gap: 1.15rem;
 		--shelf-row-height: clamp(13.25rem, 20vw, 15.75rem);
-		--wood-grain-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='120' viewBox='0 0 260 120'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M-24 16 C22 5 56 27 102 15 S192 7 284 20' stroke='%23f3c987' stroke-opacity='.22' stroke-width='3'/%3E%3Cpath d='M-18 34 C42 24 76 46 132 33 S218 27 278 42' stroke='%23532513' stroke-opacity='.18' stroke-width='2'/%3E%3Cpath d='M-26 58 C32 46 66 68 118 56 S202 49 286 64' stroke='%23f8d697' stroke-opacity='.16' stroke-width='2.4'/%3E%3Cpath d='M-22 84 C46 74 92 98 152 84 S224 78 284 94' stroke='%23451f0f' stroke-opacity='.2' stroke-width='2.2'/%3E%3Cpath d='M-14 106 C34 96 72 116 126 106 S210 98 278 112' stroke='%23f0be75' stroke-opacity='.14' stroke-width='2'/%3E%3Cellipse cx='72' cy='63' rx='28' ry='9' stroke='%23451f0f' stroke-opacity='.17' stroke-width='2'/%3E%3Cellipse cx='72' cy='63' rx='13' ry='4' stroke='%23f7d28f' stroke-opacity='.13' stroke-width='1.5'/%3E%3Cellipse cx='190' cy='27' rx='20' ry='6' stroke='%23451f0f' stroke-opacity='.14' stroke-width='1.6'/%3E%3C/g%3E%3C/svg%3E");
+		--wood-grain-texture: url('https://openclipart.org/download/321589/woodgrain-pattern-2.svg');
 	}
 
 	.games-flex::before {
@@ -1019,7 +1019,6 @@
 		z-index: 0;
 		inset: var(--bookcase-padding-block) 0 1.35rem;
 		background:
-			var(--wood-grain-texture),
 			repeating-linear-gradient(
 				to bottom,
 				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
@@ -1034,10 +1033,12 @@
 					calc(var(--shelf-row-height) + 0.35rem),
 				transparent calc(var(--shelf-row-height) + 0.35rem)
 					calc(var(--shelf-row-height) + var(--shelf-row-gap))
-			);
+			),
+			var(--wood-grain-texture);
+		background-blend-mode: normal, multiply;
 		background-size:
-			260px 120px,
-			auto;
+			auto,
+			360px 270px;
 		pointer-events: none;
 	}
 
