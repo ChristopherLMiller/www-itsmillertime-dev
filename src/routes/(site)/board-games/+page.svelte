@@ -987,71 +987,87 @@
 		isolation: isolate;
 		margin-block-start: 1.75rem;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--game-cover-width), var(--game-cover-width)));
 		grid-auto-rows: var(--shelf-row-height);
 		align-items: stretch;
-		gap: var(--shelf-row-gap) 0;
+		justify-content: center;
+		gap: var(--shelf-row-gap) var(--game-gap);
 		max-width: 1400px;
 		margin-inline: auto;
-		padding: 1rem 0 1.35rem;
-		border: 7px solid #5f2f19;
+		padding: var(--bookcase-padding-block) 0 1.35rem;
+		border: clamp(0.75rem, 1.5vw, 1rem) solid #5f2f19;
 		background:
 			repeating-linear-gradient(
-				0deg,
-				rgb(255 230 180 / 0.08) 0 1px,
-				transparent 1px 9px,
-				rgb(58 25 10 / 0.08) 9px 10px,
-				transparent 10px 24px
+				8deg,
+				rgb(255 229 176 / 0.1) 0 2px,
+				transparent 2px 18px,
+				rgb(60 25 10 / 0.1) 18px 20px,
+				transparent 20px 42px
 			),
-			radial-gradient(ellipse at 20% 18%, rgb(255 223 164 / 0.14), transparent 32%),
-			radial-gradient(ellipse at 78% 64%, rgb(54 24 10 / 0.16), transparent 34%),
-			linear-gradient(90deg, rgb(52 23 10 / 0.16), transparent 9%, transparent 91%, rgb(52 23 10 / 0.16)),
-			#925028;
+			repeating-linear-gradient(
+				92deg,
+				transparent 0 34px,
+				rgb(70 29 11 / 0.08) 34px 36px,
+				transparent 36px 76px
+			),
+			radial-gradient(ellipse at 18% 20%, rgb(255 224 165 / 0.16), transparent 30%),
+			radial-gradient(ellipse at 78% 68%, rgb(54 24 10 / 0.16), transparent 34%),
+			linear-gradient(90deg, rgb(52 23 10 / 0.22), transparent 10%, transparent 90%, rgb(52 23 10 / 0.22)),
+			#965229;
 		box-shadow:
-			inset 0 0 0 2px rgb(255 255 255 / 0.1),
-			0 0.9rem 0 #3d1d10,
+			inset 0 0 0 3px rgb(255 235 190 / 0.12),
+			inset 0 0 2rem rgb(50 22 9 / 0.24),
+			0 0.95rem 0 #3d1d10,
 			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
-		--shelf-row-height: clamp(13rem, 20vw, 15.5rem);
-		--shelf-board-height: 2.25rem;
-		--shelf-row-gap: 0.85rem;
-		--game-side-gap: 0.35rem;
+		--bookcase-padding-block: 1rem;
+		--game-cover-width: clamp(104px, 10vw, 132px);
+		--game-gap: 0.35rem;
+		--shelf-board-height: 2.35rem;
+		--shelf-row-gap: 1.15rem;
+		--shelf-row-height: clamp(13.25rem, 20vw, 15.75rem);
 	}
 
 	.games-flex::before {
 		content: '';
 		position: absolute;
-		z-index: -1;
-		inset: 1rem 0 1.35rem;
-		background: repeating-linear-gradient(
-			to bottom,
-			transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
-			#7b3d20 calc(var(--shelf-row-height) - var(--shelf-board-height))
-				calc(var(--shelf-row-height) - 0.95rem),
-			#9a5529 calc(var(--shelf-row-height) - 0.95rem) calc(var(--shelf-row-height) - 0.42rem),
-			#3d1d10 calc(var(--shelf-row-height) - 0.42rem) var(--shelf-row-height),
-			transparent var(--shelf-row-height) calc(var(--shelf-row-height) + var(--shelf-row-gap))
-		);
+		z-index: 0;
+		inset: var(--bookcase-padding-block) 0 1.35rem;
+		background:
+			repeating-linear-gradient(
+				5deg,
+				rgb(255 226 174 / 0.13) 0 2px,
+				transparent 2px 24px,
+				rgb(66 28 11 / 0.12) 24px 26px,
+				transparent 26px 52px
+			),
+			repeating-linear-gradient(
+				to bottom,
+				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
+				#d18a47 calc(var(--shelf-row-height) - var(--shelf-board-height))
+					calc(var(--shelf-row-height) - 1.95rem),
+				#b76d35 calc(var(--shelf-row-height) - 1.95rem)
+					calc(var(--shelf-row-height) - 0.95rem),
+				#7a3a1d calc(var(--shelf-row-height) - 0.95rem)
+					calc(var(--shelf-row-height) - 0.32rem),
+				#3d1d10 calc(var(--shelf-row-height) - 0.32rem) var(--shelf-row-height),
+				rgb(0 0 0 / 0.18) var(--shelf-row-height)
+					calc(var(--shelf-row-height) + 0.35rem),
+				transparent calc(var(--shelf-row-height) + 0.35rem)
+					calc(var(--shelf-row-height) + var(--shelf-row-gap))
+			);
 		pointer-events: none;
 	}
 
 	.game-card-wrap {
 		position: relative;
 		box-sizing: border-box;
+		z-index: 1;
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
 		width: 100%;
 		height: 100%;
-		padding-inline: var(--game-side-gap);
-		padding-bottom: calc(var(--shelf-board-height) + 0.2rem);
-		background:
-			linear-gradient(
-				to bottom,
-				transparent 0 calc(100% - var(--shelf-board-height)),
-				rgb(255 225 172 / 0.16) calc(100% - var(--shelf-board-height) + 0.25rem)
-					calc(100% - var(--shelf-board-height) + 0.32rem),
-				transparent calc(100% - var(--shelf-board-height) + 0.32rem) 100%
-			);
+		padding-bottom: calc(var(--shelf-board-height) + 0.38rem);
 	}
 
 	.game-card-wrap:hover .game-popover,
@@ -1143,8 +1159,11 @@
 	.game-card {
 		position: relative;
 		z-index: 1;
-		display: block;
-		width: clamp(96px, 12vw, 145px);
+		display: flex;
+		justify-content: center;
+		align-items: flex-end;
+		width: var(--game-cover-width);
+		max-height: calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem);
 		flex-shrink: 0;
 		text-decoration: none;
 		transition:
@@ -1165,13 +1184,21 @@
 	}
 
 	.game-image {
-		width: 100%;
 		display: block;
+		width: auto;
+		max-width: 100%;
+		max-height: calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem);
+		object-fit: contain;
+	}
+
+	.game-card:hover .game-image,
+	.game-card:focus-visible .game-image {
+		filter: saturate(1.05);
 	}
 
 	.game-image-placeholder {
 		width: 100%;
-		height: 150px;
+		height: min(150px, calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem));
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1181,8 +1208,9 @@
 	}
 
 	@media (max-width: 768px) {
-		.game-card {
-			width: 120px;
+		.games-flex {
+			--game-cover-width: 108px;
+			--shelf-row-height: 13.25rem;
 		}
 
 		.game-image-placeholder {
