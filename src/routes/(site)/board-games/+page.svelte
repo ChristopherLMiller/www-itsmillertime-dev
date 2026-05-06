@@ -24,25 +24,37 @@
 	const { data } = $props();
 
 	let lookupUsername = $state('');
-	let statsLevel = $state<'0' | '1'>('0');
 	let playFilter = $state<'all' | 'played' | 'unplayed'>('all');
 	let playerCountFilter = $state<'all' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
 	let playtimeFilter = $state<'all' | '30' | '60' | '90' | '120' | '150' | '180'>('all');
 	let pickedGame = $state<BggGame | null>(null);
+	let isSpinning = $state(false);
+	let spinGames = $state<BggGame[]>([]);
+	let highlightedSpinIndex = $state(0);
+	let spinTick = $state(0);
+	let spinTimeout: ReturnType<typeof setTimeout> | null = null;
+	let activeGamePopover: HTMLElement | null = null;
+	let popoverHideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	const SPIN_VISIBLE_RADIUS = 2;
+	const SPIN_MIN_TICKS = 28;
+	const SPIN_EXTRA_TICKS = 18;
 
 	$effect(() => {
 		lookupUsername = data.username;
-		statsLevel = data.stats === 1 ? '1' : '0';
 	});
 
 	/** Reset filters when the loaded collection changes (new fetch / navigation). */
 	$effect(() => {
 		void data.username;
-		void data.stats;
 		void data.total;
 		playFilter = 'all';
 		playerCountFilter = 'all';
 		playtimeFilter = 'all';
+		clearSpinTimer();
+		closeActiveGamePopover();
+		isSpinning = false;
+		spinGames = [];
 		pickedGame = null;
 	});
 
@@ -81,7 +93,6 @@
 
 	const displayedGames = $derived.by(() => {
 		const games = data.games as BggGame[];
-		if (data.stats !== 1) return games;
 
 		let list = games;
 
@@ -111,15 +122,104 @@
 		if (pickedGame && !list.some((g) => g.id === pickedGame!.id)) {
 			pickedGame = null;
 		}
+		if (isSpinning && spinGames.some((spinGame) => !list.some((g) => g.id === spinGame.id))) {
+			clearSpinTimer();
+			isSpinning = false;
+			spinGames = [];
+			pickedGame = null;
+		}
 	});
+
+	$effect(() => {
+		return () => {
+			clearSpinTimer();
+			clearPopoverHideTimer();
+		};
+	});
+
+	function clearSpinTimer() {
+		if (spinTimeout) {
+			clearTimeout(spinTimeout);
+			spinTimeout = null;
+		}
+	}
+
+	function positiveModulo(value: number, length: number): number {
+		return ((value % length) + length) % length;
+	}
+
+	function shuffleGames(games: BggGame[]): BggGame[] {
+		const shuffled = [...games];
+		for (let i = shuffled.length - 1; i > 0; i -= 1) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		}
+		return shuffled;
+	}
+
+	function getSpinSlots() {
+		if (spinGames.length === 0) return [];
+
+		return Array.from({ length: SPIN_VISIBLE_RADIUS * 2 + 1 }, (_, index) => {
+			const offset = index - SPIN_VISIBLE_RADIUS;
+			const gameIndex = positiveModulo(highlightedSpinIndex + offset, spinGames.length);
+			const game = spinGames[gameIndex];
+
+			return {
+				game,
+				offset,
+				isCenter: offset === 0,
+				key: `${game.id}-${offset}`
+			};
+		});
+	}
+
+	const centeredSpinGame = $derived(spinGames[highlightedSpinIndex] ?? null);
+
+	function scheduleSpinTick(totalTicks: number) {
+		const progress = spinTick / totalTicks;
+		const delay = 55 + Math.pow(progress, 3) * 190;
+
+		spinTimeout = setTimeout(() => {
+			if (spinGames.length === 0) return;
+
+			const nextIndex = (highlightedSpinIndex + 1) % spinGames.length;
+
+			spinTick += 1;
+			highlightedSpinIndex = nextIndex;
+
+			if (spinTick >= totalTicks) {
+				clearSpinTimer();
+				isSpinning = false;
+				pickedGame = spinGames[nextIndex] ?? null;
+				return;
+			}
+
+			scheduleSpinTick(totalTicks);
+		}, delay);
+	}
 
 	function pickRandomGame() {
 		const list = displayedGames;
 		if (list.length === 0) return;
-		pickedGame = list[Math.floor(Math.random() * list.length)] as BggGame;
+
+		clearSpinTimer();
+		const wheelGames = shuffleGames(list);
+		const finalIndex = Math.floor(Math.random() * wheelGames.length);
+		const totalTicks = SPIN_MIN_TICKS + Math.floor(Math.random() * SPIN_EXTRA_TICKS);
+
+		spinGames = wheelGames;
+		highlightedSpinIndex = positiveModulo(finalIndex - (totalTicks % wheelGames.length), wheelGames.length);
+		spinTick = 0;
+		pickedGame = null;
+		isSpinning = true;
+		scheduleSpinTick(totalTicks);
 	}
 
 	function clearPick() {
+		clearSpinTimer();
+		isSpinning = false;
+		spinGames = [];
 		pickedGame = null;
 	}
 
@@ -145,7 +245,56 @@
 	function handleLookup() {
 		const trimmed = lookupUsername.trim();
 		if (!trimmed) return;
-		goto(`/board-games?username=${encodeURIComponent(trimmed)}&stats=${statsLevel}`);
+		goto(`/board-games?username=${encodeURIComponent(trimmed)}`);
+	}
+
+	function getBgStatsAddPlayHref(game: BggGame): string {
+		return `https://app.bgstatsapp.com/addPlay.html?gameId=${encodeURIComponent(String(game.id))}`;
+	}
+
+	function getGamePopoverId(game: BggGame, index: number): string {
+		return `game-popover-${game.id}-${index}`;
+	}
+
+	function getGamePopoverAnchor(game: BggGame, index: number): string {
+		return `--game-popover-${game.id}-${index}`;
+	}
+
+	function clearPopoverHideTimer() {
+		if (popoverHideTimeout) {
+			clearTimeout(popoverHideTimeout);
+			popoverHideTimeout = null;
+		}
+	}
+
+	function closeActiveGamePopover() {
+		clearPopoverHideTimer();
+		if (activeGamePopover?.matches(':popover-open')) {
+			activeGamePopover.hidePopover();
+		}
+		activeGamePopover = null;
+	}
+
+	function showGamePopover(popoverId: string) {
+		clearPopoverHideTimer();
+		const popover = document.getElementById(popoverId);
+		if (!popover) return;
+
+		if (activeGamePopover && activeGamePopover !== popover) {
+			closeActiveGamePopover();
+		}
+
+		if (!popover.matches(':popover-open')) {
+			popover.showPopover();
+		}
+		activeGamePopover = popover;
+	}
+
+	function queueHideGamePopover() {
+		clearPopoverHideTimer();
+		popoverHideTimeout = setTimeout(() => {
+			closeActiveGamePopover();
+		}, 120);
 	}
 </script>
 
@@ -153,35 +302,6 @@
 	<div class="board-games-page">
 		<header class="page-header">
 			<h1>Board Game Collection</h1>
-			<p class="collection-owner font-oswald">
-				Viewing collection for <span class="username">{data.username}</span>
-			</p>
-			{#if !data.error && data.games.length > 0}
-				<p class="collection-stats">
-					{data.total}
-					{data.total === 1 ? 'game' : 'games'} in collection
-				</p>
-			{/if}
-			<form
-				class="lookup"
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleLookup();
-				}}
-			>
-				<input
-					class="lookup-input font-special-elite"
-					type="text"
-					placeholder="BGG username..."
-					bind:value={lookupUsername}
-				/>
-				<label class="stats-label font-oswald" for="bgg-stats-level">Detail</label>
-				<select id="bgg-stats-level" class="stats-select font-oswald" bind:value={statsLevel}>
-					<option value="0">Basic</option>
-					<option value="1">Full</option>
-				</select>
-				<button class="lookup-btn font-oswald" type="submit">Fetch</button>
-			</form>
 		</header>
 
 		{#if data.error}
@@ -194,8 +314,28 @@
 			</div>
 		{/if}
 
-		{#if data.stats === 1 && !data.error && data.games.length > 0}
-			<div class="filters-bar font-oswald">
+		<form
+			class="controls-panel font-oswald"
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleLookup();
+			}}
+		>
+			<div class="filter-group username-filter-group">
+				<label class="filter-label" for="bgg-username">BGG username</label>
+				<div class="lookup-inline">
+					<input
+						id="bgg-username"
+						class="lookup-input font-special-elite"
+						type="text"
+						placeholder="BGG username..."
+						bind:value={lookupUsername}
+					/>
+					<button class="lookup-btn font-oswald" type="submit">Fetch</button>
+				</div>
+			</div>
+
+			{#if !data.error && data.games.length > 0}
 				<div class="filter-group">
 					<label class="filter-label" for="bgg-play-filter">Play status</label>
 					<select id="bgg-play-filter" class="filter-select" bind:value={playFilter}>
@@ -228,42 +368,82 @@
 						<option value="180">3+</option>
 					</select>
 				</div>
-				<span class="filter-count" aria-live="polite">
-					{displayedGames.length}
-					{displayedGames.length === 1 ? 'game' : 'games'} displaying
-				</span>
-			</div>
-		{/if}
-
-		{#if !data.error && data.games.length > 0}
-			<div class="pick-row">
-				<button
-					type="button"
-					class="pick-btn font-oswald"
-					disabled={displayedGames.length === 0}
-					onclick={pickRandomGame}
-				>
-					Pick a game for me
-				</button>
-			</div>
-		{/if}
-
-		{#if pickedGame}
-			{@const g = pickedGame}
-			<section class="picked-hero" aria-live="polite">
-				<p class="picked-kicker font-oswald">Your pick</p>
-				<p class="picked-tagline font-special-elite">Here—go play this.</p>
-				<div class="picked-card">
-					<div class="picked-image-wrap">
-						{#if g.thumbnail && g.image}
-							<img class="picked-image" src={g.image} alt={g.name ?? 'Game cover'} loading="lazy" />
-						{:else}
-							<div class="picked-placeholder font-oswald">No image</div>
+				<div class="collection-count" aria-live="polite">
+					<span class="collection-count-value">{displayedGames.length}</span>
+					<span class="collection-count-label">
+						{displayedGames.length === 1 ? 'match' : 'matches'}
+						{#if displayedGames.length !== data.total}
+							of {data.total}
 						{/if}
+					</span>
+				</div>
+				<div class="controls-actions">
+					{#if pickedGame && !isSpinning}
+						<button type="button" class="collection-btn font-oswald" onclick={clearPick}>
+							View full collection
+						</button>
+					{/if}
+					<button
+						type="button"
+						class="pick-btn font-oswald"
+						disabled={displayedGames.length === 0 || isSpinning}
+						onclick={pickRandomGame}
+					>
+						{#if isSpinning}
+							Spinning...
+						{:else}
+							Pick a game for me
+						{/if}
+					</button>
+				</div>
+			{/if}
+		</form>
+
+		{#if isSpinning || pickedGame}
+			<section
+				class="pick-wheel"
+				class:pick-wheel--settled={pickedGame && !isSpinning}
+				aria-live="polite"
+				aria-busy={isSpinning}
+			>
+				<p class="picked-kicker font-oswald">{isSpinning ? 'Game roulette' : 'Your pick'}</p>
+				<p class="picked-tagline font-special-elite">
+					{#if isSpinning}
+						Spinning {displayedGames.length}
+						{displayedGames.length === 1 ? 'eligible game' : 'eligible games'}...
+					{:else}
+						The wheel has spoken.
+					{/if}
+				</p>
+				<div class="wheel-window">
+					<div class="wheel-pointer" aria-hidden="true"></div>
+					<div class="wheel-strip">
+						{#each getSpinSlots() as slot (slot.key)}
+							<div class="wheel-slot" class:wheel-slot--active={slot.isCenter}>
+								<div class="wheel-image-frame">
+									{#if slot.game.thumbnail || slot.game.image}
+										<img
+											class="wheel-image"
+											src={slot.game.thumbnail ?? slot.game.image}
+											alt={slot.game.name ?? 'Game cover'}
+											loading="lazy"
+										/>
+									{:else}
+										<div class="wheel-image-placeholder font-oswald">No image</div>
+									{/if}
+								</div>
+								<p class="wheel-title font-oswald">{slot.game.name ?? 'Mystery game'}</p>
+							</div>
+						{/each}
 					</div>
-					<div class="picked-meta">
-						<h2 class="picked-title font-special-elite">{g.name ?? 'Game'}</h2>
-						{#if data.stats === 1 && g.stats}
+				</div>
+
+				{#if pickedGame && !isSpinning && centeredSpinGame}
+					{@const g = centeredSpinGame}
+					<div class="wheel-result">
+						<div class="picked-meta">
+							<p class="result-eyebrow font-oswald">Tonight's game</p>
+							<h2 class="picked-title font-special-elite">{g.name ?? 'Game'}</h2>
 							<dl class="picked-dl font-oswald">
 								<div class="picked-dl-row">
 									<dt>Your plays</dt>
@@ -272,7 +452,7 @@
 								<div class="picked-dl-row">
 									<dt>Players</dt>
 									<dd>
-										{#if g.stats.minplayers != null && g.stats.maxplayers != null}
+										{#if g.stats?.minplayers != null && g.stats.maxplayers != null}
 											{g.stats.minplayers}–{g.stats.maxplayers}
 										{:else}
 											—
@@ -286,8 +466,8 @@
 								<div class="picked-dl-row">
 									<dt>Avg rating</dt>
 									<dd>
-										{formatAvg(g.stats.rating?.average)}
-										{#if g.stats.rating?.usersrated != null}
+										{formatAvg(g.stats?.rating?.average)}
+										{#if g.stats?.rating?.usersrated != null}
 											<span class="picked-dl-sub">
 												({g.stats.rating.usersrated.toLocaleString()} votes)
 											</span>
@@ -295,89 +475,118 @@
 									</dd>
 								</div>
 							</dl>
-						{/if}
-						<div class="picked-actions">
-							<a
-								class="picked-bgg-link lookup-btn font-oswald"
-								href="https://boardgamegeek.com/boardgame/{g.id}"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								Open on BoardGameGeek
-							</a>
-							<button type="button" class="picked-back font-oswald" onclick={clearPick}>
-								Back to collection
-							</button>
+							<div class="picked-actions">
+								<a
+									class="picked-bgstats-link lookup-btn font-oswald"
+									href={getBgStatsAddPlayHref(g)}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Open in BG Stats
+								</a>
+								<a
+									class="picked-bgg-link lookup-btn font-oswald"
+									href="https://boardgamegeek.com/boardgame/{g.id}"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Open on BoardGameGeek
+								</a>
+							</div>
 						</div>
 					</div>
-				</div>
-			</section>
-		{:else}
-			<div class="games-flex">
-				{#if displayedGames.length === 0 && data.games.length > 0}
-					<p class="filter-empty font-oswald">No games match this filter.</p>
 				{/if}
-				{#each displayedGames as game, i (`${game.id}-${i}`)}
-					{@const g = game as BggGame}
-					<div class="game-card-wrap" class:game-card-wrap--popover={data.stats === 1 && g.stats}>
-						{#if data.stats === 1 && g.stats}
-							<div class="game-popover font-oswald" role="tooltip">
-								<p class="game-popover-title">{g.name ?? 'Game'}</p>
-								<dl class="game-popover-dl">
-									<dt>Your plays</dt>
-									<dd>{g.numplays ?? '—'}</dd>
-									<dt>Players</dt>
-									<dd>
-										{#if g.stats.minplayers != null && g.stats.maxplayers != null}
-											{g.stats.minplayers}–{g.stats.maxplayers}
-										{:else}
-											—
-										{/if}
-									</dd>
-									<dt>Play time</dt>
-									<dd>{formatPlayTime(g)}</dd>
-									<dt>Avg rating</dt>
-									<dd>
-										{formatAvg(g.stats.rating?.average)}
-										{#if g.stats.rating?.usersrated != null}
-											<span class="game-popover-sub">
-												({g.stats.rating.usersrated.toLocaleString()} votes)
-											</span>
-										{/if}
-									</dd>
-								</dl>
-							</div>
-						{/if}
-						<a
-							href="https://boardgamegeek.com/boardgame/{g.id}"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="game-card"
-						>
-							{#if g.thumbnail}
-								<img src={g.image} alt={g.name ?? ''} class="game-image" loading="lazy" />
-							{:else}
-								<div class="game-image-placeholder">
-									<span>No Image</span>
-								</div>
-							{/if}
-						</a>
-					</div>
-				{/each}
-			</div>
+			</section>
 		{/if}
 	</div>
 </Panel>
 
+{#if !isSpinning && !pickedGame && !data.error && data.games.length > 0}
+	<div class="games-flex">
+		{#if displayedGames.length === 0}
+			<p class="filter-empty font-oswald">No games match this filter.</p>
+		{/if}
+		{#each displayedGames as game, i (`${game.id}-${i}`)}
+			{@const g = game as BggGame}
+			{@const popoverId = getGamePopoverId(g, i)}
+			{@const popoverAnchor = getGamePopoverAnchor(g, i)}
+			<div class="game-card-wrap">
+				<div
+					id={popoverId}
+					class="game-popover font-oswald"
+					style={`--popover-anchor: ${popoverAnchor}`}
+					popover="auto"
+					role="dialog"
+					aria-label={g.name ? `${g.name} details` : 'Game details'}
+					onmouseenter={clearPopoverHideTimer}
+					onmouseleave={queueHideGamePopover}
+				>
+					<p class="game-popover-title">{g.name ?? 'Game'}</p>
+					<dl class="game-popover-dl">
+						<dt>Your plays</dt>
+						<dd>{g.numplays ?? '—'}</dd>
+						<dt>Players</dt>
+						<dd>
+							{#if g.stats?.minplayers != null && g.stats.maxplayers != null}
+								{g.stats.minplayers}–{g.stats.maxplayers}
+							{:else}
+								—
+							{/if}
+						</dd>
+						<dt>Play time</dt>
+						<dd>{formatPlayTime(g)}</dd>
+						<dt>Avg rating</dt>
+						<dd>
+							{formatAvg(g.stats?.rating?.average)}
+							{#if g.stats?.rating?.usersrated != null}
+								<span class="game-popover-sub">
+									({g.stats.rating.usersrated.toLocaleString()} votes)
+								</span>
+							{/if}
+						</dd>
+					</dl>
+					<a
+						class="game-popover-link lookup-btn font-oswald"
+						href="https://boardgamegeek.com/boardgame/{g.id}"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Open on BGG
+					</a>
+				</div>
+				<button
+					type="button"
+					class="game-card"
+					style={`anchor-name: ${popoverAnchor}`}
+					aria-haspopup="dialog"
+					popovertarget={popoverId}
+					onmouseenter={() => showGamePopover(popoverId)}
+					onmouseleave={queueHideGamePopover}
+					onfocus={() => showGamePopover(popoverId)}
+					onblur={queueHideGamePopover}
+				>
+					{#if g.thumbnail}
+						<img src={g.image} alt={g.name ?? ''} class="game-image" loading="lazy" />
+					{:else}
+						<div class="game-image-placeholder">
+							<span>No Image</span>
+						</div>
+					{/if}
+				</button>
+			</div>
+		{/each}
+	</div>
+{/if}
+
 <style>
 	.board-games-page {
-		padding: clamp(1rem, 1rem + 1vw, 2rem);
+		padding: clamp(0.9rem, 0.8rem + 0.8vw, 1.5rem);
 	}
 
 	.page-header {
 		text-align: center;
-		margin-bottom: 3rem;
-		padding-bottom: 2rem;
+		margin-bottom: 1.25rem;
+		padding-bottom: 1rem;
 		border-bottom: 3px solid var(--color-primary-darker);
 	}
 
@@ -385,35 +594,30 @@
 		font-family: var(--font-special-elite);
 		font-size: var(--fs-l);
 		color: var(--color-primary-darker);
-		margin: 0 0 0.5rem 0;
+		margin: 0;
 	}
 
-	.collection-owner {
-		font-size: var(--fs-base);
-		color: var(--color-tertiary-darker);
-		margin: 0 0 0.25rem;
-	}
-
-	.username {
-		color: var(--color-primary);
-		font-weight: 600;
-	}
-
-	.collection-stats {
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		margin: 0 0 1.25rem;
-	}
-
-	.lookup {
+	.controls-panel {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		align-items: center;
-		gap: 0.5rem;
-		max-width: 32rem;
+		align-items: flex-end;
+		gap: 0.65rem 0.85rem;
+		max-width: 68rem;
 		margin-inline: auto;
+		padding: 0.75rem 0.85rem;
+		border: 1px solid var(--color-tertiary-lighter);
+		background: var(--color-white-lightest);
+	}
+
+	.username-filter-group {
+		flex: 1 1 16rem;
+	}
+
+	.lookup-inline {
+		display: flex;
+		width: 100%;
+		gap: 0.5rem;
 	}
 
 	.lookup-input {
@@ -428,22 +632,6 @@
 
 	.lookup-input::placeholder {
 		color: var(--color-tertiary-lighter);
-	}
-
-	.stats-label {
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-tertiary);
-	}
-
-	.stats-select {
-		padding: 0.45rem 0.5rem;
-		font-size: 0.85rem;
-		border: 1px solid var(--color-tertiary-lighter);
-		background: var(--color-white-lightest);
-		color: var(--color-tertiary-darkest);
-		cursor: pointer;
 	}
 
 	.lookup-btn {
@@ -471,41 +659,11 @@
 		color: var(--color-tertiary);
 	}
 
-	.filters-bar {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-items: flex-end;
-		gap: 0.5rem 1rem;
-		margin-block-start: 1rem;
-		padding: 0.75rem 1rem;
-		max-width: 52rem;
-		margin-inline: auto;
-		border: 1px solid var(--color-tertiary-lighter);
-		background: var(--color-white-lightest);
-	}
-
 	.filter-group {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 0.25rem;
-	}
-
-	.filter-count {
-		font-size: 0.85rem;
-		color: var(--color-tertiary-darker);
-		white-space: nowrap;
-	}
-
-	.filter-count::before {
-		content: '';
-		display: inline-block;
-		width: 1px;
-		height: 1.1em;
-		margin-inline: 0.35rem 0.65rem;
-		background: var(--color-tertiary-lighter);
-		vertical-align: middle;
 	}
 
 	.filter-label {
@@ -525,6 +683,33 @@
 		min-width: 10rem;
 	}
 
+	.collection-count {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-self: stretch;
+		min-width: 6.5rem;
+		padding: 0.45rem 0.75rem;
+		text-align: center;
+		color: var(--color-tertiary-darker);
+		border: 1px solid var(--color-tertiary-lighter);
+		background: rgb(255 255 255 / 0.72);
+	}
+
+	.collection-count-value {
+		font-family: var(--font-special-elite);
+		font-size: clamp(1.15rem, 2vw, 1.4rem);
+		line-height: 1;
+		color: var(--color-primary-darker);
+	}
+
+	.collection-count-label {
+		margin-top: 0.2rem;
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
 	.filter-empty {
 		width: 100%;
 		text-align: center;
@@ -534,9 +719,11 @@
 		color: var(--color-tertiary);
 	}
 
-	.pick-row {
+	.controls-actions {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: center;
+		gap: 0.65rem;
 		margin-block-start: 1rem;
 	}
 
@@ -564,15 +751,195 @@
 		cursor: not-allowed;
 	}
 
-	.picked-hero {
+	.collection-btn {
+		padding: 0.55rem 1.1rem;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		background: var(--color-white-lightest);
+		color: var(--color-tertiary-darkest);
+		border: 2px solid var(--color-tertiary-lighter);
+		cursor: pointer;
+		transition:
+			border-color 0.2s,
+			transform 0.15s ease;
+	}
+
+	.collection-btn:hover {
+		border-color: var(--color-primary);
+		transform: translateY(-2px);
+	}
+
+	.pick-wheel {
 		margin-block-start: 1.75rem;
-		max-width: 42rem;
+		max-width: 58rem;
 		margin-inline: auto;
-		padding: 1.5rem 1.25rem 2rem;
+		padding: 1.5rem clamp(0.75rem, 2vw, 1.5rem) 1.75rem;
 		text-align: center;
 		border: 3px solid var(--color-primary-darker);
 		background: var(--color-white-lightest);
 		box-shadow: 8px 8px 0 var(--color-primary);
+		overflow: hidden;
+		--wheel-slot-gap: clamp(0.35rem, 1.5vw, 0.75rem);
+		--wheel-slot-width: clamp(5.5rem, 16vw, 8rem);
+	}
+
+	.wheel-window {
+		position: relative;
+		margin-inline: auto;
+		padding-block: 1.5rem 1rem;
+		width: fit-content;
+		max-width: 100%;
+		overflow: hidden;
+	}
+
+	.wheel-window::before {
+		content: '';
+		position: absolute;
+		z-index: 2;
+		top: 0;
+		bottom: 0;
+		left: 50%;
+		width: 2px;
+		transform: translateX(-50%);
+		background: rgb(0 0 0 / 0.12);
+		pointer-events: none;
+	}
+
+	.wheel-pointer {
+		position: absolute;
+		z-index: 4;
+		top: 0.15rem;
+		left: 50%;
+		width: 0;
+		height: 0;
+		transform: translateX(-50%);
+		border-inline: 0.75rem solid transparent;
+		border-top: 1rem solid var(--color-primary);
+		filter: drop-shadow(0 2px 0 var(--color-tertiary-darkest));
+	}
+
+	.wheel-pointer::after {
+		content: '';
+		position: absolute;
+		top: -1.35rem;
+		left: -0.35rem;
+		width: 0.7rem;
+		height: 0.7rem;
+		border-radius: 50%;
+		background: var(--color-tertiary-darkest);
+	}
+
+	.wheel-strip {
+		display: flex;
+		justify-content: center;
+		align-items: stretch;
+		gap: var(--wheel-slot-gap);
+		width: calc((var(--wheel-slot-width) * 5) + (var(--wheel-slot-gap) * 4));
+		max-width: 100%;
+	}
+
+	.wheel-slot {
+		width: var(--wheel-slot-width);
+		flex: 0 0 var(--wheel-slot-width);
+		padding: 0.55rem;
+		border: 2px solid var(--color-tertiary-lighter);
+		background: var(--color-white-lightest);
+		box-shadow: 4px 4px 0 rgb(0 0 0 / 0.16);
+		opacity: 0.54;
+		transform: scale(0.86) rotate(var(--slot-tilt, 0deg));
+		transition:
+			opacity 0.12s ease,
+			transform 0.12s ease,
+			border-color 0.12s ease;
+	}
+
+	.wheel-slot:nth-child(odd) {
+		--slot-tilt: -2deg;
+	}
+
+	.wheel-slot:nth-child(even) {
+		--slot-tilt: 2deg;
+	}
+
+	.wheel-slot--active {
+		position: relative;
+		z-index: 3;
+		border-color: var(--color-primary);
+		opacity: 1;
+		transform: scale(1.08) rotate(0deg);
+		box-shadow: 0 0 0 4px var(--color-primary-darker), 8px 8px 0 rgb(0 0 0 / 0.2);
+	}
+
+	.pick-wheel--settled .wheel-slot:not(.wheel-slot--active) {
+		opacity: 0.16;
+		transform: scale(0.72);
+	}
+
+	.pick-wheel--settled .wheel-slot--active {
+		transform: scale(1.14);
+	}
+
+	.wheel-image-frame {
+		aspect-ratio: 1 / 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		background: var(--color-white-lightest);
+		border-bottom: 0.55rem solid #a0522d;
+	}
+
+	.wheel-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.wheel-image-placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		font-size: 0.7rem;
+		color: var(--color-tertiary);
+	}
+
+	.wheel-title {
+		margin: 0.45rem 0 0;
+		font-size: 0.72rem;
+		line-height: 1.2;
+		color: var(--color-tertiary-darkest);
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+	}
+
+	.wheel-result {
+		max-width: 34rem;
+		margin: 1.75rem auto 0;
+		padding: 1.25rem;
+		background:
+			linear-gradient(135deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.76)),
+			var(--color-white-lightest);
+		border: 2px solid var(--color-primary);
+		box-shadow: 6px 6px 0 rgb(0 0 0 / 0.12);
+		animation: wheel-result-in 0.28s ease-out both;
+	}
+
+	@keyframes wheel-result-in {
+		from {
+			opacity: 0;
+			transform: translateY(-0.5rem);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.picked-kicker {
@@ -589,92 +956,68 @@
 		color: var(--color-tertiary-darker);
 	}
 
-	.picked-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.25rem;
-	}
-
-	@media (min-width: 640px) {
-		.picked-card {
-			flex-direction: row;
-			align-items: flex-start;
-			text-align: left;
-		}
-	}
-
-	.picked-image-wrap {
-		flex-shrink: 0;
-		width: 100%;
-		max-width: 220px;
-		border: 2px solid #a0522d;
-		overflow: hidden;
-		border-bottom: 15px solid #a0522d;
-	}
-
-	.picked-image {
-		width: 100%;
-		display: block;
-	}
-
-	.picked-placeholder {
-		min-height: 220px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		background: var(--color-white-lightest);
-	}
-
-	.picked-meta {
-		flex: 1;
-		min-width: 0;
-	}
-
 	.picked-title {
-		margin: 0 0 0.75rem;
-		font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+		margin: 0;
+		font-size: clamp(1.35rem, 2.75vw, 1.8rem);
 		color: var(--color-primary-darker);
 		line-height: 1.2;
 	}
 
+	.picked-meta {
+		max-width: 38rem;
+		margin-inline: auto;
+	}
+
+	.result-eyebrow {
+		margin: 0 0 0.25rem;
+		font-family: var(--font-oswald);
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: var(--color-primary);
+	}
+
 	.picked-dl {
-		margin: 0 0 1.25rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		font-size: 0.85rem;
+		margin: 1rem 0 1.25rem;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
+		gap: 0.65rem;
 		color: var(--color-tertiary-darker);
 	}
 
 	.picked-dl-row {
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 0.35rem 0.75rem;
-	}
-
-	@media (min-width: 640px) {
-		.picked-dl-row {
-			justify-content: flex-start;
-		}
+		flex-direction: column;
+		gap: 0.2rem;
+		padding: 0.65rem 0.75rem;
+		text-align: left;
+		background: rgb(255 255 255 / 0.72);
+		border: 1px solid var(--color-tertiary-lighter);
+		box-shadow: 3px 3px 0 rgb(0 0 0 / 0.08);
 	}
 
 	.picked-dl-row dt {
 		margin: 0;
-		font-weight: 600;
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 		color: var(--color-tertiary);
 	}
 
 	.picked-dl-row dd {
 		margin: 0;
+		font-family: var(--font-special-elite);
+		font-size: clamp(1rem, 1.75vw, 1.2rem);
+		line-height: 1.15;
+		color: var(--color-tertiary-darkest);
 	}
 
 	.picked-dl-sub {
 		display: block;
-		font-size: 0.75rem;
+		margin-top: 0.2rem;
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
 		color: var(--color-tertiary);
 	}
 
@@ -682,14 +1025,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		gap: 0.65rem;
+		gap: 0.75rem;
 		align-items: center;
-	}
-
-	@media (min-width: 640px) {
-		.picked-actions {
-			justify-content: flex-start;
-		}
 	}
 
 	.picked-bgg-link {
@@ -697,105 +1034,135 @@
 		display: inline-block;
 	}
 
-	.picked-back {
-		padding: 0.5rem 1rem;
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: transparent;
-		color: var(--color-tertiary-darker);
-		border: 1px solid var(--color-tertiary-lighter);
-		cursor: pointer;
-		transition:
-			background 0.2s,
-			border-color 0.2s;
+	.picked-bgstats-link {
+		text-decoration: none;
+		display: inline-block;
+		background: var(--color-tertiary-darkest);
+		border-color: var(--color-tertiary-darkest);
 	}
 
-	.picked-back:hover {
-		background: var(--color-white-lightest);
-		border-color: var(--color-tertiary);
+	.picked-bgstats-link:hover {
+		background: var(--color-primary-darker);
+		border-color: var(--color-primary-darker);
 	}
 
 	.games-flex {
-		margin-block-start: 1.5rem;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0;
+		position: relative;
+		isolation: isolate;
+		margin-block-start: 1.75rem;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(var(--game-cover-width), var(--game-cover-width)));
+		grid-auto-rows: var(--shelf-row-height);
+		align-items: stretch;
+		justify-content: center;
+		gap: var(--shelf-row-gap) var(--game-gap);
 		max-width: 1400px;
-		align-items: flex-end;
-		border-left: 15px solid #a0522d;
-		border-right: 15px solid #a0522d;
+		margin-inline: auto;
+		padding: var(--bookcase-padding-block) 0 1.35rem;
+		border: clamp(0.75rem, 1.5vw, 1rem) solid #5f2f19;
+		background-color: #8b4723;
+		background-image: var(--wood-grain-texture);
+		background-size: 360px 270px;
+		box-shadow:
+			inset 0 0 0 3px rgb(255 235 190 / 0.12),
+			inset 0 0 2rem rgb(50 22 9 / 0.24),
+			0 0.95rem 0 #3d1d10,
+			0 1.15rem 1.5rem rgb(0 0 0 / 0.22);
+		--bookcase-padding-block: 1rem;
+		--game-cover-width: clamp(104px, 10vw, 132px);
+		--game-gap: 0.35rem;
+		--shelf-board-height: 2.35rem;
+		--shelf-row-gap: 1.15rem;
+		--shelf-row-height: clamp(13.25rem, 20vw, 15.75rem);
+		--wood-grain-texture: url('https://openclipart.org/download/321589/woodgrain-pattern-2.svg');
+	}
+
+	.games-flex::before {
+		content: '';
+		position: absolute;
+		z-index: 0;
+		inset: var(--bookcase-padding-block) 0 1.35rem;
+		background:
+			repeating-linear-gradient(
+				to bottom,
+				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
+				#d18a47 calc(var(--shelf-row-height) - var(--shelf-board-height))
+					calc(var(--shelf-row-height) - 1.95rem),
+				#b76d35 calc(var(--shelf-row-height) - 1.95rem)
+					calc(var(--shelf-row-height) - 0.95rem),
+				#7a3a1d calc(var(--shelf-row-height) - 0.95rem)
+					calc(var(--shelf-row-height) - 0.32rem),
+				#3d1d10 calc(var(--shelf-row-height) - 0.32rem) var(--shelf-row-height),
+				rgb(0 0 0 / 0.18) var(--shelf-row-height)
+					calc(var(--shelf-row-height) + 0.35rem),
+				transparent calc(var(--shelf-row-height) + 0.35rem)
+					calc(var(--shelf-row-height) + var(--shelf-row-gap))
+			),
+			var(--wood-grain-texture);
+		background-blend-mode: normal, multiply;
+		background-size:
+			auto,
+			360px 270px;
+		pointer-events: none;
 	}
 
 	.game-card-wrap {
 		position: relative;
-	}
-
-	/* Bridge hover gap so the pointer can reach the tooltip without flicker */
-	.game-card-wrap--popover::before {
-		content: '';
-		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 100%;
-		height: 0.85rem;
-		z-index: 19;
-	}
-
-	.game-card-wrap--popover:hover .game-popover,
-	.game-card-wrap--popover:focus-within .game-popover {
-		opacity: 1;
-		visibility: visible;
-		pointer-events: auto;
+		box-sizing: border-box;
+		z-index: 1;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		padding-bottom: calc(var(--shelf-board-height) + 0.38rem);
 	}
 
 	.game-popover {
 		position: absolute;
-		z-index: 20;
-		left: 50%;
-		bottom: calc(100% + 0.35rem);
-		transform: translateX(-50%);
-		min-width: 11.5rem;
-		max-width: 16rem;
-		padding: 0.65rem 0.75rem;
-		font-size: 0.72rem;
+		position-anchor: var(--popover-anchor);
+		position-area: top;
+		margin: 0 0 0.75rem;
+		width: min(15.5rem, 78vw);
+		max-width: calc(100vw - 2rem);
+		padding: 0.8rem 0.9rem;
+		font-size: 0.74rem;
 		line-height: 1.35;
 		color: var(--color-white-lightest);
-		background: var(--color-tertiary-darkest);
-		border: 1px solid var(--color-primary);
-		box-shadow: 4px 4px 0 var(--color-primary-darker);
+		background:
+			linear-gradient(135deg, rgb(255 255 255 / 0.06), transparent),
+			var(--color-tertiary-darkest);
+		border: 2px solid var(--color-primary);
+		box-shadow:
+			5px 5px 0 var(--color-primary-darker),
+			0 10px 22px rgb(0 0 0 / 0.28);
 		opacity: 0;
-		visibility: hidden;
-		pointer-events: none;
+		transform: translateY(0.35rem);
 		transition:
 			opacity 0.15s ease,
-			visibility 0.15s ease;
+			transform 0.15s ease;
 	}
 
-	.game-popover::after {
-		content: '';
-		position: absolute;
-		left: 50%;
-		bottom: -6px;
-		transform: translateX(-50%);
-		border: 6px solid transparent;
-		border-top-color: var(--color-primary);
+	.game-popover:popover-open {
+		opacity: 1;
+		transform: translateY(0);
 	}
 
 	.game-popover-title {
-		margin: 0 0 0.4rem;
+		margin: 0 0 0.5rem;
 		font-family: var(--font-special-elite);
-		font-size: 0.8rem;
+		font-size: 0.9rem;
+		line-height: 1.2;
 		color: var(--color-white-lightest);
-		border-bottom: 1px solid var(--color-tertiary);
-		padding-bottom: 0.35rem;
+		border-bottom: 1px solid rgb(255 255 255 / 0.24);
+		padding-bottom: 0.45rem;
 	}
 
 	.game-popover-dl {
 		margin: 0;
 		display: grid;
 		grid-template-columns: auto 1fr;
-		gap: 0.15rem 0.65rem;
+		gap: 0.22rem 0.75rem;
 		align-items: baseline;
 	}
 
@@ -803,6 +1170,8 @@
 		margin: 0;
 		color: var(--color-tertiary-lighter);
 		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 
 	.game-popover-dl dd {
@@ -817,32 +1186,62 @@
 		margin-top: 0.1rem;
 	}
 
+	.game-popover-link {
+		display: inline-block;
+		margin-block-start: 0.6rem;
+		color: var(--color-white-lightest);
+		text-decoration: underline;
+		text-underline-offset: 0.15em;
+	}
+
 	.game-card {
-		display: block;
-		width: 150px;
+		position: relative;
+		z-index: 1;
+		display: flex;
+		justify-content: center;
+		align-items: flex-end;
+		width: var(--game-cover-width);
+		max-height: calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem);
 		flex-shrink: 0;
+		padding: 0;
 		text-decoration: none;
 		transition:
 			transform 0.2s ease,
-			box-shadow 0.2s ease;
+			box-shadow 0.2s ease,
+			filter 0.2s ease;
 		overflow: hidden;
-		border-bottom: 15px solid #a0522d;
-		margin-bottom: 1.5rem;
+		appearance: none;
+		border: 0;
+		background: transparent;
+		box-shadow: 0 0.7rem 0.85rem rgb(0 0 0 / 0.22);
+		cursor: pointer;
+		transform-origin: bottom center;
 	}
 
-	.game-card:hover {
-		transform: translateY(-4px);
-		box-shadow: 8px 8px 0 var(--color-primary);
+	.game-card:hover,
+	.game-card:focus-visible {
+		outline: 0;
+		transform: translateY(-8px) rotate(-1deg);
+		box-shadow: 0 0.85rem 1rem rgb(0 0 0 / 0.3);
+		filter: saturate(1.05);
 	}
 
 	.game-image {
-		width: 100%;
 		display: block;
+		width: auto;
+		max-width: 100%;
+		max-height: calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem);
+		object-fit: contain;
+	}
+
+	.game-card:hover .game-image,
+	.game-card:focus-visible .game-image {
+		filter: saturate(1.05);
 	}
 
 	.game-image-placeholder {
 		width: 100%;
-		height: 150px;
+		height: min(150px, calc(var(--shelf-row-height) - var(--shelf-board-height) - 1rem));
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -852,8 +1251,9 @@
 	}
 
 	@media (max-width: 768px) {
-		.game-card {
-			width: 120px;
+		.games-flex {
+			--game-cover-width: 108px;
+			--shelf-row-height: 13.25rem;
 		}
 
 		.game-image-placeholder {
