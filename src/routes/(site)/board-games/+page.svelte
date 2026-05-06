@@ -302,15 +302,6 @@
 	<div class="board-games-page">
 		<header class="page-header">
 			<h1>Board Game Collection</h1>
-			<p class="collection-owner font-oswald">
-				Viewing collection for <span class="username">{data.username}</span>
-			</p>
-			{#if !data.error && data.games.length > 0}
-				<p class="collection-stats">
-					{data.total}
-					{data.total === 1 ? 'game' : 'games'} in collection
-				</p>
-			{/if}
 		</header>
 
 		{#if data.error}
@@ -377,10 +368,15 @@
 						<option value="180">3+</option>
 					</select>
 				</div>
-				<span class="filter-count" aria-live="polite">
-					{displayedGames.length}
-					{displayedGames.length === 1 ? 'game' : 'games'} displaying
-				</span>
+				<div class="collection-count" aria-live="polite">
+					<span class="collection-count-value">{displayedGames.length}</span>
+					<span class="collection-count-label">
+						{displayedGames.length === 1 ? 'match' : 'matches'}
+						{#if displayedGames.length !== data.total}
+							of {data.total}
+						{/if}
+					</span>
+				</div>
 				<div class="controls-actions">
 					{#if pickedGame && !isSpinning}
 						<button type="button" class="collection-btn font-oswald" onclick={clearPick}>
@@ -598,25 +594,7 @@
 		font-family: var(--font-special-elite);
 		font-size: var(--fs-l);
 		color: var(--color-primary-darker);
-		margin: 0 0 0.5rem 0;
-	}
-
-	.collection-owner {
-		font-size: var(--fs-base);
-		color: var(--color-tertiary-darker);
-		margin: 0 0 0.25rem;
-	}
-
-	.username {
-		color: var(--color-primary);
-		font-weight: 600;
-	}
-
-	.collection-stats {
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		margin: 0 0 1.25rem;
+		margin: 0;
 	}
 
 	.controls-panel {
@@ -688,22 +666,6 @@
 		gap: 0.25rem;
 	}
 
-	.filter-count {
-		font-size: 0.85rem;
-		color: var(--color-tertiary-darker);
-		white-space: nowrap;
-	}
-
-	.filter-count::before {
-		content: '';
-		display: inline-block;
-		width: 1px;
-		height: 1.1em;
-		margin-inline: 0.35rem 0.65rem;
-		background: var(--color-tertiary-lighter);
-		vertical-align: middle;
-	}
-
 	.filter-label {
 		font-size: 0.8rem;
 		text-transform: uppercase;
@@ -719,6 +681,33 @@
 		color: var(--color-tertiary-darkest);
 		cursor: pointer;
 		min-width: 10rem;
+	}
+
+	.collection-count {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-self: stretch;
+		min-width: 6.5rem;
+		padding: 0.45rem 0.75rem;
+		text-align: center;
+		color: var(--color-tertiary-darker);
+		border: 1px solid var(--color-tertiary-lighter);
+		background: rgb(255 255 255 / 0.72);
+	}
+
+	.collection-count-value {
+		font-family: var(--font-special-elite);
+		font-size: clamp(1.15rem, 2vw, 1.4rem);
+		line-height: 1;
+		color: var(--color-primary-darker);
+	}
+
+	.collection-count-label {
+		margin-top: 0.2rem;
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 	}
 
 	.filter-empty {
