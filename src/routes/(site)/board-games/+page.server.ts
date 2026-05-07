@@ -3,7 +3,6 @@ import type { PageServerLoad } from './$types';
 
 async function fetchBGGCollection(
 	username: string,
-	stats: 0 | 1,
 	retryCount = 0
 ): Promise<{ games: unknown[]; total: number; error?: string }> {
 	const maxRetries = 5;
@@ -20,7 +19,7 @@ async function fetchBGGCollection(
 			};
 		}
 
-		const url = `https://cms.itsmillertime.dev/api/bgg/collection?username=${encodeURIComponent(username)}&stats=${stats}`;
+		const url = `https://cms.itsmillertime.dev/api/bgg/collection?username=${encodeURIComponent(username)}&stats=1`;
 		console.log('Fetching BGG collection:', url);
 
 		const response = await fetch(url);
@@ -34,7 +33,7 @@ async function fetchBGGCollection(
 					`Request queued (202), retrying in ${retryDelay}ms... (attempt ${retryCount + 1}/${maxRetries})`
 				);
 				await new Promise((resolve) => setTimeout(resolve, retryDelay));
-				return fetchBGGCollection(username, stats, retryCount + 1);
+				return fetchBGGCollection(username, retryCount + 1);
 			} else {
 				return {
 					games: [],
@@ -81,13 +80,10 @@ export const load: PageServerLoad = async ({ url, parent }) => {
 	const { session } = await parent();
 	const defaultUsername = session?.user?.bggUsername ?? 'moose517';
 	const username = url.searchParams.get('username') || defaultUsername;
-	const statsParam = url.searchParams.get('stats');
-	const stats: 0 | 1 = statsParam === '1' ? 1 : 0;
-	const result = await fetchBGGCollection(username, stats);
+	const result = await fetchBGGCollection(username);
 
 	return {
 		username,
-		stats,
 		games: result.games,
 		total: result.total,
 		error: result.error
