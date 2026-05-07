@@ -552,7 +552,7 @@
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							Open in BG Stats
+							BGStats
 						</a>
 						<a
 							class="game-popover-link lookup-btn font-oswald"
@@ -560,7 +560,7 @@
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							Open on BGG
+							BGG
 						</a>
 					</div>
 				</div>
