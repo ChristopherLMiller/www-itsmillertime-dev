@@ -209,7 +209,10 @@
 		const totalTicks = SPIN_MIN_TICKS + Math.floor(Math.random() * SPIN_EXTRA_TICKS);
 
 		spinGames = wheelGames;
-		highlightedSpinIndex = positiveModulo(finalIndex - (totalTicks % wheelGames.length), wheelGames.length);
+		highlightedSpinIndex = positiveModulo(
+			finalIndex - (totalTicks % wheelGames.length),
+			wheelGames.length
+		);
 		spinTick = 0;
 		pickedGame = null;
 		isSpinning = true;
@@ -878,7 +881,9 @@
 		border-color: var(--color-primary);
 		opacity: 1;
 		transform: scale(1.08) rotate(0deg);
-		box-shadow: 0 0 0 4px var(--color-primary-darker), 8px 8px 0 rgb(0 0 0 / 0.2);
+		box-shadow:
+			0 0 0 4px var(--color-primary-darker),
+			8px 8px 0 rgb(0 0 0 / 0.2);
 	}
 
 	.pick-wheel--settled .wheel-slot:not(.wheel-slot--active) {
@@ -1061,7 +1066,10 @@
 		isolation: isolate;
 		margin-block-start: 1.75rem;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(var(--game-cover-width), var(--game-cover-width)));
+		grid-template-columns: repeat(
+			auto-fill,
+			minmax(var(--game-cover-width), var(--game-cover-width))
+		);
 		grid-auto-rows: var(--shelf-row-height);
 		align-items: stretch;
 		justify-content: center;
@@ -1095,13 +1103,10 @@
 			transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
 			#d18a47 calc(var(--shelf-row-height) - var(--shelf-board-height))
 				calc(var(--shelf-row-height) - 1.95rem),
-			#b76d35 calc(var(--shelf-row-height) - 1.95rem)
-				calc(var(--shelf-row-height) - 0.95rem),
-			#7a3a1d calc(var(--shelf-row-height) - 0.95rem)
-				calc(var(--shelf-row-height) - 0.32rem),
+			#b76d35 calc(var(--shelf-row-height) - 1.95rem) calc(var(--shelf-row-height) - 0.95rem),
+			#7a3a1d calc(var(--shelf-row-height) - 0.95rem) calc(var(--shelf-row-height) - 0.32rem),
 			#3d1d10 calc(var(--shelf-row-height) - 0.32rem) var(--shelf-row-height),
-			rgb(0 0 0 / 0.18) var(--shelf-row-height)
-				calc(var(--shelf-row-height) + 0.35rem),
+			rgb(0 0 0 / 0.18) var(--shelf-row-height) calc(var(--shelf-row-height) + 0.35rem),
 			transparent calc(var(--shelf-row-height) + 0.35rem)
 				calc(var(--shelf-row-height) + var(--shelf-row-gap))
 		);
@@ -1115,8 +1120,7 @@
 		inset: var(--bookcase-padding-block) 0 1.35rem;
 		background-image: var(--wood-grain-texture);
 		background-size: 360px 270px;
-		filter: invert(24%) sepia(39%) saturate(1017%) hue-rotate(343deg) brightness(82%)
-			contrast(87%);
+		filter: invert(24%) sepia(39%) saturate(1017%) hue-rotate(343deg) brightness(82%) contrast(87%);
 		mix-blend-mode: multiply;
 		opacity: 0.42;
 		pointer-events: none;
@@ -1146,8 +1150,7 @@
 		line-height: 1.35;
 		color: var(--color-white-lightest);
 		background:
-			linear-gradient(135deg, rgb(255 255 255 / 0.06), transparent),
-			var(--color-tertiary-darkest);
+			linear-gradient(135deg, rgb(255 255 255 / 0.06), transparent), var(--color-tertiary-darkest);
 		border: 2px solid var(--color-primary);
 		box-shadow:
 			5px 5px 0 var(--color-primary-darker),
