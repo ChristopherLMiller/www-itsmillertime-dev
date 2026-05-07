@@ -545,14 +545,24 @@
 							{/if}
 						</dd>
 					</dl>
-					<a
-						class="game-popover-link lookup-btn font-oswald"
-						href="https://boardgamegeek.com/boardgame/{g.id}"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						Open on BGG
-					</a>
+					<div class="game-popover-actions">
+						<a
+							class="game-popover-link game-popover-bgstats-link lookup-btn font-oswald"
+							href={getBgStatsAddPlayHref(g)}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Open in BG Stats
+						</a>
+						<a
+							class="game-popover-link lookup-btn font-oswald"
+							href="https://boardgamegeek.com/boardgame/{g.id}"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Open on BGG
+						</a>
+					</div>
 				</div>
 				<button
 					type="button"
@@ -1192,12 +1202,23 @@
 		margin-top: 0.1rem;
 	}
 
+	.game-popover-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-block-start: 0.6rem;
+	}
+
 	.game-popover-link {
 		display: inline-block;
-		margin-block-start: 0.6rem;
 		color: var(--color-white-lightest);
 		text-decoration: underline;
 		text-underline-offset: 0.15em;
+	}
+
+	.game-popover-bgstats-link {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
 	}
 
 	.game-card {
