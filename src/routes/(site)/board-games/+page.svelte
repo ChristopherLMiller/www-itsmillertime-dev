@@ -1078,7 +1078,7 @@
 	.games-flex::before {
 		content: '';
 		position: absolute;
-		z-index: 0;
+		z-index: 1;
 		inset: var(--bookcase-padding-block) 0 1.35rem;
 		background: repeating-linear-gradient(
 			to bottom,
@@ -1115,7 +1115,7 @@
 	.game-card-wrap {
 		position: relative;
 		box-sizing: border-box;
-		z-index: 1;
+		z-index: 2;
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
