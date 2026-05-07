@@ -1061,8 +1061,6 @@
 		padding: var(--bookcase-padding-block) 0 1.35rem;
 		border: clamp(0.75rem, 1.5vw, 1rem) solid #5f2f19;
 		background-color: #8b4723;
-		background-image: var(--wood-grain-texture);
-		background-size: 360px 270px;
 		box-shadow:
 			inset 0 0 0 3px rgb(255 235 190 / 0.12),
 			inset 0 0 2rem rgb(50 22 9 / 0.24),
@@ -1082,27 +1080,35 @@
 		position: absolute;
 		z-index: 0;
 		inset: var(--bookcase-padding-block) 0 1.35rem;
-		background:
-			repeating-linear-gradient(
-				to bottom,
-				transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
-				#d18a47 calc(var(--shelf-row-height) - var(--shelf-board-height))
-					calc(var(--shelf-row-height) - 1.95rem),
-				#b76d35 calc(var(--shelf-row-height) - 1.95rem)
-					calc(var(--shelf-row-height) - 0.95rem),
-				#7a3a1d calc(var(--shelf-row-height) - 0.95rem)
-					calc(var(--shelf-row-height) - 0.32rem),
-				#3d1d10 calc(var(--shelf-row-height) - 0.32rem) var(--shelf-row-height),
-				rgb(0 0 0 / 0.18) var(--shelf-row-height)
-					calc(var(--shelf-row-height) + 0.35rem),
-				transparent calc(var(--shelf-row-height) + 0.35rem)
-					calc(var(--shelf-row-height) + var(--shelf-row-gap))
-			),
-			var(--wood-grain-texture);
-		background-blend-mode: normal, multiply;
-		background-size:
-			auto,
-			360px 270px;
+		background: repeating-linear-gradient(
+			to bottom,
+			transparent 0 calc(var(--shelf-row-height) - var(--shelf-board-height)),
+			#d18a47 calc(var(--shelf-row-height) - var(--shelf-board-height))
+				calc(var(--shelf-row-height) - 1.95rem),
+			#b76d35 calc(var(--shelf-row-height) - 1.95rem)
+				calc(var(--shelf-row-height) - 0.95rem),
+			#7a3a1d calc(var(--shelf-row-height) - 0.95rem)
+				calc(var(--shelf-row-height) - 0.32rem),
+			#3d1d10 calc(var(--shelf-row-height) - 0.32rem) var(--shelf-row-height),
+			rgb(0 0 0 / 0.18) var(--shelf-row-height)
+				calc(var(--shelf-row-height) + 0.35rem),
+			transparent calc(var(--shelf-row-height) + 0.35rem)
+				calc(var(--shelf-row-height) + var(--shelf-row-gap))
+		);
+		pointer-events: none;
+	}
+
+	.games-flex::after {
+		content: '';
+		position: absolute;
+		z-index: 0;
+		inset: var(--bookcase-padding-block) 0 1.35rem;
+		background-image: var(--wood-grain-texture);
+		background-size: 360px 270px;
+		filter: invert(24%) sepia(39%) saturate(1017%) hue-rotate(343deg) brightness(82%)
+			contrast(87%);
+		mix-blend-mode: multiply;
+		opacity: 0.42;
 		pointer-events: none;
 	}
 
