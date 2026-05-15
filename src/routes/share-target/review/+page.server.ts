@@ -1,5 +1,6 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
-import { createPayloadFetch, createPayloadInnerFetch } from '$lib/payload';
+import { dev } from '$app/environment';
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
+import { createPayloadInnerFetch } from '$lib/payload';
 import { getPayloadSDK } from '$lib/payload.server';
 import {
 	deleteDraft,
@@ -11,6 +12,7 @@ import { uploadForDestination } from '$lib/share-target-payload-upload.server';
 import {
 	parseShareTargetDestination,
 	SHARE_TARGET_DEST_COOKIE,
+	SHARE_TARGET_FLASH_COOKIE,
 	type ShareTargetDestination
 } from '$lib/share-target-destination';
 import type { GalleryAlbum } from '$lib/types/payload-types';
@@ -33,7 +35,8 @@ function suggestedAltFromDraft(draftMeta: {
 	return suggestedAlt.length > 500 ? suggestedAlt.slice(0, 497) + '…' : suggestedAlt;
 }
 
-export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
+export const load: PageServerLoad = async (event) => {
+	const { cookies, fetch, request } = event;
 	const token = cookies.get(SHARE_TARGET_DRAFT_COOKIE);
 	const draftMeta = await readDraftMeta(token);
 	if (!draftMeta) {
@@ -42,10 +45,8 @@ export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 
 	const suggestedAlt = suggestedAltFromDraft(draftMeta);
 
-	const sessionResponse = await fetch('/api/auth/get-session');
-	const session = sessionResponse.ok ? await sessionResponse.json() : null;
-
-	if (!session?.user) {
+	const mergedUser = await getMergedSessionUser(event);
+	if (!mergedUser) {
 		return {
 			session: null,
 			draft: draftMeta,
@@ -55,12 +56,26 @@ export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 		};
 	}
 
-	const payloadFetch = createPayloadFetch(fetch, request);
-	const meResponse = await payloadFetch(`${PUBLIC_PAYLOAD_API_ENDPOINT}/users/me`);
-	const payloadMe = meResponse.ok ? await meResponse.json() : null;
-	if (payloadMe?.user) {
-		session.user = { ...session.user, ...payloadMe.user };
+	if (!isAdminRole(mergedUser)) {
+		await deleteDraft(token);
+		cookies.delete(SHARE_TARGET_DRAFT_COOKIE, { path: '/' });
+		cookies.set(
+			SHARE_TARGET_FLASH_COOKIE,
+			JSON.stringify({
+				errors: ['Share to site is only available to administrators.']
+			}),
+			{
+				path: '/',
+				maxAge: 180,
+				sameSite: 'lax',
+				httpOnly: true,
+				secure: !dev
+			}
+		);
+		throw redirect(303, '/share-target');
 	}
+
+	const session = { user: mergedUser };
 
 	let albums: Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[] = [];
 	try {
@@ -92,11 +107,15 @@ export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 };
 
 export const actions = {
-	upload: async ({ request, cookies, fetch }) => {
-		const sessionRes = await fetch('/api/auth/get-session');
-		const session = sessionRes.ok ? ((await sessionRes.json()) as { user?: unknown }) : null;
-		if (!session?.user) {
+	upload: async (event) => {
+		const { request, cookies, fetch } = event;
+
+		const mergedUser = await getMergedSessionUser(event);
+		if (!mergedUser) {
 			return fail(401, { error: 'Sign in to upload.' });
+		}
+		if (!isAdminRole(mergedUser)) {
+			return fail(403, { error: 'Only administrators can upload via Share to site.' });
 		}
 
 		const token = cookies.get(SHARE_TARGET_DRAFT_COOKIE);

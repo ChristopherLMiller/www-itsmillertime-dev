@@ -1,4 +1,5 @@
 import { dev } from '$app/environment';
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import {
 	DRAFT_MAX_BYTES,
 	SHARE_TARGET_DRAFT_COOKIE,
@@ -20,14 +21,22 @@ function shareResultHtml(title: string, body: string, status: number): Response 
 	return new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 
-export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageUrl }) => {
-	const sessionRes = await fetch('/api/auth/get-session');
-	const session = sessionRes.ok ? ((await sessionRes.json()) as { user?: unknown }) : null;
-	if (!session?.user) {
+export const POST: RequestHandler = async (event) => {
+	const { request, cookies, url: pageUrl } = event;
+
+	const user = await getMergedSessionUser(event);
+	if (!user) {
 		return shareResultHtml(
 			'Sign in required',
-			'Install or open this site, sign in, then share photos again from your gallery. Shared files cannot be retried after this page.',
+			'Install or open this site, sign in as an administrator, then share photos again from your gallery. Shared files cannot be retried after this page.',
 			401
+		);
+	}
+	if (!isAdminRole(user)) {
+		return shareResultHtml(
+			'Not allowed',
+			'Share to site is only available to administrators. Sign in with an admin account or upload from the CMS.',
+			403
 		);
 	}
 

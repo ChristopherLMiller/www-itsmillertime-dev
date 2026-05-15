@@ -1,5 +1,4 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
-import { createPayloadFetch } from '$lib/payload';
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload.server';
 import { readDraftMeta, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target-draft.server';
 import {
@@ -10,18 +9,12 @@ import {
 import type { GalleryAlbum } from '$lib/types/payload-types';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
-	const sessionResponse = await fetch('/api/auth/get-session');
-	const session = sessionResponse.ok ? await sessionResponse.json() : null;
+export const load: PageServerLoad = async (event) => {
+	const { cookies, fetch, request } = event;
 
-	if (session?.user) {
-		const payloadFetch = createPayloadFetch(fetch, request);
-		const meResponse = await payloadFetch(`${PUBLIC_PAYLOAD_API_ENDPOINT}/users/me`);
-		const payloadMe = meResponse.ok ? await meResponse.json() : null;
-		if (payloadMe?.user) {
-			session.user = { ...session.user, ...payloadMe.user };
-		}
-	}
+	const mergedUser = await getMergedSessionUser(event);
+	const session = mergedUser ? { user: mergedUser } : null;
+	const canUseShareTarget = mergedUser !== null && isAdminRole(mergedUser);
 
 	const destination = parseShareTargetDestination(cookies.get(SHARE_TARGET_DEST_COOKIE));
 
@@ -40,7 +33,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 	}
 
 	let albums: Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[] = [];
-	if (session?.user) {
+	if (canUseShareTarget) {
 		try {
 			const sdk = getPayloadSDK(fetch, request);
 			const res = await sdk.find({
@@ -59,10 +52,12 @@ export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 		}
 	}
 
-	const hasDraft = Boolean(await readDraftMeta(cookies.get(SHARE_TARGET_DRAFT_COOKIE)));
+	const hasDraft =
+		canUseShareTarget && Boolean(await readDraftMeta(cookies.get(SHARE_TARGET_DRAFT_COOKIE)));
 
 	return {
 		session,
+		canUseShareTarget,
 		destination,
 		albums,
 		flashErrors,
