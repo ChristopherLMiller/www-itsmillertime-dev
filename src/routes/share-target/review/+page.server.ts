@@ -141,7 +141,7 @@ export const actions = {
 		if (mode === 'gallery-image') {
 			const albumId = Number.parseInt(String(fd.get('albumId') ?? ''), 10);
 			if (!Number.isFinite(albumId) || albumId <= 0) {
-				return fail(400, { error: 'Choose an album for gallery uploads.' });
+				return fail(400, { error: 'Choose a gallery for gallery image uploads.' });
 			}
 			dest = { mode: 'gallery-image', albumId };
 		} else {

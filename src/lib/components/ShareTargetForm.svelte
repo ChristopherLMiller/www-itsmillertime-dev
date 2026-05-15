@@ -38,7 +38,7 @@
 		if (mode === 'gallery-image') {
 			const id = Number.parseInt(albumId, 10);
 			if (!Number.isFinite(id) || id <= 0) {
-				saveError = 'Choose an album (or enter a valid album ID).';
+				saveError = 'Choose a gallery (or enter a valid gallery ID).';
 				return;
 			}
 		}
@@ -84,9 +84,8 @@
 <div class="form-block">
 	<h2>Destination</h2>
 	<p class="hint">
-		<strong>Media</strong> uploads to the media library. <strong>Gallery album</strong> creates
-		<strong>gallery image</strong> rows linked to the album you choose (the album document itself is not
-		replaced).
+		<strong>Media</strong> uploads to the media library. <strong>Gallery image</strong> creates a new
+		image in the gallery you pick so it shows on that gallery’s public page.
 	</p>
 
 	<div class="controls">
@@ -102,15 +101,15 @@
 				value="gallery-image"
 				disabled={!signedIn}
 			/>
-			Gallery album (new gallery images)
+			Gallery image
 		</label>
 
 		{#if mode === 'gallery-image'}
 			{#if albums.length > 0}
 				<label class="field">
-					<span>Album</span>
+					<span>Gallery</span>
 					<select bind:value={albumId} class="select" disabled={!signedIn}>
-						<option value="" disabled>Choose an album…</option>
+						<option value="" disabled>Choose a gallery…</option>
 						{#each albums as a}
 							<option value={String(a.id)}>{a.title} (id {a.id})</option>
 						{/each}
@@ -118,18 +117,18 @@
 				</label>
 			{:else}
 				<label class="field">
-					<span>Album ID</span>
+					<span>Gallery ID</span>
 					<input
 						type="number"
 						min="1"
 						step="1"
 						bind:value={albumId}
 						class="input"
-						placeholder="Numeric album id"
+						placeholder="Numeric gallery id"
 						disabled={!signedIn}
 					/>
 				</label>
-				<p class="hint small">No albums were returned; enter an ID if you know one.</p>
+				<p class="hint small">No galleries were returned; enter an ID if you know one.</p>
 			{/if}
 		{/if}
 

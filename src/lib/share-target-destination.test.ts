@@ -12,7 +12,7 @@ describe('parseShareTargetDestination', () => {
 		expect(parseShareTargetDestination('media')).toEqual({ mode: 'media' });
 	});
 
-	it('parses gallery album id', () => {
+	it('parses gallery-image destination with gallery id', () => {
 		expect(parseShareTargetDestination('gallery:42')).toEqual({
 			mode: 'gallery-image',
 			albumId: 42

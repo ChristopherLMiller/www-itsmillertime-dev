@@ -108,14 +108,14 @@
 								bind:group={mode}
 								disabled={submitting}
 							/>
-							Gallery album
+							Gallery image
 						</label>
 					</fieldset>
 
 					{#if mode === 'gallery-image'}
 						{#if data.albums.length > 0}
 							<label class="field">
-								<span>Album</span>
+								<span>Gallery</span>
 								<select
 									name="albumId"
 									class="select"
@@ -123,7 +123,7 @@
 									required={mode === 'gallery-image'}
 									disabled={submitting}
 								>
-									<option value="" disabled>Choose an album…</option>
+									<option value="" disabled>Choose a gallery…</option>
 									{#each data.albums as a}
 										<option value={String(a.id)}>{a.title} (id {a.id})</option>
 									{/each}
@@ -131,7 +131,7 @@
 							</label>
 						{:else}
 							<label class="field">
-								<span>Album ID</span>
+								<span>Gallery ID</span>
 								<input
 									class="input"
 									name="albumId"
@@ -143,7 +143,9 @@
 									disabled={submitting}
 								/>
 							</label>
-							<p class="hint">No albums were returned; enter a numeric album ID if you know one.</p>
+							<p class="hint">
+								No galleries were returned; enter a numeric gallery ID if you know one.
+							</p>
 						{/if}
 					{/if}
 

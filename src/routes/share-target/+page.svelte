@@ -22,8 +22,9 @@
 		<p class="lede">
 			{#if data.canUseShareTarget}
 				When this site is installed as an app, you can share a photo from your gallery. You will
-				land on a short form to set the title and choose Media or a gallery album before it uploads
-				to Payload. Sign in on this device first; you can also save a default destination below.
+				land on a short form to set the title and choose <strong>Media</strong> or a new
+				<strong>gallery image</strong> (and which gallery it belongs to) before it uploads to Payload.
+				Sign in on this device first; you can also save a default destination below.
 			{:else if data.session?.user}
 				Whoops — Share to site is only available to accounts with the <strong>admin</strong> role. Your
 				account does not have access. Use the CMS or ask an administrator if you need to upload media.
