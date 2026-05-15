@@ -1,16 +1,14 @@
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
-import { getPayloadSDK } from '$lib/payload.server';
 import { readDraftMeta, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target-draft.server';
 import {
 	parseShareTargetDestination,
 	SHARE_TARGET_DEST_COOKIE,
 	SHARE_TARGET_FLASH_COOKIE
 } from '$lib/share-target-destination';
-import type { GalleryAlbum } from '$lib/types/payload-types';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const { cookies, fetch, request } = event;
+	const { cookies } = event;
 
 	const mergedUser = await getMergedSessionUser(event);
 	const session = mergedUser ? { user: mergedUser } : null;
@@ -32,26 +30,6 @@ export const load: PageServerLoad = async (event) => {
 		}
 	}
 
-	let albums: Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[] = [];
-	if (canUseShareTarget) {
-		try {
-			const sdk = getPayloadSDK(fetch, request);
-			const res = await sdk.find({
-				collection: 'gallery-albums',
-				limit: 200,
-				depth: 0,
-				sort: 'title'
-			});
-			albums = res.docs.map((d) => ({
-				id: d.id,
-				title: d.title,
-				slug: d.slug ?? null
-			}));
-		} catch {
-			albums = [];
-		}
-	}
-
 	const hasDraft =
 		canUseShareTarget && Boolean(await readDraftMeta(cookies.get(SHARE_TARGET_DRAFT_COOKIE)));
 
@@ -59,7 +37,6 @@ export const load: PageServerLoad = async (event) => {
 		session,
 		canUseShareTarget,
 		destination,
-		albums,
 		flashErrors,
 		hasDraft
 	};

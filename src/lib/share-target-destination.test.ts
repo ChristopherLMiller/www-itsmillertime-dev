@@ -12,14 +12,15 @@ describe('parseShareTargetDestination', () => {
 		expect(parseShareTargetDestination('media')).toEqual({ mode: 'media' });
 	});
 
-	it('parses gallery-image destination with gallery id', () => {
-		expect(parseShareTargetDestination('gallery:42')).toEqual({
-			mode: 'gallery-image',
-			albumId: 42
-		});
+	it('parses gallery-image cookie', () => {
+		expect(parseShareTargetDestination('gallery-image')).toEqual({ mode: 'gallery-image' });
 	});
 
-	it('falls back for invalid gallery cookie', () => {
+	it('maps legacy gallery:<id> cookies to gallery-image', () => {
+		expect(parseShareTargetDestination('gallery:42')).toEqual({ mode: 'gallery-image' });
+	});
+
+	it('falls back for invalid legacy gallery cookie', () => {
 		expect(parseShareTargetDestination('gallery:')).toEqual({ mode: 'media' });
 		expect(parseShareTargetDestination('gallery:abc')).toEqual({ mode: 'media' });
 	});
@@ -27,10 +28,7 @@ describe('parseShareTargetDestination', () => {
 
 describe('encodeShareTargetDestination', () => {
 	it('round-trips', () => {
-		const cases: ShareTargetDestination[] = [
-			{ mode: 'media' },
-			{ mode: 'gallery-image', albumId: 7 }
-		];
+		const cases: ShareTargetDestination[] = [{ mode: 'media' }, { mode: 'gallery-image' }];
 		for (const c of cases) {
 			expect(parseShareTargetDestination(encodeShareTargetDestination(c))).toEqual(c);
 		}

@@ -7,12 +7,9 @@
 
 	let alt = $state('');
 	let mode = $state<'media' | 'gallery-image'>('media');
-	let albumId = $state('');
 	let submitting = $state(false);
 
-	const destSig = $derived(
-		`${data.destination.mode}-${data.destination.mode === 'gallery-image' ? data.destination.albumId : ''}-${data.suggestedAlt}`
-	);
+	const destSig = $derived(`${data.destination.mode}-${data.suggestedAlt}`);
 
 	let lastSynced = $state<string | null>(null);
 
@@ -22,7 +19,6 @@
 		lastSynced = destSig;
 		alt = data.suggestedAlt;
 		mode = data.destination.mode === 'gallery-image' ? 'gallery-image' : 'media';
-		albumId = data.destination.mode === 'gallery-image' ? String(data.destination.albumId) : '';
 	});
 </script>
 
@@ -44,7 +40,10 @@
 			</p>
 		{:else if data.draft}
 			<h1>Finish upload</h1>
-			<p class="lede">Confirm the title and where this image should go, then upload to the CMS.</p>
+			<p class="lede">
+				Confirm the title and whether this file goes to <strong>Media</strong> or a new
+				<strong>gallery image</strong>, then upload to the CMS.
+			</p>
 
 			{#if data.draft.extraImagesDropped > 0}
 				<p class="note">
@@ -111,43 +110,6 @@
 							Gallery image
 						</label>
 					</fieldset>
-
-					{#if mode === 'gallery-image'}
-						{#if data.albums.length > 0}
-							<label class="field">
-								<span>Gallery</span>
-								<select
-									name="albumId"
-									class="select"
-									bind:value={albumId}
-									required={mode === 'gallery-image'}
-									disabled={submitting}
-								>
-									<option value="" disabled>Choose a gallery…</option>
-									{#each data.albums as a}
-										<option value={String(a.id)}>{a.title} (id {a.id})</option>
-									{/each}
-								</select>
-							</label>
-						{:else}
-							<label class="field">
-								<span>Gallery ID</span>
-								<input
-									class="input"
-									name="albumId"
-									type="number"
-									min="1"
-									step="1"
-									bind:value={albumId}
-									required={mode === 'gallery-image'}
-									disabled={submitting}
-								/>
-							</label>
-							<p class="hint">
-								No galleries were returned; enter a numeric gallery ID if you know one.
-							</p>
-						{/if}
-					{/if}
 
 					<button type="submit" class="submit" disabled={submitting}>
 						{submitting ? 'Uploading…' : 'Upload to Payload'}
@@ -266,8 +228,7 @@
 		cursor: pointer;
 	}
 
-	.input,
-	.select {
+	.input {
 		font-family: var(--font-roboto);
 		font-size: var(--fs-s);
 		padding: 0.5rem 0.65rem;
@@ -275,13 +236,6 @@
 		border-radius: 4px;
 		background: var(--color-white-lightest);
 		color: var(--color-tertiary-darkest);
-	}
-
-	.hint {
-		font-family: var(--font-roboto);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary);
-		margin: -0.5rem 0 0;
 	}
 
 	.submit {

@@ -1,7 +1,6 @@
 import { dev } from '$app/environment';
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import { createPayloadInnerFetch } from '$lib/payload';
-import { getPayloadSDK } from '$lib/payload.server';
 import {
 	deleteDraft,
 	readDraftFile,
@@ -15,7 +14,6 @@ import {
 	SHARE_TARGET_FLASH_COOKIE,
 	type ShareTargetDestination
 } from '$lib/share-target-destination';
-import type { GalleryAlbum } from '$lib/types/payload-types';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -36,7 +34,7 @@ function suggestedAltFromDraft(draftMeta: {
 }
 
 export const load: PageServerLoad = async (event) => {
-	const { cookies, fetch, request } = event;
+	const { cookies } = event;
 	const token = cookies.get(SHARE_TARGET_DRAFT_COOKIE);
 	const draftMeta = await readDraftMeta(token);
 	if (!draftMeta) {
@@ -50,7 +48,6 @@ export const load: PageServerLoad = async (event) => {
 		return {
 			session: null,
 			draft: draftMeta,
-			albums: [] as Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[],
 			destination: { mode: 'media' } as ShareTargetDestination,
 			suggestedAlt
 		};
@@ -77,30 +74,11 @@ export const load: PageServerLoad = async (event) => {
 
 	const session = { user: mergedUser };
 
-	let albums: Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[] = [];
-	try {
-		const sdk = getPayloadSDK(fetch, request);
-		const res = await sdk.find({
-			collection: 'gallery-albums',
-			limit: 200,
-			depth: 0,
-			sort: 'title'
-		});
-		albums = res.docs.map((d) => ({
-			id: d.id,
-			title: d.title,
-			slug: d.slug ?? null
-		}));
-	} catch {
-		albums = [];
-	}
-
 	const destination = parseShareTargetDestination(cookies.get(SHARE_TARGET_DEST_COOKIE));
 
 	return {
 		session,
 		draft: draftMeta,
-		albums,
 		destination,
 		suggestedAlt
 	};
@@ -135,18 +113,8 @@ export const actions = {
 		}
 
 		const modeRaw = String(fd.get('destinationMode') ?? 'media');
-		const mode = modeRaw === 'gallery-image' ? 'gallery-image' : 'media';
-
-		let dest: ShareTargetDestination;
-		if (mode === 'gallery-image') {
-			const albumId = Number.parseInt(String(fd.get('albumId') ?? ''), 10);
-			if (!Number.isFinite(albumId) || albumId <= 0) {
-				return fail(400, { error: 'Choose a gallery for gallery image uploads.' });
-			}
-			dest = { mode: 'gallery-image', albumId };
-		} else {
-			dest = { mode: 'media' };
-		}
+		const dest: ShareTargetDestination =
+			modeRaw === 'gallery-image' ? { mode: 'gallery-image' } : { mode: 'media' };
 
 		const fileBody = new Blob([new Uint8Array(draft.buffer)], {
 			type: draft.meta.mimeType || 'application/octet-stream'
