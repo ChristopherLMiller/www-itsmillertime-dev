@@ -9,8 +9,6 @@ import {
 } from '$lib/share-target-draft.server';
 import { uploadForDestination } from '$lib/share-target-payload-upload.server';
 import {
-	parseShareTargetDestination,
-	SHARE_TARGET_DEST_COOKIE,
 	SHARE_TARGET_FLASH_COOKIE,
 	type ShareTargetDestination
 } from '$lib/share-target-destination';
@@ -48,7 +46,6 @@ export const load: PageServerLoad = async (event) => {
 		return {
 			session: null,
 			draft: draftMeta,
-			destination: { mode: 'media' } as ShareTargetDestination,
 			suggestedAlt
 		};
 	}
@@ -74,12 +71,9 @@ export const load: PageServerLoad = async (event) => {
 
 	const session = { user: mergedUser };
 
-	const destination = parseShareTargetDestination(cookies.get(SHARE_TARGET_DEST_COOKIE));
-
 	return {
 		session,
 		draft: draftMeta,
-		destination,
 		suggestedAlt
 	};
 };

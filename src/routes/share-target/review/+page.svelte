@@ -9,16 +9,16 @@
 	let mode = $state<'media' | 'gallery-image'>('media');
 	let submitting = $state(false);
 
-	const destSig = $derived(`${data.destination.mode}-${data.suggestedAlt}`);
+	const draftSig = $derived(data.suggestedAlt);
 
 	let lastSynced = $state<string | null>(null);
 
 	$effect.pre(() => {
 		if (!data.draft || !data.session?.user) return;
-		if (lastSynced === destSig) return;
-		lastSynced = destSig;
+		if (lastSynced === draftSig) return;
+		lastSynced = draftSig;
 		alt = data.suggestedAlt;
-		mode = data.destination.mode === 'gallery-image' ? 'gallery-image' : 'media';
+		mode = 'media';
 	});
 </script>
 

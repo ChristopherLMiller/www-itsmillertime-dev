@@ -1,10 +1,6 @@
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import { readDraftMeta, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target-draft.server';
-import {
-	parseShareTargetDestination,
-	SHARE_TARGET_DEST_COOKIE,
-	SHARE_TARGET_FLASH_COOKIE
-} from '$lib/share-target-destination';
+import { SHARE_TARGET_FLASH_COOKIE } from '$lib/share-target-destination';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -13,8 +9,6 @@ export const load: PageServerLoad = async (event) => {
 	const mergedUser = await getMergedSessionUser(event);
 	const session = mergedUser ? { user: mergedUser } : null;
 	const canUseShareTarget = mergedUser !== null && isAdminRole(mergedUser);
-
-	const destination = parseShareTargetDestination(cookies.get(SHARE_TARGET_DEST_COOKIE));
 
 	let flashErrors: string[] = [];
 	const flashRaw = cookies.get(SHARE_TARGET_FLASH_COOKIE);
@@ -36,7 +30,6 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		session,
 		canUseShareTarget,
-		destination,
 		flashErrors,
 		hasDraft
 	};
