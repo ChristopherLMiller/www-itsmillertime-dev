@@ -29,8 +29,15 @@
 			system share sheet yet. After changing the manifest, remove the home-screen app and add it again so
 			the OS picks up updates. When testing, share <strong>actual photos</strong> from your gallery app
 			(image files); sharing only a link or plain text often will not list targets that accept images.
-			Use <strong>Chrome’s</strong> Install or Add to Home screen (other browsers may not register the same
+			Use <strong>Chrome's</strong> Install or Add to Home screen (other browsers may not register the same
 			share target).
+		</p>
+		<p class="manifest-tip">
+			<strong>Installed app vs browser tab:</strong> The manifest you open in a normal tab can be newer than
+			the one baked into the installed PWA. Chrome for Android refreshes it on a schedule (often after you
+			close the app, on Wi‑Fi, and sometimes while charging). To force it: open
+			<code>about://webapks</code> in Chrome, find this app, tap <strong>Update</strong>, then follow the
+			steps shown there—or uninstall the home-screen app and install it again (most reliable).
 		</p>
 
 		{#if !data.session?.user}
@@ -98,6 +105,19 @@
 		line-height: 1.45;
 		margin: 0 0 1rem;
 		color: var(--color-text-muted, #444);
+	}
+
+	.manifest-tip {
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+		line-height: 1.45;
+		margin: 0 0 1rem;
+		color: var(--color-text-muted, #444);
+	}
+
+	.manifest-tip code {
+		font-size: 0.95em;
+		word-break: break-all;
 	}
 
 	.warn {
