@@ -27,7 +27,10 @@
 			<strong>Device support:</strong> Web Share Target is supported for installed PWAs in
 			<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear in the
 			system share sheet yet. After changing the manifest, remove the home-screen app and add it again so
-			the OS picks up updates.
+			the OS picks up updates. When testing, share <strong>actual photos</strong> from your gallery app
+			(image files); sharing only a link or plain text often will not list targets that accept images.
+			Use <strong>Chrome’s</strong> Install or Add to Home screen (other browsers may not register the same
+			share target).
 		</p>
 
 		{#if !data.session?.user}
