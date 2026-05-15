@@ -1,7 +1,7 @@
-/** Cookie written by `/api/share-target/destination` and read by the share-target POST handler. */
+/** Cookie written by `/api/share-target/destination` and read by `POST /api/share-target`. */
 export const SHARE_TARGET_DEST_COOKIE = 'share_target_dest';
 
-/** One-shot server flash after share-target POST (avoid long query strings). */
+/** One-shot server flash after `POST /api/share-target` (avoid long query strings). */
 export const SHARE_TARGET_FLASH_COOKIE = 'share_target_flash';
 
 export type ShareTargetDestination = { mode: 'media' } | { mode: 'gallery-image'; albumId: number };
