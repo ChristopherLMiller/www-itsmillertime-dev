@@ -29,6 +29,9 @@
 			<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear in
 			the system share sheet yet. After changing the manifest, remove the home-screen app and add it
 			again so the OS picks up updates.
+			<strong>Preview deployments:</strong> the manifest must use the same host as the app you install;
+			if the share target vanished on a PR build, reinstall after deploy so Chrome picks up the fixed
+			manifest.
 		</p>
 
 		{#if data.hasDraft}

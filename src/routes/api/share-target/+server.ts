@@ -105,3 +105,6 @@ export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageU
 	const next = new URL('/share-target/review', pageUrl);
 	throw redirect(303, next.href);
 };
+
+/** Some clients probe the share action with GET; only POST receives shares. */
+export const GET: RequestHandler = () => new Response(null, { status: 204 });
