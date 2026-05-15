@@ -155,11 +155,17 @@ export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageU
 
 	const { innerFetch, baseURL } = createPayloadInnerFetch(fetch, request);
 
+	const uploadResults = await Promise.all(
+		files.map(async (file) => {
+			const alt = altFromShareContext(file, title, text, linkUrl);
+			const result = await uploadForDestination(innerFetch, baseURL, dest, file, alt);
+			return { file, result };
+		})
+	);
+
 	let ok = 0;
 	const errors: string[] = [];
-	for (const file of files) {
-		const alt = altFromShareContext(file, title, text, linkUrl);
-		const result = await uploadForDestination(innerFetch, baseURL, dest, file, alt);
+	for (const { file, result } of uploadResults) {
 		if (result.ok) {
 			ok += 1;
 		} else {
