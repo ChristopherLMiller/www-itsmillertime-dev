@@ -20,12 +20,14 @@
 	<Panel hasPadding={true} hasBorder={true}>
 		<h1>Share from your phone</h1>
 		<p class="lede">
-			When this site is installed as an app, you can share photos from your gallery into Payload. Sign in on
-			this device first, then pick where uploads go.
+			When this site is installed as an app, you can share photos from your gallery into Payload.
+			Sign in on this device first, then pick where uploads go.
 		</p>
 
 		{#if !data.session?.user}
-			<p class="warn">You are not signed in. <a href="/account/login">Sign in</a> before sharing images.</p>
+			<p class="warn">
+				You are not signed in. <a href="/account/login">Sign in</a> before sharing images.
+			</p>
 		{/if}
 
 		{#if data.uploadSummary}
@@ -50,7 +52,11 @@
 		{/if}
 
 		{#key formKey}
-			<ShareTargetForm signedIn={Boolean(data.session?.user)} destination={data.destination} albums={data.albums} />
+			<ShareTargetForm
+				signedIn={Boolean(data.session?.user)}
+				destination={data.destination}
+				albums={data.albums}
+			/>
 		{/key}
 	</Panel>
 </div>

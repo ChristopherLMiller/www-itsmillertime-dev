@@ -3,9 +3,15 @@
 	import type { ShareTargetDestination } from '$lib/share-target-destination';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 
-	type AlbumRow = Pick<GalleryAlbum, 'id' | 'title' | 'slug'>;
-
-	let { signedIn, destination, albums } = $props();
+	let {
+		signedIn,
+		destination,
+		albums
+	}: {
+		signedIn: boolean;
+		destination: ShareTargetDestination;
+		albums: Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[];
+	} = $props();
 
 	let mode = $state<'media' | 'gallery-image'>('media');
 	let albumId = $state('');
@@ -48,9 +54,10 @@
 				body: JSON.stringify(body),
 				credentials: 'include'
 			});
-			const json = (await res.json().catch(() => null)) as
-				| { error?: string; destination?: ShareTargetDestination }
-				| null;
+			const json = (await res.json().catch(() => null)) as {
+				error?: string;
+				destination?: ShareTargetDestination;
+			} | null;
 			if (!res.ok) {
 				saveError = json?.error ?? 'Could not save preference.';
 				return;
@@ -88,7 +95,13 @@
 			Media library
 		</label>
 		<label class="radio-line">
-			<input type="radio" bind:group={mode} name="dest" value="gallery-image" disabled={!signedIn} />
+			<input
+				type="radio"
+				bind:group={mode}
+				name="dest"
+				value="gallery-image"
+				disabled={!signedIn}
+			/>
 			Gallery album (new gallery images)
 		</label>
 

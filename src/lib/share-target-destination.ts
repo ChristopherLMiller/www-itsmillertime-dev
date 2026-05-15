@@ -4,9 +4,7 @@ export const SHARE_TARGET_DEST_COOKIE = 'share_target_dest';
 /** One-shot server flash after share-target POST (avoid long query strings). */
 export const SHARE_TARGET_FLASH_COOKIE = 'share_target_flash';
 
-export type ShareTargetDestination =
-	| { mode: 'media' }
-	| { mode: 'gallery-image'; albumId: number };
+export type ShareTargetDestination = { mode: 'media' } | { mode: 'gallery-image'; albumId: number };
 
 const COOKIE_MEDIA = 'media';
 const galleryPrefix = 'gallery:';

@@ -21,13 +21,11 @@ function shareResultHtml(title: string, body: string, status: number): Response 
 	return new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 
-function altFromShareContext(
-	file: File,
-	title: string,
-	text: string,
-	url: string
-): string {
-	const combined = [title, text, url].map((s) => s.trim()).filter(Boolean).join(' — ');
+function altFromShareContext(file: File, title: string, text: string, url: string): string {
+	const combined = [title, text, url]
+		.map((s) => s.trim())
+		.filter(Boolean)
+		.join(' — ');
 	const base = combined || file.name.replace(/\.[^.]+$/, '') || 'Shared image';
 	return base.length > 500 ? base.slice(0, 497) + '…' : base;
 }
@@ -76,10 +74,7 @@ async function payloadCreateUpload(args: {
 	return { ok: true, id };
 }
 
-function buildGalleryImagePayload(
-	albumId: number,
-	alt: string
-): Record<string, unknown> {
+function buildGalleryImagePayload(albumId: number, alt: string): Record<string, unknown> {
 	return {
 		alt,
 		settings: {
@@ -119,7 +114,7 @@ async function uploadForDestination(
 	});
 }
 
-export const POST: RequestHandler = async ({ request, fetch, cookies }) => {
+export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageUrl }) => {
 	const sessionRes = await fetch('/api/auth/get-session');
 	const session = sessionRes.ok ? ((await sessionRes.json()) as { user?: unknown }) : null;
 	if (!session?.user) {
@@ -135,7 +130,7 @@ export const POST: RequestHandler = async ({ request, fetch, cookies }) => {
 	const formData = await request.formData();
 	const title = String(formData.get('title') ?? '').trim();
 	const text = String(formData.get('text') ?? '').trim();
-	const url = String(formData.get('url') ?? '').trim();
+	const linkUrl = String(formData.get('url') ?? '').trim();
 
 	const rawFiles = formData.getAll('files');
 	const files: File[] = [];
@@ -163,7 +158,7 @@ export const POST: RequestHandler = async ({ request, fetch, cookies }) => {
 	let ok = 0;
 	const errors: string[] = [];
 	for (const file of files) {
-		const alt = altFromShareContext(file, title, text, url);
+		const alt = altFromShareContext(file, title, text, linkUrl);
 		const result = await uploadForDestination(innerFetch, baseURL, dest, file, alt);
 		if (result.ok) {
 			ok += 1;
@@ -189,5 +184,6 @@ export const POST: RequestHandler = async ({ request, fetch, cookies }) => {
 	sp.set('uploaded', String(ok));
 	if (errors.length) sp.set('failed', String(errors.length));
 
-	throw redirect(303, `/share-target?${sp.toString()}`);
+	const next = new URL(`/share-target?${sp.toString()}`, pageUrl);
+	throw redirect(303, next.href);
 };

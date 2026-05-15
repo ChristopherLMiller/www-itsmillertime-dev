@@ -28,7 +28,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 	const dest = readBody(parsed);
 	if (!dest) {
-		return json({ error: 'Body must be { mode: "media" } or { mode: "gallery-image", albumId }' }, { status: 400 });
+		return json(
+			{ error: 'Body must be { mode: "media" } or { mode: "gallery-image", albumId }' },
+			{ status: 400 }
+		);
 	}
 
 	const value = encodeShareTargetDestination(dest);
