@@ -1,11 +1,10 @@
 import { dev } from '$app/environment';
-import { createPayloadInnerFetch } from '$lib/payload';
 import {
-	parseShareTargetDestination,
-	SHARE_TARGET_DEST_COOKIE,
-	SHARE_TARGET_FLASH_COOKIE,
-	type ShareTargetDestination
-} from '$lib/share-target-destination';
+	DRAFT_MAX_BYTES,
+	SHARE_TARGET_DRAFT_COOKIE,
+	saveDraft
+} from '$lib/share-target-draft.server';
+import { isImageFile } from '$lib/share-target-payload-upload.server';
 import { redirect, type RequestHandler } from '@sveltejs/kit';
 
 function escapeHtml(s: string): string {
@@ -17,101 +16,8 @@ function escapeHtml(s: string): string {
 }
 
 function shareResultHtml(title: string, body: string, status: number): Response {
-	const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:1.5rem;max-width:40rem;margin:auto"><h1 style="font-size:1.25rem">${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="/share-target">Share target settings</a> · <a href="/account/login">Sign in</a></p></body></html>`;
+	const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:1.5rem;max-width:40rem;margin:auto"><h1 style="font-size:1.25rem">${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="/share-target">Share target</a> · <a href="/account/login">Sign in</a></p></body></html>`;
 	return new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
-}
-
-function altFromShareContext(file: File, title: string, text: string, url: string): string {
-	const combined = [title, text, url]
-		.map((s) => s.trim())
-		.filter(Boolean)
-		.join(' — ');
-	const base = combined || file.name.replace(/\.[^.]+$/, '') || 'Shared image';
-	return base.length > 500 ? base.slice(0, 497) + '…' : base;
-}
-
-function isImageFile(f: File): boolean {
-	if (typeof f.type === 'string' && f.type.startsWith('image/')) return true;
-	const name = f.name.toLowerCase();
-	return /\.(heic|heif|jpe?g|png|gif|webp|avif|bmp|tiff?)$/.test(name);
-}
-
-async function payloadCreateUpload(args: {
-	innerFetch: typeof fetch;
-	baseURL: string;
-	collection: 'media' | 'gallery-images';
-	file: File;
-	payloadJson: Record<string, unknown>;
-}): Promise<{ ok: true; id: number } | { ok: false; message: string }> {
-	const formData = new FormData();
-	formData.append('file', args.file);
-	formData.append('_payload', JSON.stringify(args.payloadJson));
-
-	const res = await args.innerFetch(`${args.baseURL.replace(/\/$/, '')}/${args.collection}`, {
-		method: 'POST',
-		body: formData,
-		credentials: 'include'
-	});
-
-	let body: unknown;
-	try {
-		body = await res.json();
-	} catch {
-		return { ok: false, message: `HTTP ${res.status}` };
-	}
-
-	if (!res.ok) {
-		const errObj = body as { errors?: { message?: string }[]; message?: string };
-		const first = errObj.errors?.[0]?.message ?? errObj.message ?? `HTTP ${res.status}`;
-		return { ok: false, message: first };
-	}
-
-	const doc = body as { doc?: { id?: number } };
-	const id = doc.doc?.id;
-	if (typeof id !== 'number') {
-		return { ok: false, message: 'Unexpected response from CMS' };
-	}
-	return { ok: true, id };
-}
-
-function buildGalleryImagePayload(albumId: number, alt: string): Record<string, unknown> {
-	return {
-		alt,
-		settings: {
-			visibility: 'AUTHENTICATED',
-			isNsfw: false
-		},
-		albums: [albumId]
-	};
-}
-
-function buildMediaPayload(alt: string): Record<string, unknown> {
-	return { alt };
-}
-
-async function uploadForDestination(
-	innerFetch: typeof fetch,
-	baseURL: string,
-	dest: ShareTargetDestination,
-	file: File,
-	alt: string
-): Promise<{ ok: true; id: number } | { ok: false; message: string }> {
-	if (dest.mode === 'media') {
-		return payloadCreateUpload({
-			innerFetch,
-			baseURL,
-			collection: 'media',
-			file,
-			payloadJson: buildMediaPayload(alt)
-		});
-	}
-	return payloadCreateUpload({
-		innerFetch,
-		baseURL,
-		collection: 'gallery-images',
-		file,
-		payloadJson: buildGalleryImagePayload(dest.albumId, alt)
-	});
 }
 
 export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageUrl }) => {
@@ -124,8 +30,6 @@ export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageU
 			401
 		);
 	}
-
-	const dest = parseShareTargetDestination(cookies.get(SHARE_TARGET_DEST_COOKIE));
 
 	const formData = await request.formData();
 	const title = String(formData.get('title') ?? '').trim();
@@ -144,8 +48,8 @@ export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageU
 		return shareResultHtml('No images received', 'The share did not include any image files.', 400);
 	}
 
-	const nonImages = files.filter((f) => !isImageFile(f));
-	if (nonImages.length > 0) {
+	const images = files.filter((f) => isImageFile(f));
+	if (images.length === 0) {
 		return shareResultHtml(
 			'Unsupported files',
 			'Only image types are accepted. Remove non-image items and try again.',
@@ -153,43 +57,54 @@ export const POST: RequestHandler = async ({ request, fetch, cookies, url: pageU
 		);
 	}
 
-	const { innerFetch, baseURL } = createPayloadInnerFetch(fetch, request);
+	const file = images[0];
+	const extraImagesDropped = Math.max(0, images.length - 1);
 
-	const uploadResults = await Promise.all(
-		files.map(async (file) => {
-			const alt = altFromShareContext(file, title, text, linkUrl);
-			const result = await uploadForDestination(innerFetch, baseURL, dest, file, alt);
-			return { file, result };
-		})
-	);
-
-	let ok = 0;
-	const errors: string[] = [];
-	for (const { file, result } of uploadResults) {
-		if (result.ok) {
-			ok += 1;
-		} else {
-			errors.push(`${file.name}: ${result.message}`);
-		}
+	const ab = await file.arrayBuffer();
+	const buffer = Buffer.from(ab);
+	if (buffer.byteLength > DRAFT_MAX_BYTES) {
+		return shareResultHtml(
+			'File too large',
+			'This image is larger than the allowed upload size.',
+			413
+		);
 	}
 
-	if (errors.length) {
-		const payload = JSON.stringify({ errors: errors.slice(0, 12) });
-		if (payload.length < 3500) {
-			cookies.set(SHARE_TARGET_FLASH_COOKIE, payload, {
-				path: '/',
-				maxAge: 120,
-				sameSite: 'lax',
-				httpOnly: true,
-				secure: !dev
-			});
+	let token: string;
+	try {
+		token = await saveDraft({
+			buffer,
+			meta: {
+				originalName: file.name || 'shared-image',
+				mimeType: file.type || 'application/octet-stream',
+				shareTitle: title,
+				shareText: text,
+				shareUrl: linkUrl,
+				extraImagesDropped
+			}
+		});
+	} catch (e) {
+		if (e instanceof Error && e.message === 'FILE_TOO_LARGE') {
+			return shareResultHtml(
+				'File too large',
+				'This image is larger than the allowed upload size.',
+				413
+			);
 		}
+		return shareResultHtml('Could not save upload', 'Try sharing again in a moment.', 500);
 	}
 
-	const sp = new URLSearchParams();
-	sp.set('uploaded', String(ok));
-	if (errors.length) sp.set('failed', String(errors.length));
+	cookies.set(SHARE_TARGET_DRAFT_COOKIE, token, {
+		path: '/',
+		maxAge: 15 * 60,
+		sameSite: 'lax',
+		httpOnly: true,
+		secure: !dev
+	});
 
-	const next = new URL(`/share-target?${sp.toString()}`, pageUrl);
+	const next = new URL('/share-target/review', pageUrl);
 	throw redirect(303, next.href);
 };
+
+/** Some clients probe the share action with GET; only POST receives shares. */
+export const GET: RequestHandler = () => new Response(null, { status: 204 });

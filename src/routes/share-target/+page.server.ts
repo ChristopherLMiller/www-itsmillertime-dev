@@ -1,6 +1,7 @@
 import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
 import { createPayloadFetch } from '$lib/payload';
 import { getPayloadSDK } from '$lib/payload.server';
+import { readDraftMeta, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target-draft.server';
 import {
 	parseShareTargetDestination,
 	SHARE_TARGET_DEST_COOKIE,
@@ -9,7 +10,7 @@ import {
 import type { GalleryAlbum } from '$lib/types/payload-types';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ cookies, fetch, request, url }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 	const sessionResponse = await fetch('/api/auth/get-session');
 	const session = sessionResponse.ok ? await sessionResponse.json() : null;
 
@@ -58,19 +59,13 @@ export const load: PageServerLoad = async ({ cookies, fetch, request, url }) => 
 		}
 	}
 
-	const uploadedRaw = url.searchParams.get('uploaded');
-	const failedRaw = url.searchParams.get('failed');
-	const uploaded = uploadedRaw != null ? Number.parseInt(uploadedRaw, 10) : null;
-	const failed = failedRaw != null ? Number.parseInt(failedRaw, 10) : null;
+	const hasDraft = Boolean(await readDraftMeta(cookies.get(SHARE_TARGET_DRAFT_COOKIE)));
 
 	return {
 		session,
 		destination,
 		albums,
 		flashErrors,
-		uploadSummary:
-			uploaded != null && Number.isFinite(uploaded)
-				? { uploaded, failed: failed != null && Number.isFinite(failed) ? failed : 0 }
-				: null
+		hasDraft
 	};
 };
