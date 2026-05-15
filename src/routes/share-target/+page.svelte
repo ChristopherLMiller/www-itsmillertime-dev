@@ -23,6 +23,12 @@
 			When this site is installed as an app, you can share photos from your gallery into Payload.
 			Sign in on this device first, then pick where uploads go.
 		</p>
+		<p class="compat">
+			<strong>Device support:</strong> Web Share Target is supported for installed PWAs in
+			<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear in the
+			system share sheet yet. After changing the manifest, remove the home-screen app and add it again so
+			the OS picks up updates.
+		</p>
 
 		{#if !data.session?.user}
 			<p class="warn">
@@ -81,6 +87,14 @@
 		font-size: var(--fs-s);
 		line-height: 1.5;
 		margin: 0 0 1rem;
+	}
+
+	.compat {
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+		line-height: 1.45;
+		margin: 0 0 1rem;
+		color: var(--color-text-muted, #444);
 	}
 
 	.warn {
