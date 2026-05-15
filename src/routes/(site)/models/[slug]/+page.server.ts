@@ -1,8 +1,9 @@
-import { getPayloadSDK } from '$lib/payload';
-import type { PageLoad } from './$types';
+import { getPayloadSDK } from '$lib/payload.server';
+import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, params, url }) => {
-	const modelData = await getPayloadSDK(fetch).find({
+export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
+	const modelData = await getPayloadSDK(fetch, request).find({
 		collection: 'models',
 		where: {
 			slug: {
@@ -24,6 +25,10 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 	});
 
 	const doc = modelData.docs[0];
+	if (!doc) {
+		throw error(404, 'Model not found');
+	}
+
 	const meta = doc.meta
 		? { ...doc.meta, canonicalURL: `${url.origin}/models/${params.slug}` }
 		: { canonicalURL: `${url.origin}/models/${params.slug}` };

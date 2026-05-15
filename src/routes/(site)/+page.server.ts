@@ -1,8 +1,9 @@
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
 import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
-export async function load({ fetch, url }) {
-	const pageData = await getPayloadSDK(fetch).find({
+export const load: PageServerLoad = async ({ fetch, request, url }) => {
+	const pageData = await getPayloadSDK(fetch, request).find({
 		collection: 'pages',
 		where: {
 			and: [
@@ -32,4 +33,4 @@ export async function load({ fetch, url }) {
 		page: doc,
 		meta
 	};
-}
+};
