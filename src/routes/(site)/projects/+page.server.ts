@@ -1,8 +1,8 @@
-import type { PageLoad } from './$types';
-import { getPayloadSDK } from '$lib/payload';
+import { getPayloadSDK } from '$lib/payload.server';
+import type { PageServerLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, url }) => {
-	const sdk = getPayloadSDK(fetch);
+export const load: PageServerLoad = async ({ fetch, request, url }) => {
+	const sdk = getPayloadSDK(fetch, request);
 
 	const limit = Number(url.searchParams.get('limit')) || 50;
 	const page = Number(url.searchParams.get('page')) || 1;

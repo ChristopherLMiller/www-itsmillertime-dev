@@ -1,8 +1,8 @@
-import { getPayloadSDK } from '$lib/payload';
-import type { PageLoad } from './$types';
+import { getPayloadSDK } from '$lib/payload.server';
+import type { PageServerLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, url }) => {
-	const modelsData = await getPayloadSDK(fetch).find({
+export const load: PageServerLoad = async ({ fetch, request, url }) => {
+	const modelsData = await getPayloadSDK(fetch, request).find({
 		collection: 'models',
 		sort: '-model_meta.completionDate',
 		limit: Number(url.searchParams.get('limit')) || 15,
