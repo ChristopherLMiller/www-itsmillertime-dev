@@ -31,6 +31,7 @@
 		}
 	],
 	"start_url": "/",
+	"scope": "/",
 	"display": "fullscreen",
 	"background_color": "#982929",
 	"theme_color": "#982929",
@@ -48,11 +49,20 @@
 					"accept": [
 						"image/*",
 						"image/jpeg",
+						".jpg",
+						".jpeg",
 						"image/png",
+						".png",
 						"image/webp",
+						".webp",
 						"image/gif",
+						".gif",
 						"image/heic",
-						"image/heif"
+						"image/heif",
+						".heic",
+						".heif",
+						"image/avif",
+						".avif"
 					]
 				}
 			]

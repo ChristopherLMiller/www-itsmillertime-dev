@@ -8,7 +8,7 @@
 	const formKey = $derived(
 		`${data.destination.mode}-${
 			data.destination.mode === 'gallery-image' ? data.destination.albumId : 0
-		}-${data.uploadSummary?.uploaded ?? 'u'}-${data.uploadSummary?.failed ?? 'f'}-${data.flashErrors.length}`
+		}-${data.flashErrors.length}-${data.hasDraft ? 'd' : 'n'}`
 	);
 </script>
 
@@ -20,31 +20,31 @@
 	<Panel hasPadding={true} hasBorder={true}>
 		<h1>Share from your phone</h1>
 		<p class="lede">
-			When this site is installed as an app, you can share photos from your gallery into Payload.
-			Sign in on this device first, then pick where uploads go.
+			When this site is installed as an app, you can share a photo from your gallery. You will land
+			on a short form to set the title and choose Media or a gallery album before it uploads to
+			Payload. Sign in on this device first; you can also save a default destination below.
 		</p>
 		<p class="compat">
 			<strong>Device support:</strong> Web Share Target is supported for installed PWAs in
-			<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear in the
-			system share sheet yet. After changing the manifest, remove the home-screen app and add it again so
-			the OS picks up updates.
+			<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear in
+			the system share sheet yet. After changing the manifest, remove the home-screen app and add it
+			again so the OS picks up updates.
+			<strong>Preview deployments:</strong> the manifest must use the same host as the app you install;
+			if the share target vanished on a PR build, reinstall after deploy so Chrome picks up the fixed
+			manifest.
 		</p>
+
+		{#if data.hasDraft}
+			<p class="draft-banner" role="status">
+				<a href="/share-target/review">Finish a shared photo</a>
+				— an image is waiting on this device (expires in a few minutes).
+			</p>
+		{/if}
 
 		{#if !data.session?.user}
 			<p class="warn">
 				You are not signed in. <a href="/account/login">Sign in</a> before sharing images.
 			</p>
-		{/if}
-
-		{#if data.uploadSummary}
-			<div class="banner ok" role="status">
-				Uploaded {data.uploadSummary.uploaded} file{data.uploadSummary.uploaded === 1 ? '' : 's'} to Payload.
-				{#if data.uploadSummary.failed > 0}
-					<span class="partial">
-						{data.uploadSummary.failed} failed — see details below.
-					</span>
-				{/if}
-			</div>
 		{/if}
 
 		{#if data.flashErrors.length > 0}
@@ -97,6 +97,21 @@
 		color: var(--color-text-muted, #444);
 	}
 
+	.draft-banner {
+		font-family: var(--font-roboto);
+		font-size: var(--fs-s);
+		padding: 0.75rem 1rem;
+		border-radius: 4px;
+		margin: 0 0 1rem;
+		background: oklch(0.94 0.04 250);
+		border: 1px solid oklch(0.55 0.12 250);
+	}
+
+	.draft-banner a {
+		color: var(--color-primary);
+		font-weight: 600;
+	}
+
 	.warn {
 		font-family: var(--font-roboto);
 		font-size: var(--fs-s);
@@ -115,11 +130,6 @@
 		margin-bottom: 1rem;
 	}
 
-	.banner.ok {
-		background: oklch(0.94 0.03 145);
-		border: 1px solid oklch(0.55 0.12 145);
-	}
-
 	.banner.err {
 		background: oklch(0.95 0.04 25);
 		border: 1px solid var(--color-primary);
@@ -128,11 +138,5 @@
 	.banner ul {
 		margin: 0;
 		padding-left: 1.25rem;
-	}
-
-	.partial {
-		display: block;
-		margin-top: 0.35rem;
-		font-size: var(--fs-xs);
 	}
 </style>
