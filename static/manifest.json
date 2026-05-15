@@ -1,9 +1,7 @@
 {
-	"app": {},
-	"manifest_version": 2,
-	"lang": "en",
-	"short_name": "itsmillertime",
 	"name": "ItsMillerTime.Dev",
+	"short_name": "itsmillertime",
+	"lang": "en",
 	"icons": [
 		{
 			"src": "/logo.png",
@@ -35,5 +33,29 @@
 	"start_url": "/",
 	"display": "fullscreen",
 	"background_color": "#982929",
-	"theme_color": "#982929"
+	"theme_color": "#982929",
+	"share_target": {
+		"action": "/share-target",
+		"method": "POST",
+		"enctype": "multipart/form-data",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url",
+			"files": [
+				{
+					"name": "files",
+					"accept": [
+						"image/*",
+						"image/jpeg",
+						"image/png",
+						"image/webp",
+						"image/gif",
+						"image/heic",
+						"image/heif"
+					]
+				}
+			]
+		}
+	}
 }
