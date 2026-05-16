@@ -54,14 +54,13 @@ export async function payloadCreateUpload(args: {
 	return { ok: true, id };
 }
 
-function buildGalleryImagePayload(albumId: number, alt: string): Record<string, unknown> {
+function buildGalleryImagePayload(alt: string): Record<string, unknown> {
 	return {
 		alt,
 		settings: {
 			visibility: 'AUTHENTICATED',
 			isNsfw: false
-		},
-		albums: [albumId]
+		}
 	};
 }
 
@@ -93,6 +92,6 @@ export async function uploadForDestination(
 		collection: 'gallery-images',
 		fileBody,
 		filename,
-		payloadJson: buildGalleryImagePayload(dest.albumId, alt)
+		payloadJson: buildGalleryImagePayload(alt)
 	});
 }
