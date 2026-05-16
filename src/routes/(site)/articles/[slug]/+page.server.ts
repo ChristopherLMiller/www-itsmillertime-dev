@@ -6,6 +6,10 @@ import type { PageServerLoad } from './$types';
 
 const ARTICLE_CACHE_STALE_THRESHOLD_S = 300; // 5 minutes
 
+function isPublishedArticle(article: Post | null | undefined): article is Post {
+	return article?._status === 'published';
+}
+
 async function fetchArticleByIdFromCMS(articleId: number | string): Promise<Post | null> {
 	const sdk = getPayloadSDK();
 	return sdk.findByID({
@@ -18,7 +22,7 @@ async function fetchArticleByIdFromCMS(articleId: number | string): Promise<Post
 async function refreshArticleInBackground(articleId: number | string, cacheKey: string): Promise<void> {
 	try {
 		const article = await fetchArticleByIdFromCMS(articleId);
-		if (article) {
+		if (isPublishedArticle(article)) {
 			await cacheManager.set(cacheKey, article);
 		}
 	} catch (err) {
@@ -63,7 +67,7 @@ export const load: PageServerLoad = async ({ fetch, url, params, request }) => {
 	const cachedArticle = (await cacheManager.get(articleCacheKey)) as Post | null;
 
 	let doc: Post;
-	if (cachedArticle) {
+	if (isPublishedArticle(cachedArticle)) {
 		doc = cachedArticle;
 		const isStale = await cacheManager.isCacheStale(articleCacheKey, ARTICLE_CACHE_STALE_THRESHOLD_S);
 		if (isStale) {
@@ -71,11 +75,11 @@ export const load: PageServerLoad = async ({ fetch, url, params, request }) => {
 		}
 	} else {
 		const freshArticle = await fetchArticleByIdFromCMS(articleId);
-		if (!freshArticle) {
+		if (!isPublishedArticle(freshArticle)) {
 			throw error(404, 'Article not found');
 		}
 		doc = freshArticle;
-		await cacheManager.set(articleCacheKey, doc);
+		await cacheManager.set(articleCacheKey, freshArticle);
 	}
 
 	const meta = doc.meta
