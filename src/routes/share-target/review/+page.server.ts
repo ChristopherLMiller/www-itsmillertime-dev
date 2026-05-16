@@ -1,6 +1,6 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
-import { createPayloadFetch, createPayloadInnerFetch } from '$lib/payload';
-import { getPayloadSDK } from '$lib/payload.server';
+import { dev } from '$app/environment';
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
+import { createPayloadInnerFetch } from '$lib/payload';
 import {
 	deleteDraft,
 	readDraftFile,
@@ -9,11 +9,9 @@ import {
 } from '$lib/share-target-draft.server';
 import { uploadForDestination } from '$lib/share-target-payload-upload.server';
 import {
-	parseShareTargetDestination,
-	SHARE_TARGET_DEST_COOKIE,
+	SHARE_TARGET_FLASH_COOKIE,
 	type ShareTargetDestination
 } from '$lib/share-target-destination';
-import type { GalleryAlbum } from '$lib/types/payload-types';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -33,7 +31,8 @@ function suggestedAltFromDraft(draftMeta: {
 	return suggestedAlt.length > 500 ? suggestedAlt.slice(0, 497) + '…' : suggestedAlt;
 }
 
-export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
+export const load: PageServerLoad = async (event) => {
+	const { cookies } = event;
 	const token = cookies.get(SHARE_TARGET_DRAFT_COOKIE);
 	const draftMeta = await readDraftMeta(token);
 	if (!draftMeta) {
@@ -42,61 +41,53 @@ export const load: PageServerLoad = async ({ cookies, fetch, request }) => {
 
 	const suggestedAlt = suggestedAltFromDraft(draftMeta);
 
-	const sessionResponse = await fetch('/api/auth/get-session');
-	const session = sessionResponse.ok ? await sessionResponse.json() : null;
-
-	if (!session?.user) {
+	const mergedUser = await getMergedSessionUser(event);
+	if (!mergedUser) {
 		return {
 			session: null,
 			draft: draftMeta,
-			albums: [] as Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[],
-			destination: { mode: 'media' } as ShareTargetDestination,
 			suggestedAlt
 		};
 	}
 
-	const payloadFetch = createPayloadFetch(fetch, request);
-	const meResponse = await payloadFetch(`${PUBLIC_PAYLOAD_API_ENDPOINT}/users/me`);
-	const payloadMe = meResponse.ok ? await meResponse.json() : null;
-	if (payloadMe?.user) {
-		session.user = { ...session.user, ...payloadMe.user };
+	if (!isAdminRole(mergedUser)) {
+		await deleteDraft(token);
+		cookies.delete(SHARE_TARGET_DRAFT_COOKIE, { path: '/' });
+		cookies.set(
+			SHARE_TARGET_FLASH_COOKIE,
+			JSON.stringify({
+				errors: ['Share to site is only available to administrators.']
+			}),
+			{
+				path: '/',
+				maxAge: 180,
+				sameSite: 'lax',
+				httpOnly: true,
+				secure: !dev
+			}
+		);
+		throw redirect(303, '/share-target');
 	}
 
-	let albums: Pick<GalleryAlbum, 'id' | 'title' | 'slug'>[] = [];
-	try {
-		const sdk = getPayloadSDK(fetch, request);
-		const res = await sdk.find({
-			collection: 'gallery-albums',
-			limit: 200,
-			depth: 0,
-			sort: 'title'
-		});
-		albums = res.docs.map((d) => ({
-			id: d.id,
-			title: d.title,
-			slug: d.slug ?? null
-		}));
-	} catch {
-		albums = [];
-	}
-
-	const destination = parseShareTargetDestination(cookies.get(SHARE_TARGET_DEST_COOKIE));
+	const session = { user: mergedUser };
 
 	return {
 		session,
 		draft: draftMeta,
-		albums,
-		destination,
 		suggestedAlt
 	};
 };
 
 export const actions = {
-	upload: async ({ request, cookies, fetch }) => {
-		const sessionRes = await fetch('/api/auth/get-session');
-		const session = sessionRes.ok ? ((await sessionRes.json()) as { user?: unknown }) : null;
-		if (!session?.user) {
+	upload: async (event) => {
+		const { request, cookies, fetch } = event;
+
+		const mergedUser = await getMergedSessionUser(event);
+		if (!mergedUser) {
 			return fail(401, { error: 'Sign in to upload.' });
+		}
+		if (!isAdminRole(mergedUser)) {
+			return fail(403, { error: 'Only administrators can upload via Share to site.' });
 		}
 
 		const token = cookies.get(SHARE_TARGET_DRAFT_COOKIE);
@@ -116,18 +107,8 @@ export const actions = {
 		}
 
 		const modeRaw = String(fd.get('destinationMode') ?? 'media');
-		const mode = modeRaw === 'gallery-image' ? 'gallery-image' : 'media';
-
-		let dest: ShareTargetDestination;
-		if (mode === 'gallery-image') {
-			const albumId = Number.parseInt(String(fd.get('albumId') ?? ''), 10);
-			if (!Number.isFinite(albumId) || albumId <= 0) {
-				return fail(400, { error: 'Choose an album for gallery uploads.' });
-			}
-			dest = { mode: 'gallery-image', albumId };
-		} else {
-			dest = { mode: 'media' };
-		}
+		const dest: ShareTargetDestination =
+			modeRaw === 'gallery-image' ? { mode: 'gallery-image' } : { mode: 'media' };
 
 		const fileBody = new Blob([new Uint8Array(draft.buffer)], {
 			type: draft.meta.mimeType || 'application/octet-stream'

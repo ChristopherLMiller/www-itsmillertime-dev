@@ -1,13 +1,15 @@
 import { error, redirect } from '@sveltejs/kit';
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload.server';
 import { getMediaUrl } from '$lib/utils/media-url';
 import type { GalleryImage, Media } from '$lib/types/payload-types';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ url, fetch, request }) => {
-	const sessionResponse = await fetch('/api/auth/get-session');
-	const session = sessionResponse.ok ? await sessionResponse.json() : null;
-	if (!session?.user) {
+export const load: PageServerLoad = async (event) => {
+	const { url, fetch, request } = event;
+
+	const mergedUser = await getMergedSessionUser(event);
+	if (!mergedUser || !isAdminRole(mergedUser)) {
 		throw redirect(303, '/share-target');
 	}
 

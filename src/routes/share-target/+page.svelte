@@ -1,15 +1,8 @@
 <script lang="ts">
 	import Panel from '$lib/Panel.svelte';
-	import ShareTargetForm from '$lib/components/ShareTargetForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const formKey = $derived(
-		`${data.destination.mode}-${
-			data.destination.mode === 'gallery-image' ? data.destination.albumId : 0
-		}-${data.flashErrors.length}-${data.hasDraft ? 'd' : 'n'}`
-	);
 </script>
 
 <svelte:head>
@@ -20,19 +13,30 @@
 	<Panel hasPadding={true} hasBorder={true}>
 		<h1>Share from your phone</h1>
 		<p class="lede">
-			When this site is installed as an app, you can share a photo from your gallery. You will land
-			on a short form to set the title and choose Media or a gallery album before it uploads to
-			Payload. Sign in on this device first; you can also save a default destination below.
+			{#if data.canUseShareTarget}
+				When this site is installed as an app, you can share a photo from your gallery. You will
+				land on a short form to set the title and choose <strong>Media</strong> or a new
+				<strong>gallery image</strong> before it uploads to Payload. Sign in on this device first.
+			{:else if data.session?.user}
+				Whoops — Share to site is only available to accounts with the <strong>admin</strong> role. Your
+				account does not have access. Use the CMS or ask an administrator if you need to upload media.
+			{:else}
+				Share to site is only available after you sign in with an <strong>administrator</strong> account
+				on this device. You will land on a short form to set the title and destination before the image
+				uploads to Payload.
+			{/if}
 		</p>
-		<p class="compat">
-			<strong>Device support:</strong> Web Share Target is supported for installed PWAs in
-			<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear in
-			the system share sheet yet. After changing the manifest, remove the home-screen app and add it
-			again so the OS picks up updates.
-			<strong>Preview deployments:</strong> the manifest must use the same host as the app you install;
-			if the share target vanished on a PR build, reinstall after deploy so Chrome picks up the fixed
-			manifest.
-		</p>
+		{#if data.canUseShareTarget}
+			<p class="compat">
+				<strong>Device support:</strong> Web Share Target is supported for installed PWAs in
+				<strong>Chrome on Android</strong>. Safari-installed apps on iPhone and iPad do not appear
+				in the system share sheet yet. After changing the manifest, remove the home-screen app and
+				add it again so the OS picks up updates.
+				<strong>Preview deployments:</strong> the manifest must use the same host as the app you install;
+				if the share target vanished on a PR build, reinstall after deploy so Chrome picks up the fixed
+				manifest.
+			</p>
+		{/if}
 
 		{#if data.hasDraft}
 			<p class="draft-banner" role="status">
@@ -43,7 +47,8 @@
 
 		{#if !data.session?.user}
 			<p class="warn">
-				You are not signed in. <a href="/account/login">Sign in</a> before sharing images.
+				You are not signed in. <a href="/account/login">Sign in</a> with an administrator account before
+				sharing images.
 			</p>
 		{/if}
 
@@ -56,14 +61,6 @@
 				</ul>
 			</div>
 		{/if}
-
-		{#key formKey}
-			<ShareTargetForm
-				signedIn={Boolean(data.session?.user)}
-				destination={data.destination}
-				albums={data.albums}
-			/>
-		{/key}
 	</Panel>
 </div>
 
