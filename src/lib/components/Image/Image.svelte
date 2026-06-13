@@ -5,6 +5,7 @@
 	import type { Media } from '$lib/types/payload-types';
 	import Icon from '$lib/components/Icon';
 	import { getMediaUrl } from '$lib/utils/media-url';
+	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 
 	// All size keys to inspect — mimeType on each entry determines which <source> it belongs to
 	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
@@ -44,7 +45,9 @@
 		/** HTML sizes attribute for source selection. Default suits gallery grid (400-600px columns). */
 		sizes = '(min-width: 1200px) 600px, (min-width: 768px) 50vw, 100vw',
 		/** When true, use loading="eager" and fetchpriority="high" for above-the-fold images */
-		priority = false
+		priority = false,
+		/** When true, block right-click / long-press save menu on images */
+		disableContextMenu = false
 	}: {
 		image: Media;
 		transitionName?: string;
@@ -64,6 +67,8 @@
 		sizes?: string;
 		/** When true, use loading="eager" and fetchpriority="high" for above-the-fold images */
 		priority?: boolean;
+		/** When true, block right-click / long-press save menu on images */
+		disableContextMenu?: boolean;
 	} = $props();
 
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
@@ -224,6 +229,7 @@
 						isLoadFailed = true;
 					}}
 					onclick={hasLightbox ? openLightbox : undefined}
+					oncontextmenu={disableContextMenu ? preventContextMenu : undefined}
 				/>
 			</picture>
 		{/if}
@@ -295,6 +301,7 @@
 									: ''}
 								alt={currentLightboxImage?.alt ?? ''}
 								class="lightbox-image"
+								oncontextmenu={disableContextMenu ? preventContextMenu : undefined}
 							/>
 						</picture>
 					{/key}

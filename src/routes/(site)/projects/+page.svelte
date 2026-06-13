@@ -89,7 +89,6 @@
 					d="m172.95 66.21c-17.02 0-23.38 5.73-29.98 19.4-28.49 0.32-98.99 0.45-104.08 0.45-5.1 0-18.41 8.21-18.41 18.4v31.88 212.53 18.38h18.41 110.69 261.53 18.4v-18.38-212.53-31.88-19.84c0-10.19-8.21-18.4-18.4-18.4z"
 				/>
 			</svg>
-			<span class="tab-label">{project.title}</span>
 			<!-- Paper document on top of folder -->
 			<div class="paper-document">
 				<!-- Top section with photo and stamps -->
@@ -197,21 +196,6 @@
 		transform: translate(-50%, -50%) rotate(90deg);
 		z-index: 1;
 		filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.3));
-	}
-
-	/* Tab label - positioned on the folder's tab area (top left of SVG) */
-	.tab-label {
-		position: absolute;
-		left: 5%;
-		top: 2%;
-		font-family: var(--font-special-elite);
-		font-size: var(--fs-xs);
-		color: #333;
-		z-index: 3;
-		max-width: 25%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 
 	/* Paper document - 8.5" x 11" US Letter, positioned on folder */

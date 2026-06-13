@@ -123,6 +123,7 @@
 				isNsfw={displayMedia.isNsfw}
 				{priority}
 				{responsiveSizes}
+				disableContextMenu={true}
 			/>
 		{/key}
 	</button>

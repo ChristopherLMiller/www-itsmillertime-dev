@@ -126,6 +126,7 @@
 			{onHoverExpand}
 			{onNavigate}
 			{polaroidResponsiveSizes}
+			disableContextMenu={true}
 		/>
 	{/key}
 {/if}
