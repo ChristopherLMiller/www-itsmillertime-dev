@@ -27,6 +27,8 @@
 		priority?: boolean;
 		/** HTML sizes for srcset selection (smaller hints = less download in grids) */
 		responsiveSizes?: string;
+		/** Block right-click / long-press save menu on images */
+		disableContextMenu?: boolean;
 	};
 
 	const {
@@ -46,7 +48,8 @@
 		flipped,
 		onNavigate,
 		priority = false,
-		responsiveSizes
+		responsiveSizes,
+		disableContextMenu = false
 	}: PolaroidProps = $props();
 
 	const displayCaption = $derived(caption ?? '');
@@ -119,6 +122,7 @@
 							{isNsfw}
 							{priority}
 							sizes={responsiveSizes}
+							{disableContextMenu}
 						/>
 					{/if}
 					<div class="polaroid__caption"><p>{displayCaption}</p></div>
@@ -169,6 +173,7 @@
 							{isNsfw}
 							{priority}
 							sizes={responsiveSizes}
+							{disableContextMenu}
 						/>
 					{/if}
 					<div class="polaroid__caption"><p>{displayCaption}</p></div>

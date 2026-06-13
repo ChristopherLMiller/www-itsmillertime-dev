@@ -22,6 +22,8 @@
 		primaryAspectRatio?: number;
 		/** Passed to Polaroid → Image `sizes` for lighter grid downloads */
 		polaroidResponsiveSizes?: string;
+		/** Block right-click / long-press save menu on images */
+		disableContextMenu?: boolean;
 	};
 
 	const {
@@ -41,7 +43,8 @@
 		onHoverExpand,
 		onNavigate,
 		primaryAspectRatio = 4 / 3,
-		polaroidResponsiveSizes
+		polaroidResponsiveSizes,
+		disableContextMenu = false
 	}: PolaroidStackProps = $props();
 
 	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -248,6 +251,7 @@
 					{useProxy}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 					onNavigate={item.isPrimary ? onNavigate : undefined}
+					{disableContextMenu}
 				/>
 			</div>
 		{/if}

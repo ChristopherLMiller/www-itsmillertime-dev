@@ -14,6 +14,7 @@
 		normalizeGalleryImageTracking,
 		type GalleryImageTrackingCounts
 	} from '$lib/utils/gallery-image-tracking/types';
+	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 	import { isVideoMedia } from '$lib/utils/media-url';
 	import { getMediaUrl } from '$lib/utils/media-url';
@@ -371,11 +372,6 @@
 		});
 	}
 
-	/** Best-effort: browsers do not expose a save event; context menu open is a proxy. */
-	function handleImageContextMenu() {
-		void trackEvent('download');
-	}
-
 	function handleShare() {
 		void trackEvent('share');
 	}
@@ -525,7 +521,7 @@
 									style:opacity={mainImageLoaded ? 1 : 0}
 									onload={markMainImageReady}
 									onerror={markMainImageReady}
-									oncontextmenu={handleImageContextMenu}
+									oncontextmenu={preventContextMenu}
 								/>
 							</picture>
 						{/key}
