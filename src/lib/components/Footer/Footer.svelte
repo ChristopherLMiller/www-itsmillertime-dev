@@ -12,7 +12,8 @@
 		if (parts.length <= 2) return null;
 
 		const sub = parts.slice(0, -2).join('.');
-		return sub || null;
+		if (!sub || sub === 'www') return null;
+		return sub;
 	}
 
 	let pullRequestNumber = $derived(subdomainFromHostname(page.url.hostname));
