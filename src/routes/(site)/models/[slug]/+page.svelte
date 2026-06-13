@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Image from '$lib/components/Image.svelte';
-	import Icon from '$lib/components/Icon.svelte';
-	import Panel from '$lib/Panel.svelte';
-	import StickyNote from '$lib/components/StickyNote.svelte';
-	import TimelineCard from '$lib/components/TimelineCard.svelte';
+	import Image from '$lib/components/Image';
+	import Icon from '$lib/components/Icon';
+	import Panel from '$lib/components/Panel';
+	import StickyNote from '$lib/components/StickyNote';
+	import TimelineCard from '$lib/components/TimelineCard';
 	import { type Kit, type Media } from '$lib/types/payload-types.js';
-	import { convertDate } from '../../../../utilities/convertDate';
-	import { makeClockifyDurationFriendly } from '../../../../utilities/makeClockifyDurationFriendly';
-	import Disqus from '$lib/components/Disqus.svelte';
-	import ShareButtons from '$lib/components/ShareButtons.svelte';
-	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
+	import { convertDate } from '$lib/utils/convertDate';
+	import { makeClockifyDurationFriendly } from '$lib/utils/makeClockifyDurationFriendly';
+	import Disqus from '$lib/components/Disqus';
+	import ShareButtons from '$lib/components/ShareButtons';
+	import VideoPlayer from '$lib/components/VideoPlayer';
 
 	type ClockifyProject = { duration: string };
 

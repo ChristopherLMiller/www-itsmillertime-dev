@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Panel from '$lib/Panel.svelte';
+	import Panel from '$lib/components/Panel';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

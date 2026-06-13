@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { authClient } from '$lib/auth-client';
-	import Panel from '$lib/Panel.svelte';
+	import { authClient } from '$lib/auth/client';
+	import Panel from '$lib/components/Panel';
 
 	let signingOut = $state(false);
 

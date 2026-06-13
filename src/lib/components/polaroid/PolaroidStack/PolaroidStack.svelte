@@ -1,0 +1,317 @@
+<script lang="ts">
+	import Polaroid from '$lib/components/polaroid/Polaroid';
+	import type { Media } from '$lib/types/payload-types';
+
+	type PolaroidStackProps = {
+		primary: Media;
+		images?: Media[];
+		caption?: string;
+		className?: string;
+		maxStack?: number;
+		enableViewTransition?: boolean;
+		hoverFlip?: boolean;
+		albumTitle?: string;
+		albumDescription?: string;
+		useProxy?: boolean;
+		isNsfw?: boolean;
+		nsfwImageIds?: Set<number>;
+		albumId?: number;
+		onHoverExpand?: (albumId: number) => void | Promise<void>;
+		onNavigate?: () => void;
+		/** Primary card aspect ratio (width/height); stacked items keep 4/3 if unset */
+		primaryAspectRatio?: number;
+		/** Passed to Polaroid → Image `sizes` for lighter grid downloads */
+		polaroidResponsiveSizes?: string;
+	};
+
+	const {
+		primary,
+		images = [],
+		caption,
+		className = '',
+		maxStack = 6,
+		enableViewTransition = false,
+		hoverFlip = false,
+		albumTitle,
+		albumDescription,
+		useProxy = false,
+		isNsfw = false,
+		nsfwImageIds,
+		albumId,
+		onHoverExpand,
+		onNavigate,
+		primaryAspectRatio = 4 / 3,
+		polaroidResponsiveSizes
+	}: PolaroidStackProps = $props();
+
+	const initialViewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+	const initialViewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+
+	let container: HTMLDivElement | null = $state(null);
+	let viewportWidth = $state(initialViewportWidth);
+	let viewportHeight = $state(initialViewportHeight);
+	let hasBeenHovered = $state(false);
+	let isHovering = $state(false);
+	let expandedItemKeys = $state<Set<string>>(new Set());
+
+	function isMedia(value: unknown): value is Media {
+		return typeof value === 'object' && value !== null && 'id' in value;
+	}
+
+	function handleMouseEnter() {
+		hasBeenHovered = true;
+		isHovering = true;
+	}
+
+	function handleMouseLeave() {
+		isHovering = false;
+	}
+
+	let touchStartTime = 0;
+	const LONG_PRESS_MS = 400;
+
+	function polaroidStackTouch(node: HTMLElement) {
+		function onTouchStart() {
+			touchStartTime = Date.now();
+		}
+		function onTouchEnd(e: TouchEvent) {
+			if (stackMedias.length <= 1) return;
+			const duration = Date.now() - touchStartTime;
+			if (duration >= LONG_PRESS_MS) {
+				hasBeenHovered = true;
+				isHovering = true;
+				e.preventDefault();
+			}
+		}
+		node.addEventListener('touchstart', onTouchStart, { passive: true });
+		node.addEventListener('touchend', onTouchEnd, { passive: false, capture: true });
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', onTouchStart);
+				node.removeEventListener('touchend', onTouchEnd, { capture: true });
+			}
+		};
+	}
+
+	const secondaryMedia = $derived(
+		images
+			.filter((value): value is Media => isMedia(value))
+			.filter((media) => media.id !== primary.id)
+			.slice(0, Math.max(0, maxStack - 1))
+	);
+
+	const stackMedias = $derived([primary, ...secondaryMedia]);
+
+	const stackLayout = $derived.by(() => {
+		// Force recalculation when hovering to get fresh container position
+		const shouldRecalcBounds = isHovering;
+
+		return stackMedias.map((media, index, array) => {
+			const total = array.length;
+			const isPrimary = index === 0;
+			const offset = isPrimary ? 0 : index - (total - 1) / 2;
+			const depth = total - index - 1;
+			const randomSeed = (media.id ?? index) * 97.371;
+			const jitter = (Math.sin(randomSeed) + 1) / 2;
+			const baseSpread = 48 + total * 4;
+
+			let translateX = isPrimary ? 0 : offset * baseSpread;
+			let translateY = isPrimary ? 0 : depth * 26 + 32 + Math.abs(offset) * 14;
+			const rotate = isPrimary ? 0 : offset * 7 + (jitter - 0.5) * 15;
+
+			if (!isPrimary && container && shouldRecalcBounds) {
+				const rect = container.getBoundingClientRect();
+				const reservedEdge = 64;
+				const width = rect.width;
+				const height = rect.height;
+
+				// Calculate where the polaroid will end up in viewport coordinates
+				const futureLeft = rect.left + translateX;
+				const futureRight = futureLeft + width;
+				const futureTop = rect.top + translateY;
+				const futureBottom = futureTop + height;
+
+				// Adjust if it goes out of bounds
+				if (futureLeft < reservedEdge) {
+					translateX += reservedEdge - futureLeft;
+				}
+				if (futureRight > viewportWidth - reservedEdge) {
+					translateX -= futureRight - (viewportWidth - reservedEdge);
+				}
+				if (futureTop < reservedEdge) {
+					translateY += reservedEdge - futureTop;
+				}
+				if (futureBottom > viewportHeight - reservedEdge) {
+					translateY -= futureBottom - (viewportHeight - reservedEdge);
+				}
+			}
+
+			return {
+				key: `${media.id ?? 'media'}-${index}`,
+				media,
+				translateX,
+				translateY,
+				rotate,
+				zIndex: array.length - index,
+				isPrimary,
+				caption: isPrimary ? (caption ?? media.alt ?? '') : (media.alt ?? '')
+			};
+		});
+	});
+
+	const secondaryKeysSignature = $derived(
+		stackLayout
+			.filter((item) => !item.isPrimary)
+			.map((item) => item.key)
+			.join('|')
+	);
+
+	$effect(() => {
+		if (!isHovering) {
+			expandedItemKeys = new Set();
+			return;
+		}
+
+		if (!secondaryKeysSignature) return;
+
+		// Force a collapsed frame first, then expand on the next frame so
+		// newly loaded items always animate outward instead of popping.
+		expandedItemKeys = new Set();
+		const frame = requestAnimationFrame(() => {
+			expandedItemKeys = new Set(secondaryKeysSignature.split('|'));
+		});
+
+		return () => cancelAnimationFrame(frame);
+	});
+
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		const updateViewport = () => {
+			viewportWidth = window.innerWidth;
+			viewportHeight = window.innerHeight;
+		};
+
+		updateViewport();
+		window.addEventListener('resize', updateViewport);
+
+		return () => {
+			window.removeEventListener('resize', updateViewport);
+		};
+	});
+
+	// When hovered, fetch full album images if we have albumId and callback
+	$effect(() => {
+		if (hasBeenHovered && albumId != null && onHoverExpand) {
+			onHoverExpand(albumId);
+		}
+	});
+
+	function handleClickOutside(e: MouseEvent) {
+		const target = e.target as Node;
+		if (container && !container.contains(target)) {
+			isHovering = false;
+		}
+	}
+</script>
+
+<svelte:window onclick={handleClickOutside} />
+
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	bind:this={container}
+	class="polaroid-stack {className} {isHovering ? 'polaroid-stack--expanded' : ''}"
+	onmouseenter={handleMouseEnter}
+	onmouseleave={handleMouseLeave}
+	use:polaroidStackTouch
+>
+	{#each stackLayout as item (item.key)}
+		{#if item.isPrimary || hasBeenHovered}
+			<div
+				class="polaroid-stack__item {item.isPrimary
+					? 'polaroid-stack__item--primary'
+					: ''} {expandedItemKeys.has(item.key) ? 'polaroid-stack__item--expanded' : ''}"
+				style={`z-index: ${item.zIndex}; --target-translate-x: ${item.translateX}px; --target-translate-y: ${item.translateY}px; --target-rotate: ${item.rotate}deg;`}
+			>
+				<Polaroid
+					media={item.media}
+					caption={item.caption}
+					interactive={item.isPrimary}
+					className="polaroid-stack__polaroid"
+					{enableViewTransition}
+					hoverFlip={item.isPrimary && hoverFlip}
+					flipped={item.isPrimary && hoverFlip && isHovering}
+					albumTitle={item.isPrimary ? albumTitle : undefined}
+					albumDescription={item.isPrimary ? albumDescription : undefined}
+					fixedAspectRatio={item.isPrimary ? primaryAspectRatio : 4 / 3}
+					responsiveSizes={polaroidResponsiveSizes}
+					{useProxy}
+					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
+					onNavigate={item.isPrimary ? onNavigate : undefined}
+				/>
+			</div>
+		{/if}
+	{/each}
+</div>
+
+<style>
+	.polaroid-stack {
+		position: relative;
+		display: inline-block;
+		width: min(18rem, 90vw);
+		margin: 0;
+		z-index: 0;
+	}
+
+	.polaroid-stack:hover,
+	.polaroid-stack:focus-within,
+	.polaroid-stack.polaroid-stack--expanded {
+		z-index: 50;
+	}
+
+	.polaroid-stack__item {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		pointer-events: none;
+		transform-origin: center;
+		--target-translate-x: 0px;
+		--target-translate-y: 0px;
+		--target-rotate: 0deg;
+		--translate-x: 0px;
+		--translate-y: 0px;
+		--rotate: 0deg;
+		transform: translate3d(var(--translate-x), var(--translate-y), 0) rotate(var(--rotate));
+		opacity: 0;
+		transition:
+			transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 180ms ease,
+			z-index 200ms ease;
+	}
+
+	.polaroid-stack:hover .polaroid-stack__item--expanded:not(.polaroid-stack__item--primary),
+	.polaroid-stack.polaroid-stack--expanded
+		.polaroid-stack__item--expanded:not(.polaroid-stack__item--primary) {
+		--translate-x: var(--target-translate-x);
+		--translate-y: var(--target-translate-y);
+		--rotate: var(--target-rotate);
+		opacity: 1;
+	}
+
+	.polaroid-stack__item--primary {
+		position: relative;
+		pointer-events: auto;
+		transform: none;
+		opacity: 1;
+		z-index: 1000 !important;
+	}
+
+	.polaroid-stack__item--primary ~ .polaroid-stack__item {
+		pointer-events: none;
+	}
+
+	:global(.polaroid-stack__polaroid.polaroid) {
+		width: 100%;
+	}
+</style>

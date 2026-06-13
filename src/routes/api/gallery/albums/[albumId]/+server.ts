@@ -1,17 +1,40 @@
-import { getPayloadSDK } from '$lib/payload.server';
+import { getMergedSessionUser } from '$lib/auth/requireAdmin.server';
+import { getPayloadSDK } from '$lib/payload/sdk.server';
+import { canAccessGallerySettings } from '$lib/utils/gallery-access';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
  * Lightweight preview images for a gallery album (polaroid stack hover).
  */
-export const GET: RequestHandler = async ({ params, fetch, request }) => {
+export const GET: RequestHandler = async (event) => {
+	const { params, fetch, request } = event;
 	const albumId = Number(params.albumId);
 	if (!Number.isFinite(albumId)) {
 		return json({ error: 'Invalid album ID' }, { status: 400 });
 	}
 
+	const user = await getMergedSessionUser(event);
 	const sdk = getPayloadSDK(fetch, request);
+
+	const album = await sdk.findByID({
+		collection: 'gallery-albums',
+		id: albumId,
+		depth: 0,
+		select: {
+			settings: {
+				isNsfw: true,
+				visibility: true,
+				permittedRoles: true,
+				allowedUsers: true
+			}
+		},
+		disableErrors: true
+	});
+
+	if (!album || !canAccessGallerySettings(album.settings, user)) {
+		return json({ error: 'Not found' }, { status: 404 });
+	}
 
 	const imagesResult = await sdk.find({
 		collection: 'gallery-images',

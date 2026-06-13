@@ -1,13 +1,13 @@
 <script lang="ts">
-	import Image from '$lib/components/Image.svelte';
-	import NodeRenderer from '$lib/NodeRenderer.svelte';
+	import Image from '$lib/components/Image';
+	import NodeRenderer from '$lib/components/NodeRenderer';
 	import type { Media, Post, PostsTag } from '$lib/types/payload-types';
 	import {
 		paragraphNodeToPlainTextOnly,
 		processLexicalNode,
 		stripFirstCharacterFromParagraphNode
-	} from '../../../../utilities/lexicalProcessNode';
-	import { getLexicalParagraphsUpToWords } from '../../../../utilities/lexicalParagraphsUpToWords';
+	} from '$lib/utils/lexicalProcessNode';
+	import { getLexicalParagraphsUpToWords } from '$lib/utils/lexicalParagraphsUpToWords';
 	import { NEWSPAPER_LEAD_MAX_WORDS } from '../newspaperLeadConstants';
 
 	interface Props {

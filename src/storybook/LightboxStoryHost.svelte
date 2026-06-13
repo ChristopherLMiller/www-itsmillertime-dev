@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Lightbox from '$lib/components/Lightbox.svelte';
+	import Lightbox from '$lib/components/gallery/Lightbox';
 	import type { Media } from '$lib/types/payload-types';
 
 	let {

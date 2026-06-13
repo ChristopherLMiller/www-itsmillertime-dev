@@ -1,5 +1,5 @@
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
-import { readDraftFile, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target-draft.server';
+import { readDraftFile, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target/draft.server';
 import { error, type RequestHandler } from '@sveltejs/kit';
 
 /** Private preview of the pending share (requires draft cookie and admin role). */

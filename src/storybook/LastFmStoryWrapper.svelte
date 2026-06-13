@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying.svelte';
+	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying';
 
 	const origFetch = globalThis.fetch.bind(globalThis);
 	globalThis.fetch = (

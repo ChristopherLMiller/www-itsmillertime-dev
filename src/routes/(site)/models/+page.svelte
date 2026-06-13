@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ModelCard from '$lib/components/ModelCard.svelte';
-	import Paginator from '$lib/Paginator.svelte';
+	import ModelCard from '$lib/components/ModelCard';
+	import Paginator from '$lib/components/Paginator';
 
 	const { data } = $props();
 

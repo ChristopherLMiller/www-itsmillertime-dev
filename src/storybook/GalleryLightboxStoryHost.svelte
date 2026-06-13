@@ -1,5 +1,5 @@
 <script lang="ts">
-	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
+	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
 	import { getMediaUrl } from '$lib/utils/media-url';
 	import type { GalleryAlbum, Media } from '$lib/types/payload-types';
 	import { fn } from 'storybook/test';
@@ -35,5 +35,6 @@
 	onNext={fn()}
 	hasPrevious={false}
 	hasNext={false}
+	galleryImageId={1}
 	{useProxy}
 />

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import ModelCard from '$lib/components/ModelCard.svelte';
+	import ModelCard from '$lib/components/ModelCard';
 	import type { Model } from '$lib/types/payload-types';
 
 	let { model }: { model: Model } = $props();

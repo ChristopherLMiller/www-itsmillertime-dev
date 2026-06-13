@@ -4,8 +4,8 @@ import {
 	DRAFT_MAX_BYTES,
 	SHARE_TARGET_DRAFT_COOKIE,
 	saveDraft
-} from '$lib/share-target-draft.server';
-import { isImageFile } from '$lib/share-target-payload-upload.server';
+} from '$lib/share-target/draft.server';
+import { isImageFile } from '$lib/share-target/payload-upload.server';
 import { redirect, type RequestHandler } from '@sveltejs/kit';
 
 function escapeHtml(s: string): string {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Panel from '$lib/Panel.svelte';
+	import Panel from '$lib/components/Panel';
 
 	type BggGame = {
 		id: number;

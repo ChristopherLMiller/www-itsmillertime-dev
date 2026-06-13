@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/auth/client';
 	import { onMount } from 'svelte';
 
 	let error = $state<string | null>(null);
