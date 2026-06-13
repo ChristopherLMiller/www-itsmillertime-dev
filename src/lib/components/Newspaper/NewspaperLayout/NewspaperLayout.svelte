@@ -2,8 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { PostsCategory, PostsTag } from '$lib/types/payload-types';
-	import { fetchLocalWeatherSummary } from '$lib/utilities/fetchLocalWeather';
-	import { romanize } from '$lib/utilities/romanize';
+	import { fetchLocalWeatherSummary } from '$lib/utils/fetchLocalWeather';
+	import { romanize } from '$lib/utils/romanize';
 	import { onMount, type Snippet } from 'svelte';
 
 	type Pagination = {

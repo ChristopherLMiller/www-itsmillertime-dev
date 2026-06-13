@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { authClient } from '$lib/auth-client';
-	import Panel from '$lib/Panel.svelte';
+	import { authClient } from '$lib/auth/client';
+	import Panel from '$lib/components/Panel';
 
 	const session = authClient.useSession();
 

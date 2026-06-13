@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Lexical from '$lib/Lexical.svelte';
-	import Panel from '$lib/Panel.svelte';
+	import Lexical from '$lib/components/Lexical';
+	import Panel from '$lib/components/Panel';
 
 	const { data } = $props();
 	const pageData = $derived(data.page);

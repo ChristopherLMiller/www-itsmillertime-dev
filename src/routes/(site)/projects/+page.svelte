@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Lexical from '$lib/Lexical.svelte';
+	import Lexical from '$lib/components/Lexical';
 	import type { PageData } from './$types';
 	import type { Project } from '$lib/types/payload-types';
 

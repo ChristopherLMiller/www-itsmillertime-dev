@@ -1,4 +1,4 @@
-import { getPayloadSDK } from '$lib/payload.server';
+import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { cacheManager } from '$lib/cache/cache';
 import type { Post } from '$lib/types/payload-types';
 import { error } from '@sveltejs/kit';

@@ -1,4 +1,4 @@
-import siteManifest from '$lib/site-manifest.json';
+import siteManifest from './site-manifest.json';
 import { json, type RequestHandler } from '@sveltejs/kit';
 
 type SiteManifest = typeof siteManifest;

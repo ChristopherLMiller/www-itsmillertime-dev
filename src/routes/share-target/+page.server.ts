@@ -1,6 +1,6 @@
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
-import { readDraftMeta, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target-draft.server';
-import { SHARE_TARGET_FLASH_COOKIE } from '$lib/share-target-destination';
+import { readDraftMeta, SHARE_TARGET_DRAFT_COOKIE } from '$lib/share-target/draft.server';
+import { SHARE_TARGET_FLASH_COOKIE } from '$lib/share-target/destination';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {

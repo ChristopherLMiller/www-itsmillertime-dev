@@ -2,9 +2,9 @@
 	import { browser } from '$app/environment';
 	import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import FilmStrip from '$lib/components/FilmStrip.svelte';
-	import Paginator from '$lib/Paginator.svelte';
-	import GalleryLandingPolaroidStack from '$lib/components/GalleryLandingPolaroidStack.svelte';
+	import FilmStrip from '$lib/components/gallery/FilmStrip';
+	import Paginator from '$lib/components/Paginator';
+	import GalleryLandingPolaroidStack from '$lib/components/gallery/GalleryLandingPolaroidStack';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { Media } from '$lib/types/payload-types';
 	import { SvelteMap } from 'svelte/reactivity';

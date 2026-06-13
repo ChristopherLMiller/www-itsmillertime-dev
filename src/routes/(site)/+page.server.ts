@@ -1,4 +1,4 @@
-import { getPayloadSDK } from '$lib/payload.server';
+import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

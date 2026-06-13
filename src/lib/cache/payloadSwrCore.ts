@@ -1,4 +1,4 @@
-import { PAYLOAD_SWR_HEADER } from '$lib/payloadSwr';
+import { PAYLOAD_SWR_HEADER } from '$lib/payload/swr-init';
 
 export type PayloadSwrKeyContext = {
 	pathname: string;

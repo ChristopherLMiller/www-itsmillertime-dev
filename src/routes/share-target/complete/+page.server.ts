@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
-import { getPayloadSDK } from '$lib/payload.server';
+import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { getMediaUrl } from '$lib/utils/media-url';
 import type { GalleryImage, Media } from '$lib/types/payload-types';
 import type { PageServerLoad } from './$types';

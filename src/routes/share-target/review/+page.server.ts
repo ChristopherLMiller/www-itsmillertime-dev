@@ -6,12 +6,12 @@ import {
 	readDraftFile,
 	readDraftMeta,
 	SHARE_TARGET_DRAFT_COOKIE
-} from '$lib/share-target-draft.server';
-import { uploadForDestination } from '$lib/share-target-payload-upload.server';
+} from '$lib/share-target/draft.server';
+import { uploadForDestination } from '$lib/share-target/payload-upload.server';
 import {
 	SHARE_TARGET_FLASH_COOKIE,
 	type ShareTargetDestination
-} from '$lib/share-target-destination';
+} from '$lib/share-target/destination';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 

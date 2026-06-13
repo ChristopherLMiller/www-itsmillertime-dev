@@ -3,12 +3,13 @@
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import Masonry from 'svelte-bricks';
-	import Panel from '$lib/Panel.svelte';
-	import GalleryAlbumHeader from '$lib/components/GalleryAlbumHeader.svelte';
-	import GalleryAlbumPolaroid from '$lib/components/GalleryAlbumPolaroid.svelte';
-	import Lightbox from '$lib/components/Lightbox.svelte';
-	import GalleryLightboxContent from '$lib/components/GalleryLightboxContent.svelte';
+	import Panel from '$lib/components/Panel';
+	import GalleryAlbumHeader from '$lib/components/gallery/GalleryAlbumHeader';
+	import GalleryAlbumPolaroid from '$lib/components/gallery/GalleryAlbumPolaroid';
+	import Lightbox from '$lib/components/gallery/Lightbox';
+	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
 	import type { GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 
@@ -24,6 +25,7 @@
 	const albumIsNsfw = $derived(data.gallery.settings?.isNsfw === true);
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
+	const isDirectLinkEntry = $derived(data.selectedGalleryImageId != null);
 
 	type ImageSlot = {
 		id: number;
@@ -49,6 +51,51 @@
 	let loadMoreSentinel = $state<HTMLDivElement | null>(null);
 	/** Only reset infinite-scroll client state when navigating to a different album */
 	let syncedGalleryId = $state<number | null>(null);
+	let directLinkDismissed = $state(false);
+	let directLinkResolving = $state(false);
+	let directLinkFailed = $state(false);
+
+	const showAlbumChrome = $derived(!isDirectLinkEntry || directLinkDismissed);
+
+	function galleryImageLinkId(media: GalleryGridMedia): number {
+		return media.galleryImageId ?? media.id;
+	}
+
+	function findGalleryImageIndex(selectedId: number): number {
+		return galleryImages.findIndex(
+			(m) => m.id === selectedId || m.galleryImageId === selectedId || galleryImageLinkId(m) === selectedId
+		);
+	}
+
+	function injectResolvedMedia(media: GalleryGridMedia) {
+		const galleryImageId = galleryImageLinkId(media);
+		slotMedia = { ...slotMedia, [galleryImageId]: media };
+		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
+
+		if (!galleryImageSlots.some((slot) => slot.id === galleryImageId)) {
+			galleryImageSlots = [
+				{
+					id: galleryImageId,
+					width: media.width,
+					height: media.height,
+					blurhash: media.blurhash,
+					isNsfw: media.isNsfw
+				},
+				...galleryImageSlots
+			];
+		}
+	}
+
+	function setSelectedUrl(selectedId: number | null) {
+		if (!browser) return;
+		const nextUrl = new URL(window.location.href);
+		if (selectedId == null) {
+			nextUrl.searchParams.delete('selected');
+		} else {
+			nextUrl.searchParams.set('selected', String(selectedId));
+		}
+		replaceState(nextUrl, page.state);
+	}
 
 	const visibleSlots = $derived(
 		galleryImageSlots.filter((s) => !(nsfwPref === 'hide' && s.isNsfw))
@@ -64,31 +111,25 @@
 	);
 
 	function openLightboxForItem(item: GalleryGridMedia) {
-		const idx = galleryImages.findIndex((m) => m.id === item.id);
+		const idx = findGalleryImageIndex(galleryImageLinkId(item));
 		if (idx === -1) return;
-		pinnedLightboxFileMediaId = item.id;
+		pinnedLightboxFileMediaId = galleryImageLinkId(item);
 		lightboxIndex = idx;
 		lightboxOpen = true;
-		const url = new URL(window.location.href);
-		url.searchParams.set('selected', String(item.id));
-		replaceState(url, page.state);
+		setSelectedUrl(galleryImageLinkId(item));
 	}
 
 	function closeLightbox() {
 		pinnedLightboxFileMediaId = null;
-		const url = new URL(window.location.href);
-		url.searchParams.delete('selected');
-		replaceState(url, page.state);
+		directLinkDismissed = true;
+		setSelectedUrl(null);
 	}
 
 	function updateUrlForIndex(index: number) {
 		const media = galleryImages[index];
-		if (media?.id != null && typeof window !== 'undefined') {
-			pinnedLightboxFileMediaId = media.id;
-			const url = new URL(window.location.href);
-			url.searchParams.set('selected', String(media.id));
-			replaceState(url, page.state);
-		}
+		if (media == null) return;
+		pinnedLightboxFileMediaId = galleryImageLinkId(media);
+		setSelectedUrl(galleryImageLinkId(media));
 	}
 
 	async function loadNextImagePage() {
@@ -130,22 +171,48 @@
 		}
 	}
 
-	// Open lightbox on load when ?selected=<file media id> is present
+	async function resolveDirectLink(selectedId: number) {
+		if (directLinkResolving || directLinkFailed) return;
+		directLinkResolving = true;
+		directLinkFailed = false;
+
+		try {
+			const media = await fetchGalleryImageFullForPolaroid(selectedId, albumIsNsfw);
+			if (!media) {
+				directLinkFailed = true;
+				directLinkDismissed = true;
+				setSelectedUrl(null);
+				return;
+			}
+
+			injectResolvedMedia(media);
+			const idx = findGalleryImageIndex(selectedId);
+			if (idx === -1) return;
+
+			pinnedLightboxFileMediaId = selectedId;
+			lightboxIndex = idx;
+			lightboxOpen = true;
+		} finally {
+			directLinkResolving = false;
+		}
+	}
+
+	// Open lightbox on load when ?selected=<gallery-image id> is present
 	$effect(() => {
-		const selected = page.url.searchParams.get('selected');
-		if (!selected || visibleSlots.length === 0) return;
-		const fileMediaId = parseInt(selected, 10);
-		if (Number.isNaN(fileMediaId)) return;
-		const idx = galleryImages.findIndex((m) => m.id === fileMediaId);
+		const selectedId = data.selectedGalleryImageId;
+		if (!browser || selectedId == null) return;
+
+		const idx = findGalleryImageIndex(selectedId);
 		if (idx !== -1) {
-			pinnedLightboxFileMediaId = fileMediaId;
+			pinnedLightboxFileMediaId = selectedId;
 			lightboxIndex = idx;
 			lightboxOpen = true;
 			return;
 		}
-		const stillLoading = visibleSlots.some((s) => !slotFetchDone[s.id]);
-		if (stillLoading) return;
-		if (hasNextPage && !isLoadingMore) void loadNextImagePage();
+
+		if (directLinkResolving || directLinkFailed) return;
+
+		void resolveDirectLink(selectedId);
 	});
 
 	function handlePolaroidResolved(galleryImageId: number, media: GalleryGridMedia) {
@@ -171,6 +238,9 @@
 		if (syncedGalleryId === galleryId) return;
 
 		syncedGalleryId = galleryId;
+		directLinkDismissed = false;
+		directLinkResolving = false;
+		directLinkFailed = false;
 		galleryImageSlots = docs.map((d) => ({
 			id: d.id,
 			width: d.width,
@@ -215,7 +285,7 @@
 
 	$effect(() => {
 		if (!lightboxOpen || pinnedLightboxFileMediaId == null) return;
-		const idx = galleryImages.findIndex((m) => m.id === pinnedLightboxFileMediaId);
+		const idx = findGalleryImageIndex(pinnedLightboxFileMediaId);
 		if (idx !== -1) lightboxIndex = idx;
 	});
 </script>
@@ -233,7 +303,7 @@
 			</Panel>
 		</div>
 	</div>
-{:else}
+{:else if showAlbumChrome}
 	<div class="gallery-page">
 		<GalleryAlbumHeader
 			gallery={data.gallery as unknown as GalleryAlbum}
@@ -296,7 +366,20 @@
 			<p class="gallery-load-error">{infiniteLoadError}</p>
 		{/if}
 	</div>
+{:else if directLinkFailed}
+	<div class="gallery-page">
+		<div class="gallery-header-wrap">
+			<Panel hasBorder hasPadding>
+				<header class="gallery-header">
+					<h1>{data.gallery.title}</h1>
+					<p class="gallery-hidden-notice">This image is not available.</p>
+				</header>
+			</Panel>
+		</div>
+	</div>
+{/if}
 
+{#if !shouldHideAlbum}
 	<Lightbox
 		images={galleryImages}
 		totalCount={totalImageCount}

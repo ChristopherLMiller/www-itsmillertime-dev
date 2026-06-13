@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Image from '$lib/components/Image.svelte';
-	import Lexical from '$lib/Lexical.svelte';
+	import Image from '$lib/components/Image';
+	import Lexical from '$lib/components/Lexical';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import type { Media, Post, PostsTag } from '$lib/types/payload-types';
 	import type { Snippet } from 'svelte';

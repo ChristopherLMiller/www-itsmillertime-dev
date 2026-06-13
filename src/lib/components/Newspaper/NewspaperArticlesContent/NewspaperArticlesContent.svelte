@@ -1,9 +1,9 @@
 <script lang="ts">
-	import Image from '$lib/components/Image.svelte';
+	import Image from '$lib/components/Image';
 	import type { Media, Post, PostsTag } from '$lib/types/payload-types';
 	import NewspaperLeadNoImage from '../NewspaperLeadNoImage/NewspaperLeadNoImage.svelte';
 	import NewspaperLeadWithImage from '../NewspaperLeadWithImage/NewspaperLeadWithImage.svelte';
-	import { getFirstParagraph } from '../../../../utilities/getFirstParagraph';
+	import { getFirstParagraph } from '$lib/utils/getFirstParagraph';
 
 	interface Props {
 		articles: Post[] | null;

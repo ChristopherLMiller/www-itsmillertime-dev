@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Accordian from '$lib/components/Accordian.svelte';
-	import Image from '$lib/components/Image.svelte';
-	import Lexical from '$lib/Lexical.svelte';
-	import Panel from '$lib/Panel.svelte';
+	import Accordian from '$lib/components/Accordian';
+	import Image from '$lib/components/Image';
+	import Lexical from '$lib/components/Lexical';
+	import Panel from '$lib/components/Panel';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();

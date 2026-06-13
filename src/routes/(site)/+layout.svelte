@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { invalidate, onNavigate } from '$app/navigation';
-	import NavigationProgress from '$lib/components/NavigationProgress.svelte';
-	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying.svelte';
-	import Footer from '$lib/Footer.svelte';
-	import Header from '$lib/Header.svelte';
-	import Meta from '$lib/meta/Meta.svelte';
-	import Navigation from '$lib/navigation/Navigation.svelte';
-	import GrungeOverlay from '$lib/components/GrungeOverlay.svelte';
-	import AdminUtilitiesDock from '$lib/components/AdminUtilitiesDock.svelte';
-	import TopBar from '$lib/TopBar.svelte';
+	import NavigationProgress from '$lib/components/NavigationProgress';
+	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying';
+	import Footer from '$lib/components/Footer';
+	import Header from '$lib/components/Header';
+	import Meta from '$lib/components/meta/Meta';
+	import Navigation from '$lib/components/navigation/Navigation';
+	import GrungeOverlay from '$lib/components/GrungeOverlay';
+	import AdminUtilitiesDock from '$lib/components/AdminUtilitiesDock';
+	import TopBar from '$lib/components/TopBar';
 	import { browserCache, LAYOUT_CACHE_KEY } from '$lib/cache/browserCache';
 	import { isSilentRefresh } from '$lib/stores/silentRefresh';
 	import './styles.css';
