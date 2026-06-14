@@ -4,8 +4,8 @@ import type { SiteMeta, SiteNavigation } from '$lib/types/payload-types';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const NAV_CACHE_KEY = 'layout:nav';
-const META_CACHE_KEY = 'layout:meta';
+const NAV_CACHE_KEY = 'layout:site-navigation';
+const META_CACHE_KEY = 'layout:site-meta';
 const STALE_THRESHOLD_S = 300; // 5 minutes
 
 export interface LayoutApiResponse {
