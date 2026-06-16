@@ -3,7 +3,7 @@ import { createPayloadFetch } from '$lib/payload';
 import type { RequestEvent } from '@sveltejs/kit';
 
 /**
- * Same merge as `(site)/+layout.server.ts`: better-auth session + Payload `/users/me`
+ * Same merge as `(site)/+layout.ts`: better-auth session + Payload `/users/me`
  * so `role` (e.g. admin) is present when the user is logged in.
  */
 export async function getMergedSessionUser(event: RequestEvent) {

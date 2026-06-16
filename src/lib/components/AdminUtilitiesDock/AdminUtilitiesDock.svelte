@@ -7,7 +7,9 @@
 		BROWSER_CACHE_SCHEMA_VERSION,
 		BROWSER_CACHE_STORE_NAME,
 		browserCache,
-		LAYOUT_CACHE_KEY,
+		LAYOUT_CACHE_KEY_LEGACY,
+		LAYOUT_META_CACHE_KEY,
+		LAYOUT_NAV_CACHE_KEY,
 		type IdbCacheRow
 	} from '$lib/cache/browserCache';
 	import { PUBLIC_PAYLOAD_URL, PUBLIC_URL } from '$env/static/public';
@@ -128,6 +130,13 @@
 		idbLoading = true;
 		idbError = null;
 		try {
+			const probe = await browserCache.probe();
+			if (!probe.ok) {
+				idbError = probe.error ?? 'IndexedDB is not available in this browser.';
+				idbEntries = [];
+				return;
+			}
+
 			idbEntries = await browserCache.listAllEntries();
 		} catch (e) {
 			idbError = e instanceof Error ? e.message : 'Failed to read IndexedDB';
@@ -323,7 +332,11 @@
 		layoutClearBusy = true;
 		layoutClearMsg = null;
 		try {
-			await browserCache.clear(LAYOUT_CACHE_KEY);
+			await Promise.all([
+				browserCache.clear(LAYOUT_NAV_CACHE_KEY),
+				browserCache.clear(LAYOUT_META_CACHE_KEY),
+				browserCache.clear(LAYOUT_CACHE_KEY_LEGACY)
+			]);
 			await invalidate('app:layout');
 			layoutClearMsg = 'IndexedDB layout cache cleared; layout reloaded.';
 			await loadIdbEntries();
@@ -632,7 +645,11 @@
 								{#if idbLoading && idbEntries.length === 0 && !idbError}
 									<p class="admin-dock-note">Reading IndexedDB…</p>
 								{:else if !idbLoading && idbEntries.length === 0 && !idbError}
-									<p class="admin-dock-note">No entries in this store.</p>
+									<p class="admin-dock-note">
+										No entries in <code>{BROWSER_CACHE_DB_NAME}</code> yet. Visit layout, article, or
+										project pages while online first — going offline does not remove IndexedDB, but a
+										full page refresh while offline needs those entries to already exist.
+									</p>
 								{:else if idbEntries.length > 0}
 									<ul class="admin-dock-idb-list">
 										{#each idbEntries as row (row.key)}

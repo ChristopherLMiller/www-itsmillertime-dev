@@ -8,10 +8,11 @@
 
 	interface Props {
 		article: Post;
+		share?: Snippet;
 		footer?: Snippet;
 	}
 
-	let { article, footer }: Props = $props();
+	let { article, share, footer }: Props = $props();
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -81,29 +82,46 @@
 		>
 			{article.title}
 		</h1>
-		{#if pubLabel || createdLabel || categoryTitle || article.tags?.length}
+		{#if pubLabel || createdLabel || categoryTitle || cmsEditHref || share || article.tags?.length}
 			<div
 				class="article-dateline"
 				style:view-transition-name={article.slug ? `article-dateline-${article.slug}` : undefined}
 			>
-				{#if pubLabel || createdLabel || categoryTitle}
-					<div class="article-meta" style:view-transition-name={`article-meta-${article.slug}`}>
+				{#if pubLabel || createdLabel}
+					<div
+						class="article-meta article-meta--dates"
+						style:view-transition-name={`article-meta-${article.slug}`}
+					>
 						{#if pubLabel}
 							<span style:view-transition-name={`article-pub-date-${article.slug}`}>
 								Published on {pubLabel}
 							</span>
 						{/if}
-						{#if pubLabel && createdLabel}
-							<span class="article-meta-sep" aria-hidden="true">|</span>
-						{/if}
 						{#if createdLabel}
 							<span>First written {createdLabel}</span>
 						{/if}
+					</div>
+				{/if}
+				{#if categoryTitle || cmsEditHref}
+					<div class="article-meta article-meta--classification">
 						{#if categoryTitle}
-							<span class="article-meta-sep" aria-hidden="true">|</span>
 							<span style:view-transition-name={`article-category-${article.slug}`}>
 								Filed under {categoryTitle}
 							</span>
+						{/if}
+						{#if categoryTitle && cmsEditHref}
+							<span class="article-meta-sep" aria-hidden="true">|</span>
+						{/if}
+						{#if cmsEditHref}
+							<a
+								href={cmsEditHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="article-cms-edit-link"
+								aria-label="Edit this post in the CMS (opens in a new tab)"
+							>
+								Edit in CMS
+							</a>
 						{/if}
 					</div>
 				{/if}
@@ -118,6 +136,11 @@
 						{/each}
 					</div>
 				{/if}
+				{#if share}
+					<div class="article-share">
+						{@render share()}
+					</div>
+				{/if}
 			</div>
 		{/if}
 		<div
@@ -126,27 +149,13 @@
 		>
 			<Lexical data={article.content as never} />
 		</div>
+
+		{#if footer}
+			<div class="article-footer">
+				{@render footer()}
+			</div>
+		{/if}
 	</article>
-
-	{#if cmsEditHref}
-		<p class="article-cms-edit">
-			<a
-				href={cmsEditHref}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="article-cms-edit-link"
-				aria-label="Edit this post in the CMS (opens in a new tab)"
-			>
-				Edit in CMS
-			</a>
-		</p>
-	{/if}
-
-	{#if footer}
-		<div class="article-footer">
-			{@render footer()}
-		</div>
-	{/if}
 </div>
 
 <style lang="postcss">
@@ -186,8 +195,17 @@
 		text-align: center;
 	}
 
-	.article-dateline .article-meta:last-child {
+	.article-dateline .article-meta:last-of-type {
 		margin-bottom: 0;
+	}
+
+	.article-dateline .article-meta--dates {
+		display: block;
+		margin-bottom: 0.05rem;
+	}
+
+	.article-dateline .article-meta--dates span + span {
+		margin-left: 0.5rem;
 	}
 
 	.article-dateline .article-tags {
@@ -211,6 +229,27 @@
 	.article-meta-sep {
 		color: #aaa;
 		font-weight: 400;
+	}
+
+	.article-cms-edit-link {
+		color: #8b0000;
+		text-decoration: none;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	.article-share {
+		margin: 0.65rem 0 0;
+		text-align: center;
+	}
+
+	.article-share :global(.share-buttons) {
+		justify-content: center;
+		margin: 0;
 	}
 
 	.article-featured {
@@ -264,32 +303,15 @@
 		color: #8b0000;
 	}
 
-	.article-cms-edit {
-		margin: 0 0 0.75rem;
-		text-align: end;
-		font-family: 'Times New Roman', Times, serif;
-		font-size: var(--fs-xs);
-	}
-
-	.article-cms-edit-link {
-		color: #8b0000;
-		text-decoration: none;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-
-		&:hover {
-			text-decoration: underline;
-		}
-	}
-
 	.article-footer {
-		padding-top: 1rem;
+		break-inside: avoid;
+		margin-top: 0.85rem;
 		text-align: start;
 		font-family: 'Times New Roman', Times, serif;
+		max-width: 100%;
 	}
 
-	.article-footer :global(.share-buttons) {
-		margin-top: 0.25rem;
-		margin-bottom: 0.75rem;
+	.article-footer :global(.disqus-wrapper) {
+		max-width: 100%;
 	}
 </style>

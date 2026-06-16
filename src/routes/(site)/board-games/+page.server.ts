@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { getParentSession } from '$lib/auth/parentSession';
 import type { PageServerLoad } from './$types';
 
 async function fetchBGGCollection(
@@ -77,8 +78,9 @@ async function fetchBGGCollection(
 }
 
 export const load: PageServerLoad = async ({ url, parent }) => {
-	const { session } = await parent();
-	const defaultUsername = session?.user?.bggUsername ?? 'moose517';
+	const session = await getParentSession(parent);
+	const defaultUsername =
+		typeof session?.user?.bggUsername === 'string' ? session.user.bggUsername : 'moose517';
 	const username = url.searchParams.get('username') || defaultUsername;
 	const result = await fetchBGGCollection(username);
 

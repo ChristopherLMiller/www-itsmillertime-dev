@@ -1,3 +1,4 @@
+import { getParentSession } from '$lib/auth/parentSession';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { canAccessGallerySettings } from '$lib/utils/gallery-access';
 import { redirect } from '@sveltejs/kit';
@@ -33,7 +34,7 @@ function albumIdsFromRelation(albums: unknown): number[] {
 
 export const load: PageServerLoad = async ({ params, fetch, request, url, parent }) => {
 	const { slug } = params;
-	const { session } = await parent();
+	const session = await getParentSession(parent);
 	const user = session?.user ?? null;
 	const sdk = getPayloadSDK(fetch, request);
 

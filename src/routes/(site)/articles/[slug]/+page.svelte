@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import Disqus from '$lib/components/Disqus';
 	import { NewspaperArticleContent, NewspaperLayout } from '$lib/components/Newspaper';
 	import ShareButtons from '$lib/components/ShareButtons';
+	import { precacheArticleContext } from '$lib/pwa/articleOfflineSync';
 	import type { PostsCategory, PostsTag } from '$lib/types/payload-types';
 	import type { PageProps } from './$types';
 
@@ -10,6 +12,11 @@
 
 	const categories: PostsCategory[] = [];
 	const tags: PostsTag[] = [];
+
+	$effect(() => {
+		if (!browser) return;
+		precacheArticleContext(data.article.slug);
+	});
 </script>
 
 <div class="newspaper-page">
@@ -26,8 +33,10 @@
 		showFilters={false}
 	>
 		<NewspaperArticleContent article={data.article}>
-			{#snippet footer()}
+			{#snippet share()}
 				<ShareButtons url={page.url.href} title={data.article.title} />
+			{/snippet}
+			{#snippet footer()}
 				<Disqus
 					identifier={`article-${data.article.slug}`}
 					title={data.article.title}

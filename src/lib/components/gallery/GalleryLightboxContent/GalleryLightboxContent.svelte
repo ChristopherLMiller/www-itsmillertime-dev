@@ -674,6 +674,28 @@
 									onShare={handleShare}
 								/>
 							{/if}
+
+							{#if isAdmin && galleryImageId}
+								<span class="gallery-lightbox__toolbar-divider" aria-hidden="true"></span>
+								<a
+									href={`${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-images/${galleryImageId}`}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="gallery-lightbox__edit-btn"
+									aria-label="Edit image in CMS"
+								>
+									<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+										<path
+											d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+								</a>
+							{/if}
 						</section>
 					{/if}
 
@@ -738,20 +760,7 @@
 					</section>
 
 					<section class="gallery-lightbox__section">
-						<div class="gallery-lightbox__section-header">
-							<h3 class="gallery-lightbox__section-title">Albums</h3>
-							{#if isAdmin && galleryImageId}
-								<a
-									href={`${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-images/${galleryImageId}`}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="gallery-lightbox__edit-link"
-									aria-label="Edit image in CMS"
-								>
-									Edit
-								</a>
-							{/if}
-						</div>
+						<h3 class="gallery-lightbox__section-title">Albums</h3>
 						<p class="gallery-lightbox__section-text">{gallery.title}</p>
 					</section>
 				</div>
@@ -1022,8 +1031,8 @@
 		flex: 0 0 25%;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-		padding: 1.5rem;
+		gap: 0.625rem;
+		padding: 0.875rem 1rem;
 		overflow-y: auto;
 		background: var(--color-tertiary-darker);
 		border-left: 1px solid var(--color-tertiary-lighter);
@@ -1043,7 +1052,7 @@
 
 	.gallery-lightbox__tab {
 		flex: 1 1 0;
-		padding: 0.625rem 0.75rem;
+		padding: 0.4375rem 0.625rem;
 		border: none;
 		border-radius: 6px;
 		background: transparent;
@@ -1111,43 +1120,44 @@
 		gap: 0.5rem;
 	}
 
-	.gallery-lightbox__section-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		padding-bottom: 0.5rem;
-		border-bottom: 1px solid var(--color-tertiary-lighter);
-	}
-
 	.gallery-lightbox__section-title {
-		font-size: var(--fs-base);
-		font-weight: 600;
+		font-size: var(--fs-xs);
+		font-weight: 700;
 		margin: 0;
 		color: var(--color-secondary);
-		padding-bottom: 0.5rem;
+		padding-bottom: 0.375rem;
 		border-bottom: 1px solid var(--color-tertiary-lighter);
 	}
 
-	.gallery-lightbox__section-header .gallery-lightbox__section-title {
-		padding-bottom: 0;
-		border-bottom: none;
-	}
-
-	.gallery-lightbox__edit-link {
-		font-size: var(--fs-xs);
-		color: var(--color-secondary);
+	.gallery-lightbox__edit-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.06);
+		color: rgba(255, 255, 255, 0.72);
 		text-decoration: none;
 		flex-shrink: 0;
+		transition:
+			border-color 150ms ease,
+			background 150ms ease,
+			color 150ms ease;
 	}
 
-	.gallery-lightbox__edit-link:hover {
-		text-decoration: underline;
+	.gallery-lightbox__edit-btn:hover,
+	.gallery-lightbox__edit-btn:focus-visible {
+		border-color: rgba(255, 255, 255, 0.28);
+		background: rgba(255, 255, 255, 0.12);
+		color: var(--color-secondary);
 	}
 
 	.gallery-lightbox__section-text {
 		font-size: var(--fs-xs);
-		line-height: 1.5;
+		line-height: 1.35;
 		margin: 0;
 		color: var(--color-white-lightest);
 	}
@@ -1160,7 +1170,7 @@
 	.gallery-lightbox__meta-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 1rem 1.25rem;
+		gap: 0.5rem 0.875rem;
 	}
 
 	.gallery-lightbox__meta-grid--single {
@@ -1170,7 +1180,7 @@
 	.gallery-lightbox__meta-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.gallery-lightbox__meta-icon {
@@ -1189,14 +1199,16 @@
 	}
 
 	.gallery-lightbox__meta-label {
-		font-size: 1rem;
+		font-size: calc(var(--fs-xs) * 0.92);
 		color: var(--color-tertiary);
 		font-weight: 500;
+		line-height: 1.2;
 	}
 
 	.gallery-lightbox__meta-value {
-		font-size: 1rem;
+		font-size: var(--fs-xs);
 		color: var(--color-white-lightest);
+		line-height: 1.2;
 	}
 
 	.gallery-lightbox__section--toolbar {
@@ -1282,15 +1294,15 @@
 	.gallery-lightbox__metrics {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		margin: 0;
 	}
 
 	.gallery-lightbox__metric {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		padding: 0.75rem;
+		gap: 0.125rem;
+		padding: 0.5rem 0.625rem;
 		border: 1px solid var(--color-tertiary-lighter);
 		border-radius: 8px;
 		background: rgba(0, 0, 0, 0.18);

@@ -91,11 +91,11 @@ function pathAndSearchFromPayloadUrl(
 
 type SwrEnvelope = { _swrAt: number; data: unknown };
 
-function wrapForSwrCache(data: unknown): SwrEnvelope {
+export function wrapForSwrCache(data: unknown): SwrEnvelope {
 	return { _swrAt: Math.floor(Date.now() / 1000), data };
 }
 
-function unwrapSwrCache(
+export function unwrapSwrCache(
 	raw: unknown,
 	staleThreshold: number
 ): { data: unknown; ageSeconds: number } | null {
