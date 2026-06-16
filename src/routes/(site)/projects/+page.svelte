@@ -1,9 +1,22 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Lexical from '$lib/components/Lexical';
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import type { PageData } from './$types';
 	import type { Project } from '$lib/types/payload-types';
 
 	let { data }: { data: PageData } = $props();
+
+	const isAdmin = $derived(
+		!!page.data.session?.user &&
+			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
+	);
+
+	function cmsEditHref(project: Project): string | null {
+		return isAdmin && project.id != null
+			? `${PUBLIC_PAYLOAD_URL}/admin/collections/projects/${project.id}`
+			: null;
+	}
 
 	// Helper function to map projectStatus to display status
 	function getDisplayStatus(status: Project['projectStatus']): string {
@@ -37,9 +50,10 @@
 		}
 	}
 
-	// Helper function to get year from date string
-	function getYear(dateString: string): string {
-		return new Date(dateString).getFullYear().toString();
+	// Year the dossier was opened (CMS createdAt)
+	function getFiledLabel(dateString: string): string {
+		const date = new Date(dateString);
+		return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 	}
 
 	// Helper function to get category title
@@ -70,14 +84,15 @@
 </script>
 
 <div class="filing-cabinet">
-	{#each data.projects as project}
+	{#each data.projects as project (project.id)}
 		{@const displayStatus = getDisplayStatus(project.projectStatus)}
 		{@const statusClass = getStatusClass(project.projectStatus)}
-		{@const year = getYear(project.createdAt)}
+		{@const filedLabel = getFiledLabel(project.createdAt)}
 		{@const categoryTitle = getCategoryTitle(project.category)}
 		{@const techNames = getTechnologyNames(project.technologies)}
 		{@const screenshotUrl = getFirstScreenshotUrl(project.screenshots)}
-		<article class="manila-folder">
+		{@const editHref = cmsEditHref(project)}
+		<article class="manila-folder" id="project-{project.id}">
 			<!-- Folder SVG inline -->
 			<svg class="folder" viewBox="0 0 450 400">
 				<path
@@ -92,22 +107,15 @@
 			<!-- Paper document on top of folder -->
 			<div class="paper-document">
 				<!-- Top section with photo and stamps -->
-				<div class="document-header">
-					{#if screenshotUrl}
+				{#if screenshotUrl}
+					<div class="document-header">
 						<div class="attached-photo">
 							<div class="photo-tape"></div>
 							<img src={screenshotUrl} alt={project.title} />
 							<div class="photo-caption">FIG. 1</div>
 						</div>
-					{/if}
-					<div class="header-stamps">
-						<div class="classification-stamp {statusClass}">{displayStatus}</div>
-						<div class="date-stamp">EST. {year}</div>
-						{#if project.version}
-							<div class="version-stamp">{project.version}</div>
-						{/if}
 					</div>
-				</div>
+				{/if}
 
 				<!-- Typed report section -->
 				<div class="typed-report">
@@ -121,17 +129,43 @@
 						<span class="field-value">{project.title}</span>
 					</div>
 
-					<div class="report-field">
+					<div class="report-field report-field--inline-meta">
 						<span class="field-label">CLASSIFICATION:</span>
-						<span class="field-value">{categoryTitle}</span>
+						<span class="field-value">
+							{categoryTitle}
+							{#if editHref}
+								<span class="meta-sep" aria-hidden="true">|</span>
+								<a
+									href={editHref}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="cms-edit-link"
+									aria-label="Edit this project in the CMS (opens in a new tab)"
+								>
+									Edit in CMS
+								</a>
+							{/if}
+						</span>
 					</div>
 
 					{#if techNames.length > 0}
 						<div class="report-field">
 							<span class="field-label">TECHNOLOGIES:</span>
-							<span class="field-value">{techNames.join(', ')}</span>
+							<span class="field-value project-tech-tags">
+								{#each techNames as tech (tech)}
+									<span class="project-tech-tag">{tech}</span>
+								{/each}
+							</span>
 						</div>
 					{/if}
+
+					<div class="report-field report-field--meta">
+						<span class="field-label">FILED:</span>
+						<span class="field-value">{filedLabel}</span>
+						{#if project.version}
+							<span class="version-badge" title="Current version">{project.version}</span>
+						{/if}
+					</div>
 
 					<div class="report-body">
 						<span class="field-label">SUMMARY:</span>
@@ -143,6 +177,12 @@
 							<p>{project.shortDescription}</p>
 						{/if}
 					</div>
+
+					<div class="classification-footer">
+						<div class="classification-stamp classification-stamp--footer {statusClass}">
+							{displayStatus}
+						</div>
+					</div>
 				</div>
 
 				<!-- Links section -->
@@ -150,7 +190,7 @@
 					<div class="document-links">
 						<div class="links-header">EXTERNAL REFERENCES</div>
 						<div class="link-tags">
-							{#each project.links as link}
+							{#each project.links as link (link.id ?? link.url)}
 								<a
 									href={link.url}
 									target="_blank"
@@ -200,38 +240,56 @@
 
 	/* Paper document - 8.5" x 11" US Letter, positioned on folder */
 	.paper-document {
+		--ruled-step: 24px;
 		position: relative;
 		aspect-ratio: 8.5 / 11;
 		margin: 12% 8% 5% 8%;
 		background: #fff;
 		background-image:
 			linear-gradient(
-				90deg,
-				transparent 0px,
-				transparent 3px,
-				rgba(200, 0, 0, 0.15) 3px,
-				rgba(200, 0, 0, 0.15) 4px,
-				transparent 4px
+				to bottom,
+				#fff 0px,
+				#fff calc(var(--ruled-step) * 2 - 1px),
+				transparent calc(var(--ruled-step) * 2)
 			),
-			repeating-linear-gradient(0deg, transparent 0px, transparent 23px, #e8e8e8 23px, #e8e8e8 24px);
-		background-position: 30px 0;
+			repeating-linear-gradient(
+				0deg,
+				transparent 0px,
+				transparent calc(var(--ruled-step) - 1px),
+				#e8e8e8 calc(var(--ruled-step) - 1px),
+				#e8e8e8 var(--ruled-step)
+			);
+		background-position:
+			40px 0,
+			30px 0;
+		background-size:
+			calc(100% - 40px) 100%,
+			auto;
 		border-radius: 3px;
 		box-shadow:
 			2px 2px 8px rgba(0, 0, 0, 0.15),
 			0 0 0 1px rgba(0, 0, 0, 0.05);
-		padding: 1.5rem;
-		padding-left: 45px;
+		padding: var(--ruled-step) 1.5rem var(--ruled-step) 35px;
 		overflow: auto;
 		z-index: 2;
+
+		&::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 33px;
+			width: 1px;
+			background: rgba(200, 0, 0, 0.15);
+			pointer-events: none;
+		}
 	}
 
-	/* Document header with photo and stamps */
+	/* Document header with photo */
 	.document-header {
 		display: flex;
 		gap: 1rem;
-		margin-bottom: 1rem;
-		padding-bottom: 1rem;
-		border-bottom: 1px dashed #ccc;
+		margin-bottom: var(--ruled-step);
 	}
 
 	.attached-photo {
@@ -267,12 +325,6 @@
 		font-family: var(--font-special-elite);
 	}
 
-	.header-stamps {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		align-items: flex-start;
-	}
 
 	.classification-stamp {
 		padding: 4px 12px;
@@ -281,6 +333,7 @@
 		font-weight: bold;
 		border: 3px solid;
 		transform: rotate(-3deg);
+		line-height: 1.2;
 
 		&.active {
 			color: #c41e3a;
@@ -299,51 +352,72 @@
 		}
 	}
 
-	.date-stamp {
-		font-family: var(--font-special-elite);
-		font-size: calc(var(--fs-xs) * 0.85);
-		color: #666;
+	.classification-stamp--footer {
+		font-size: calc(var(--fs-xs) * 1.35);
+		padding: 0.45rem 1.35rem;
+		border-width: 4px;
+		letter-spacing: 0.12em;
 	}
 
-	.version-stamp {
-		font-family: var(--font-source-code-pro);
-		font-size: calc(var(--fs-xs) * 0.9);
-		color: #444;
-		background: #f5f5f5;
-		padding: 2px 8px;
-		border-radius: 3px;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+	.classification-footer {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--ruled-step);
+		padding-top: calc(var(--ruled-step) * 0.5);
 	}
 
-	/* Typed report content */
+	/* Typed report content — line-height matches ruled paper */
 	.typed-report {
 		font-family: var(--font-special-elite);
-		font-size: calc(var(--fs-xs) * 0.9);
+		font-size: var(--fs-xs);
+		line-height: var(--ruled-step);
 	}
 
 	.report-header {
-		display: flex;
-		justify-content: space-between;
-		border-bottom: 2px solid #333;
-		padding-bottom: 0.5rem;
-		margin-bottom: 0.75rem;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		grid-template-rows: var(--ruled-step) var(--ruled-step);
+		height: calc(var(--ruled-step) * 2);
+		margin-bottom: var(--ruled-step);
+		background-image: linear-gradient(#333, #333);
+		background-size: 100% 2px;
+		background-position: 0 calc(var(--ruled-step) * 2 - 5px);
+		background-repeat: no-repeat;
 	}
 
 	.report-title {
-		font-weight: bold;
-		letter-spacing: 2px;
-		color: #333;
+		grid-column: 1;
+		grid-row: 1 / 3;
+		align-self: center;
+		font-family: var(--font-oswald);
+		font-size: calc(var(--fs-xs) * 2);
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		color: #222;
+		line-height: calc(var(--ruled-step) * 2);
+		transform: translateY(-3px);
 	}
 
 	.report-id {
+		grid-column: 2;
+		grid-row: 2;
+		align-self: end;
 		color: #666;
+		line-height: var(--ruled-step);
+		transform: translateY(-3px);
 	}
 
 	.report-field {
 		display: flex;
-		gap: 0.5rem;
-		margin: 0.4rem 0;
-		line-height: 1.4;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: 0 0.5rem;
+		margin: 0;
+		min-height: var(--ruled-step);
+	}
+
+	.report-field--meta .field-value {
+		margin-right: 0.35rem;
 	}
 
 	.report-field .field-label {
@@ -351,26 +425,83 @@
 		color: #555;
 		min-width: 110px;
 		flex-shrink: 0;
+		line-height: var(--ruled-step);
 	}
 
 	.report-field .field-value {
 		color: #222;
+		line-height: var(--ruled-step);
+	}
+
+	.version-badge {
+		display: inline-flex;
+		align-items: center;
+		align-self: center;
+		font-family: var(--font-source-code-pro);
+		font-size: calc(var(--fs-xs) * 0.88);
+		line-height: 1;
+		color: #444;
+		background: #f0f0f0;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid #d4d4d4;
+		border-radius: 3px;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+		transform: translateY(-1px);
+	}
+
+	.meta-sep {
+		color: #aaa;
+		margin: 0 0.35rem;
+	}
+
+	.cms-edit-link {
+		color: #8b0000;
+		text-decoration: none;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		font-size: calc(var(--fs-xs) * 0.85);
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	.project-tech-tags {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem 0.35rem;
+		line-height: var(--ruled-step);
+	}
+
+	.project-tech-tag {
+		display: inline-block;
+		font-size: calc(var(--fs-xs) * 0.85);
+		padding: 0.05rem 0.35rem;
+		background-color: #e5e3db;
+		color: #555;
+		font-style: italic;
+		line-height: calc(var(--ruled-step) - 6px);
+		vertical-align: baseline;
 	}
 
 	.report-body {
-		margin-top: 0.75rem;
+		margin-top: var(--ruled-step);
+		padding-top: 0;
+		min-height: calc(var(--ruled-step) * 2);
 
 		.field-label {
 			font-weight: bold;
 			color: #555;
 			display: block;
-			margin-bottom: 0.25rem;
+			line-height: var(--ruled-step);
+			margin: 0;
 		}
 
 		p {
 			margin: 0;
 			color: #333;
-			line-height: 1.5;
+			line-height: var(--ruled-step);
 			padding-left: 0.5rem;
 			border-left: 2px solid #999;
 		}
@@ -379,15 +510,16 @@
 			padding-left: 0.5rem;
 			border-left: 2px solid #999;
 			color: #333;
-			line-height: 1.5;
+			line-height: var(--ruled-step);
 		}
 
 		.report-content :global(p) {
-			margin: 0 0 0.5rem;
+			margin: 0;
+			line-height: var(--ruled-step);
 		}
 
-		.report-content :global(p:last-child) {
-			margin-bottom: 0;
+		.report-content :global(p + p) {
+			margin-top: 0;
 		}
 	}
 
