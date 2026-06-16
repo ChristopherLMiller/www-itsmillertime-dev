@@ -1,9 +1,16 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import Newspaper from '$lib/components/Newspaper';
+	import { precacheArticlesListing } from '$lib/pwa/articleOfflineSync';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();
+
+	$effect(() => {
+		if (!browser) return;
+		precacheArticlesListing(data.articles.map((article) => article.slug));
+	});
 
 	const selectedCategory = $derived(page.url.searchParams.get('category') || '');
 	const selectedTag = $derived(page.url.searchParams.get('tag') || '');

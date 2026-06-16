@@ -15,6 +15,15 @@ export const BROWSER_CACHE_DB_NAME = DB_NAME;
 export const BROWSER_CACHE_STORE_NAME = STORE_NAME;
 export const BROWSER_CACHE_SCHEMA_VERSION = SCHEMA_VERSION;
 
+export function isIndexedDbSupported(): boolean {
+	return typeof indexedDB !== 'undefined';
+}
+
+export type IndexedDbProbeResult = {
+	ok: boolean;
+	error?: string;
+};
+
 interface IDBCacheEntry<T> {
 	key: string;
 	data: T;
@@ -35,11 +44,19 @@ export interface IdbCacheRow {
 	data: unknown;
 }
 
-// Lazily opened – reused for the lifetime of the page.
 let dbPromise: Promise<IDBDatabase> | null = null;
+
+function resetDbConnection(): void {
+	dbPromise = null;
+}
 
 function openDatabase(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
+		if (!isIndexedDbSupported()) {
+			reject(new Error('IndexedDB is not available in this browser context.'));
+			return;
+		}
+
 		const req = indexedDB.open(DB_NAME, IDB_VERSION);
 
 		req.onupgradeneeded = (event) => {
@@ -49,15 +66,26 @@ function openDatabase(): Promise<IDBDatabase> {
 			}
 		};
 
-		req.onsuccess = () => resolve(req.result);
-		req.onerror = () => reject(req.error);
+		req.onsuccess = () => {
+			const db = req.result;
+			db.onversionchange = () => {
+				db.close();
+				resetDbConnection();
+			};
+			db.onclose = () => {
+				resetDbConnection();
+			};
+			resolve(db);
+		};
+		req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
+		req.onblocked = () =>
+			reject(new Error('IndexedDB open blocked (close other tabs using this site)'));
 	});
 }
 
 function getDB(): Promise<IDBDatabase> {
 	if (!dbPromise) {
 		dbPromise = openDatabase().catch((err) => {
-			// Reset so the next call retries instead of re-throwing the same rejected promise.
 			dbPromise = null;
 			throw err;
 		});
@@ -66,18 +94,33 @@ function getDB(): Promise<IDBDatabase> {
 }
 
 export const browserCache = {
-	/**
-	 * Returns the cached value, or null if the entry is missing or schema-stale.
-	 */
+	async probe(): Promise<IndexedDbProbeResult> {
+		if (!isIndexedDbSupported()) {
+			return { ok: false, error: 'IndexedDB is not available in this browser context.' };
+		}
+
+		try {
+			const db = await getDB();
+			await new Promise<void>((resolve, reject) => {
+				const tx = db.transaction(STORE_NAME, 'readonly');
+				tx.oncomplete = () => resolve();
+				tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
+				tx.objectStore(STORE_NAME).count();
+			});
+			return { ok: true };
+		} catch (err) {
+			return {
+				ok: false,
+				error: err instanceof Error ? err.message : 'IndexedDB could not be opened'
+			};
+		}
+	},
+
 	async get<T>(key: string): Promise<T | null> {
 		const entry = await this.getEntry<T>(key);
 		return entry ? entry.data : null;
 	},
 
-	/**
-	 * Returns the full entry (data + cachedAt) so the caller can check freshness
-	 * without a second round-trip to IDB. Returns null on miss or schema mismatch.
-	 */
 	async getEntry<T>(key: string): Promise<CacheEntryMeta<T> | null> {
 		try {
 			const db = await getDB();
@@ -99,10 +142,10 @@ export const browserCache = {
 		}
 	},
 
-	async set<T>(key: string, data: T): Promise<void> {
+	async set<T>(key: string, data: T): Promise<boolean> {
 		try {
 			const db = await getDB();
-			return new Promise((resolve, reject) => {
+			await new Promise<void>((resolve, reject) => {
 				const tx = db.transaction(STORE_NAME, 'readwrite');
 				const entry: IDBCacheEntry<T> = {
 					key,
@@ -114,15 +157,16 @@ export const browserCache = {
 				req.onsuccess = () => resolve();
 				req.onerror = () => reject(req.error);
 			});
+			return true;
 		} catch {
-			// IDB may be unavailable (e.g. Firefox private mode, storage quota exceeded).
+			return false;
 		}
 	},
 
 	async clear(key: string): Promise<void> {
 		try {
 			const db = await getDB();
-			return new Promise((resolve, reject) => {
+			await new Promise<void>((resolve, reject) => {
 				const tx = db.transaction(STORE_NAME, 'readwrite');
 				const req = tx.objectStore(STORE_NAME).delete(key);
 				req.onsuccess = () => resolve();
@@ -133,10 +177,6 @@ export const browserCache = {
 		}
 	},
 
-	/**
-	 * All rows in the `entries` store (read-only), including entries with a stale `schemaVersion`.
-	 * Sorted by key. Throws if IndexedDB cannot be opened or read.
-	 */
 	async listAllEntries(): Promise<IdbCacheRow[]> {
 		const db = await getDB();
 		return new Promise((resolve, reject) => {
@@ -163,9 +203,6 @@ export const browserCache = {
 		});
 	},
 
-	/**
-	 * Returns true when the cached entry exists AND is younger than maxAgeSeconds.
-	 */
 	async isFresh(key: string, maxAgeSeconds: number): Promise<boolean> {
 		const entry = await this.getEntry(key);
 		if (!entry) return false;
@@ -173,7 +210,9 @@ export const browserCache = {
 	}
 };
 
-export const LAYOUT_CACHE_KEY = 'layout-data';
-
-/** Serve from cache immediately; trigger a background refresh if older than this. */
-export const LAYOUT_STALE_THRESHOLD_S = 5 * 60; // 5 minutes
+export {
+	LAYOUT_CACHE_KEY_LEGACY,
+	LAYOUT_META_CACHE_KEY,
+	LAYOUT_NAV_CACHE_KEY,
+	LAYOUT_STALE_THRESHOLD_S
+} from '$lib/cache/layoutCache';
