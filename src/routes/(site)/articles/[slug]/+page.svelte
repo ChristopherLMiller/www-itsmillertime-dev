@@ -33,8 +33,10 @@
 		showFilters={false}
 	>
 		<NewspaperArticleContent article={data.article}>
-			{#snippet footer()}
+			{#snippet share()}
 				<ShareButtons url={page.url.href} title={data.article.title} />
+			{/snippet}
+			{#snippet footer()}
 				<Disqus
 					identifier={`article-${data.article.slug}`}
 					title={data.article.title}

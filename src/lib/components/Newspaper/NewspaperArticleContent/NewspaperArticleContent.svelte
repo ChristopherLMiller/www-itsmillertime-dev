@@ -8,10 +8,11 @@
 
 	interface Props {
 		article: Post;
+		share?: Snippet;
 		footer?: Snippet;
 	}
 
-	let { article, footer }: Props = $props();
+	let { article, share, footer }: Props = $props();
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -81,12 +82,12 @@
 		>
 			{article.title}
 		</h1>
-		{#if pubLabel || createdLabel || categoryTitle || article.tags?.length}
+		{#if pubLabel || createdLabel || categoryTitle || cmsEditHref || share || article.tags?.length}
 			<div
 				class="article-dateline"
 				style:view-transition-name={article.slug ? `article-dateline-${article.slug}` : undefined}
 			>
-				{#if pubLabel || createdLabel || categoryTitle}
+				{#if pubLabel || createdLabel || categoryTitle || cmsEditHref}
 					<div class="article-meta" style:view-transition-name={`article-meta-${article.slug}`}>
 						{#if pubLabel}
 							<span style:view-transition-name={`article-pub-date-${article.slug}`}>
@@ -105,6 +106,18 @@
 								Filed under {categoryTitle}
 							</span>
 						{/if}
+						{#if cmsEditHref}
+							<span class="article-meta-sep" aria-hidden="true">|</span>
+							<a
+								href={cmsEditHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="article-cms-edit-link"
+								aria-label="Edit this post in the CMS (opens in a new tab)"
+							>
+								Edit in CMS
+							</a>
+						{/if}
 					</div>
 				{/if}
 				{#if article.tags?.length}
@@ -118,6 +131,11 @@
 						{/each}
 					</div>
 				{/if}
+				{#if share}
+					<div class="article-share">
+						{@render share()}
+					</div>
+				{/if}
 			</div>
 		{/if}
 		<div
@@ -127,20 +145,6 @@
 			<Lexical data={article.content as never} />
 		</div>
 	</article>
-
-	{#if cmsEditHref}
-		<p class="article-cms-edit">
-			<a
-				href={cmsEditHref}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="article-cms-edit-link"
-				aria-label="Edit this post in the CMS (opens in a new tab)"
-			>
-				Edit in CMS
-			</a>
-		</p>
-	{/if}
 
 	{#if footer}
 		<div class="article-footer">
@@ -213,6 +217,27 @@
 		font-weight: 400;
 	}
 
+	.article-cms-edit-link {
+		color: #8b0000;
+		text-decoration: none;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	.article-share {
+		margin: 0.65rem 0 0;
+		text-align: center;
+	}
+
+	.article-share :global(.share-buttons) {
+		justify-content: center;
+		margin: 0;
+	}
+
 	.article-featured {
 		margin-bottom: 1rem;
 		max-width: 100%;
@@ -264,32 +289,9 @@
 		color: #8b0000;
 	}
 
-	.article-cms-edit {
-		margin: 0 0 0.75rem;
-		text-align: end;
-		font-family: 'Times New Roman', Times, serif;
-		font-size: var(--fs-xs);
-	}
-
-	.article-cms-edit-link {
-		color: #8b0000;
-		text-decoration: none;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-
-		&:hover {
-			text-decoration: underline;
-		}
-	}
-
 	.article-footer {
 		padding-top: 1rem;
 		text-align: start;
 		font-family: 'Times New Roman', Times, serif;
-	}
-
-	.article-footer :global(.share-buttons) {
-		margin-top: 0.25rem;
-		margin-bottom: 0.75rem;
 	}
 </style>
