@@ -87,27 +87,32 @@
 				class="article-dateline"
 				style:view-transition-name={article.slug ? `article-dateline-${article.slug}` : undefined}
 			>
-				{#if pubLabel || createdLabel || categoryTitle || cmsEditHref}
-					<div class="article-meta" style:view-transition-name={`article-meta-${article.slug}`}>
+				{#if pubLabel || createdLabel}
+					<div
+						class="article-meta article-meta--dates"
+						style:view-transition-name={`article-meta-${article.slug}`}
+					>
 						{#if pubLabel}
 							<span style:view-transition-name={`article-pub-date-${article.slug}`}>
 								Published on {pubLabel}
 							</span>
 						{/if}
-						{#if pubLabel && createdLabel}
-							<span class="article-meta-sep" aria-hidden="true">|</span>
-						{/if}
 						{#if createdLabel}
 							<span>First written {createdLabel}</span>
 						{/if}
+					</div>
+				{/if}
+				{#if categoryTitle || cmsEditHref}
+					<div class="article-meta article-meta--classification">
 						{#if categoryTitle}
-							<span class="article-meta-sep" aria-hidden="true">|</span>
 							<span style:view-transition-name={`article-category-${article.slug}`}>
 								Filed under {categoryTitle}
 							</span>
 						{/if}
-						{#if cmsEditHref}
+						{#if categoryTitle && cmsEditHref}
 							<span class="article-meta-sep" aria-hidden="true">|</span>
+						{/if}
+						{#if cmsEditHref}
 							<a
 								href={cmsEditHref}
 								target="_blank"
@@ -144,13 +149,13 @@
 		>
 			<Lexical data={article.content as never} />
 		</div>
-	</article>
 
-	{#if footer}
-		<div class="article-footer">
-			{@render footer()}
-		</div>
-	{/if}
+		{#if footer}
+			<div class="article-footer">
+				{@render footer()}
+			</div>
+		{/if}
+	</article>
 </div>
 
 <style lang="postcss">
@@ -190,8 +195,17 @@
 		text-align: center;
 	}
 
-	.article-dateline .article-meta:last-child {
+	.article-dateline .article-meta:last-of-type {
 		margin-bottom: 0;
+	}
+
+	.article-dateline .article-meta--dates {
+		display: block;
+		margin-bottom: 0.05rem;
+	}
+
+	.article-dateline .article-meta--dates span + span {
+		margin-left: 0.5rem;
 	}
 
 	.article-dateline .article-tags {
@@ -290,8 +304,14 @@
 	}
 
 	.article-footer {
-		padding-top: 1rem;
+		break-inside: avoid;
+		margin-top: 0.85rem;
 		text-align: start;
 		font-family: 'Times New Roman', Times, serif;
+		max-width: 100%;
+	}
+
+	.article-footer :global(.disqus-wrapper) {
+		max-width: 100%;
 	}
 </style>
