@@ -42,7 +42,7 @@
 		height: min-content;
 		width: fit-content;
 
-		@media (min-width: var(--layout-nav-desktop-min)) {
+		@media (min-width: 768px) {
 			display: flex;
 		}
 	}
