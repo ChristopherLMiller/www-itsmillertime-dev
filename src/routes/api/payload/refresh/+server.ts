@@ -1,4 +1,4 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
+import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { cacheManager } from '$lib/cache/cache';
 import { json } from '@sveltejs/kit';
 import * as qs from 'qs-esm';
@@ -16,7 +16,7 @@ export async function POST({ fetch, request }) {
 		console.log('Manual cache refresh requested for', cacheKey);
 
 		// Fetch fresh data from Payload API
-		const path = `${PUBLIC_PAYLOAD_API_ENDPOINT}/${endpoint}?${qs.stringify(queryParams)}`;
+		const path = `${getPayloadApiBaseUrl()}/${endpoint}?${qs.stringify(queryParams)}`;
 		const response = await fetch(path);
 
 		if (!response.ok) {

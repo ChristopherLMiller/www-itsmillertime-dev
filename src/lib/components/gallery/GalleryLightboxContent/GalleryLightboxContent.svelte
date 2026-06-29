@@ -20,6 +20,8 @@
 	import { getMediaUrl } from '$lib/utils/media-url';
 	import ExifIcon from '$lib/components/ExifIcon';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
+	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
+	import type { GalleryCommerce } from '$lib/utils/gallery-image-display';
 
 	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
 	function buildSrcsets(img: Media | undefined, proxy: boolean) {
@@ -188,6 +190,14 @@
 	// Caption (Lexical) or alt as fallback
 	const captionText = $derived(image?.caption ? lexicalToPlainText(image.caption) : null);
 	const displayCaption = $derived((captionText && captionText.trim()) || image?.alt || '');
+
+	// Commerce: Medusa is the source of truth. A for-sale image carries a live
+	// Medusa variant id (resolved server-side) we can add to the cart.
+	const commerce = $derived((image as { commerce?: GalleryCommerce | null } | undefined)?.commerce);
+	const buyVariantId = $derived(
+		commerce?.forSale && commerce?.variantId ? commerce.variantId : null
+	);
+	const buyPrice = $derived(typeof commerce?.priceUSD === 'number' ? commerce.priceUSD : null);
 
 	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
 
@@ -796,10 +806,21 @@
 				>
 					<section class="gallery-lightbox__section">
 						<h3 class="gallery-lightbox__section-title">Prints &amp; Products</h3>
-						<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
-							A storefront for prints and other products is on the way. Check back sometime for
-							ways to bring this image home.
-						</p>
+						{#if buyVariantId}
+							<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
+								Buy this image as a digital download.
+							</p>
+							<BuyButton
+								variantId={buyVariantId}
+								priceUSD={buyPrice}
+								title={displayCaption}
+							/>
+						{:else}
+							<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
+								This image isn't available for purchase right now. Check back later for ways to
+								bring it home.
+							</p>
+						{/if}
 					</section>
 				</div>
 			</div>

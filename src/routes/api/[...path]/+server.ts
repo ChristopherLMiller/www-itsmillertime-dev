@@ -1,8 +1,8 @@
-import { PAYLOAD_INTERNAL_URL } from '$env/static/private';
+import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { error, type RequestHandler } from '@sveltejs/kit';
 
 const proxyRequest = async (request: Request, path: string): Promise<Response> => {
-	const url = `${PAYLOAD_INTERNAL_URL}/${path}${new URL(request.url).search}`;
+	const url = `${getPayloadApiBaseUrl()}/${path}${new URL(request.url).search}`;
 
 	const response = await fetch(url, {
 		method: request.method,

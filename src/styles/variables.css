@@ -71,6 +71,9 @@
 	--top-bar-height: 3rem;
 	--side-margins: 2rem;
 
+	/* Layout breakpoints */
+	--layout-nav-desktop-min: 768px;
+
 	/* widths */
 	--width-small: 320px;
 

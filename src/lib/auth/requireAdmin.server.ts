@@ -1,4 +1,4 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
+import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
 import type { RequestEvent } from '@sveltejs/kit';
 
@@ -15,7 +15,7 @@ export async function getMergedSessionUser(event: RequestEvent) {
 	if (!session?.user) return null;
 
 	const payloadFetch = createPayloadFetch(event.fetch, event.request);
-	const meRes = await payloadFetch(`${PUBLIC_PAYLOAD_API_ENDPOINT}/users/me`);
+	const meRes = await payloadFetch(`${getPayloadApiBaseUrl()}/users/me`);
 	const payloadMe = meRes.ok ? await meRes.json() : null;
 	if (payloadMe?.user) {
 		return { ...session.user, ...payloadMe.user };
