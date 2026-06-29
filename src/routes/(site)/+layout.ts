@@ -23,8 +23,12 @@ export type { LayoutCacheData };
 export const load: LayoutLoad = async (event) => {
 	event.depends('app:layout');
 
+	const parentData = (await event.parent()) as { session?: Awaited<ReturnType<typeof loadSession>> };
 	const request = 'request' in event ? (event.request as Request) : undefined;
-	const session = await loadSession(event.fetch, request);
+	// Client: always refresh (e.g. after login). SSR: reuse +layout.server.ts when available.
+	const session = browser
+		? await loadSession(event.fetch, request)
+		: (parentData.session ?? (await loadSession(event.fetch, request)));
 
 	if (browser) {
 		void browserCache.clear(LAYOUT_CACHE_KEY_LEGACY);

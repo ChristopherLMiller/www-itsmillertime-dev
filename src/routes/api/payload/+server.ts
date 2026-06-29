@@ -1,4 +1,4 @@
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
+import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { cacheManager } from '$lib/cache/cache';
 import { json } from '@sveltejs/kit';
 import * as qs from 'qs-esm';
@@ -11,7 +11,7 @@ async function refreshCacheInBackground(
 ) {
 	try {
 		console.log('Background refresh for', cacheKey);
-		const path = `${PUBLIC_PAYLOAD_API_ENDPOINT}/${endpoint}?${qs.stringify(queryParams)}`;
+		const path = `${getPayloadApiBaseUrl()}/${endpoint}?${qs.stringify(queryParams)}`;
 		const response = await fetch(path);
 		const data = await response.json();
 		await cacheManager.set(cacheKey, data);
@@ -40,7 +40,7 @@ export async function GET({ url, fetch }) {
 		// Check if we should force refresh
 		if (forceRefresh) {
 			console.log('Force refresh requested for', cacheKey);
-			const path = `${PUBLIC_PAYLOAD_API_ENDPOINT}/${endpoint}?${qs.stringify(queryParams)}`;
+			const path = `${getPayloadApiBaseUrl()}/${endpoint}?${qs.stringify(queryParams)}`;
 			const response = await fetch(path);
 			const data = await response.json();
 
@@ -74,7 +74,7 @@ export async function GET({ url, fetch }) {
 
 		// Cache miss - fetch from Payload API
 		console.log('Cache miss on', cacheKey);
-		const path = `${PUBLIC_PAYLOAD_API_ENDPOINT}/${endpoint}?${qs.stringify(queryParams)}`;
+		const path = `${getPayloadApiBaseUrl()}/${endpoint}?${qs.stringify(queryParams)}`;
 		const response = await fetch(path);
 		const data = await response.json();
 

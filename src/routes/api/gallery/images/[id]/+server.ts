@@ -1,5 +1,6 @@
 import { getMergedSessionUser } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
+import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { canAccessGallerySettings } from '$lib/utils/gallery-access';
 import { json } from '@sveltejs/kit';
@@ -45,6 +46,25 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	if (wantFull) {
+		// Medusa is the source of truth for whether an image is for sale and its
+		// price. We only carry a `medusaProductId` pointer in Payload; resolve the
+		// live product (published + priced) so the lightbox can show a buy button.
+		const productId = (doc as { medusaProductId?: string | null }).medusaProductId;
+		if (productId) {
+			try {
+				const product = await getStoreProduct(getStoreConfig(), productId);
+				if (product?.variantId) {
+					(doc as unknown as Record<string, unknown>).commerce = {
+						forSale: true,
+						productId: product.productId,
+						variantId: product.variantId,
+						priceUSD: product.priceUSD
+					};
+				}
+			} catch {
+				// Medusa not configured or unreachable: just omit commerce.
+			}
+		}
 		return json(doc);
 	}
 

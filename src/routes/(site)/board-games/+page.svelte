@@ -21,12 +21,21 @@
 		};
 	};
 
+	type SortOption =
+		| 'name-asc'
+		| 'name-desc'
+		| 'plays-asc'
+		| 'plays-desc'
+		| 'rating-asc'
+		| 'rating-desc';
+
 	const { data } = $props();
 
 	let lookupUsername = $state('');
 	let playFilter = $state<'all' | 'played' | 'unplayed'>('all');
 	let playerCountFilter = $state<'all' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
 	let playtimeFilter = $state<'all' | '30' | '60' | '90' | '120' | '150' | '180'>('all');
+	let sortBy = $state<SortOption>('name-asc');
 	let pickedGame = $state<BggGame | null>(null);
 	let isSpinning = $state(false);
 	let spinGames = $state<BggGame[]>([]);
@@ -51,6 +60,7 @@
 		playFilter = 'all';
 		playerCountFilter = 'all';
 		playtimeFilter = 'all';
+		sortBy = 'name-asc';
 		clearSpinTimer();
 		closeActiveGamePopover();
 		isSpinning = false;
@@ -91,6 +101,53 @@
 		return range.min <= t && t <= range.max;
 	}
 
+	function gameName(g: BggGame): string {
+		return g.name?.trim() || '';
+	}
+
+	function gamePlayCount(g: BggGame): number {
+		return g.numplays ?? 0;
+	}
+
+	function gameRating(g: BggGame): number {
+		const avg = g.stats?.rating?.average;
+		if (avg == null || avg === '' || avg === 'N/A') return -1;
+		const n = Number(avg);
+		return Number.isFinite(n) ? n : -1;
+	}
+
+	function compareGames(a: BggGame, b: BggGame, sort: SortOption): number {
+		let result = 0;
+
+		switch (sort) {
+			case 'name-asc':
+			case 'name-desc': {
+				const nameA = gameName(a);
+				const nameB = gameName(b);
+				if (!nameA && nameB) result = 1;
+				else if (nameA && !nameB) result = -1;
+				else result = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+				break;
+			}
+			case 'plays-asc':
+			case 'plays-desc':
+				result = gamePlayCount(a) - gamePlayCount(b);
+				break;
+			case 'rating-asc':
+			case 'rating-desc':
+				result = gameRating(a) - gameRating(b);
+				break;
+		}
+
+		if (sort.endsWith('-desc')) result *= -1;
+
+		if (result === 0) {
+			return gameName(a).localeCompare(gameName(b), undefined, { sensitivity: 'base' });
+		}
+
+		return result;
+	}
+
 	const displayedGames = $derived.by(() => {
 		const games = data.games as BggGame[];
 
@@ -114,7 +171,7 @@
 			list = list.filter((g) => matchesPlaytime(g, t));
 		}
 
-		return list;
+		return [...list].sort((a, b) => compareGames(a, b, sortBy));
 	});
 
 	$effect(() => {
@@ -369,6 +426,17 @@
 						<option value="120">2 hr</option>
 						<option value="150">2.5 hr</option>
 						<option value="180">3+</option>
+					</select>
+				</div>
+				<div class="filter-group">
+					<label class="filter-label" for="bgg-sort">Sort by</label>
+					<select id="bgg-sort" class="filter-select" bind:value={sortBy}>
+						<option value="name-asc">Name (A–Z)</option>
+						<option value="name-desc">Name (Z–A)</option>
+						<option value="plays-desc">Play count (high–low)</option>
+						<option value="plays-asc">Play count (low–high)</option>
+						<option value="rating-desc">Rating (high–low)</option>
+						<option value="rating-asc">Rating (low–high)</option>
 					</select>
 				</div>
 				<div class="collection-count" aria-live="polite">

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { authClient } from '$lib/auth/client';
 	import Panel from '$lib/components/Panel';
@@ -97,7 +96,7 @@
 		const { error: passkeyError } = await authClient.signIn.passkey({
 			fetchOptions: {
 				onSuccess() {
-					goto('/account/profile');
+					window.location.href = '/account/profile';
 				}
 			}
 		});

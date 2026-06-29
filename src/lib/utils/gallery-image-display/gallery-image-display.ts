@@ -1,6 +1,26 @@
 import type { GalleryImage, Media } from '$lib/types/payload-types';
 
-export type GalleryGridMedia = Media & { isNsfw: boolean; galleryImageId?: number };
+/**
+ * Commerce data attached to a sellable gallery image. Resolved server-side from
+ * Medusa (the source of truth) by the gallery image endpoint, not stored in
+ * Payload. Present only when the image maps to a published, priced product.
+ */
+export type GalleryCommerce = {
+	forSale?: boolean | null;
+	priceUSD?: number | null;
+	productId?: string | null;
+	variantId?: string | null;
+};
+
+export type GalleryGridMedia = Media & {
+	isNsfw: boolean;
+	galleryImageId?: number;
+	commerce?: GalleryCommerce | null;
+};
+
+function readCommerce(doc: object): GalleryCommerce | null {
+	return (doc as { commerce?: GalleryCommerce }).commerce ?? null;
+}
 
 const PLACEHOLDER_DATE = '1970-01-01T00:00:00.000Z';
 
@@ -53,13 +73,23 @@ export function galleryImageDocToDisplayMedia(
 	const galleryImageId = imageDoc.id;
 
 	if ('url' in imageDoc && 'id' in imageDoc) {
-		return { ...(imageDoc as Media), isNsfw: docIsNsfw, galleryImageId };
+		return {
+			...(imageDoc as Media),
+			isNsfw: docIsNsfw,
+			galleryImageId,
+			commerce: readCommerce(imageDoc)
+		};
 	}
 
 	if ('image' in imageDoc) {
 		const candidate = (imageDoc as { image?: unknown }).image;
 		if (typeof candidate === 'object' && candidate !== null && 'id' in candidate) {
-			return { ...(candidate as Media), isNsfw: docIsNsfw, galleryImageId };
+			return {
+				...(candidate as Media),
+				isNsfw: docIsNsfw,
+				galleryImageId,
+				commerce: readCommerce(imageDoc)
+			};
 		}
 	}
 
