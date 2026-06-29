@@ -1,4 +1,4 @@
-import { loadSession } from '$lib/auth/loadSession';
+import { loadSession } from '$lib/auth/loadSession.server';
 import type { LayoutServerLoad } from './$types';
 
 /** Server-side session for +page.server.ts guards (universal +layout.ts data is not in parent() on client nav). */

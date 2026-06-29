@@ -1,4 +1,4 @@
-import { loadSession } from '$lib/auth/loadSession';
+import { loadSession } from '$lib/auth/loadSession.server';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

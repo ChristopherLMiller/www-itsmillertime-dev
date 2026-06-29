@@ -588,6 +588,7 @@
 					style={`--popover-anchor: ${popoverAnchor}`}
 					popover="auto"
 					role="dialog"
+					tabindex="-1"
 					aria-label={g.name ? `${g.name} details` : 'Game details'}
 					onmouseenter={clearPopoverHideTimer}
 					onmouseleave={queueHideGamePopover}
