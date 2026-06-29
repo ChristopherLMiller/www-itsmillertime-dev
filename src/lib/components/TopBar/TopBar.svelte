@@ -322,7 +322,7 @@
 		box-shadow: none;
 		animation: menu-panel-in 180ms ease;
 
-		@media screen and (min-width: var(--layout-nav-desktop-min)) {
+		@media screen and (min-width: 768px) {
 			box-shadow: var(--box-shadow-elev-1);
 		}
 	}
@@ -389,7 +389,7 @@
 	}
 
 	.hide-on-desktop {
-		@media screen and (min-width: var(--layout-nav-desktop-min)) {
+		@media screen and (min-width: 768px) {
 			display: none;
 		}
 	}
