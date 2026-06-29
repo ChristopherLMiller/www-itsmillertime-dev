@@ -1,20 +1,14 @@
-import { browser } from '$app/environment';
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
-import { isBrowserOnline } from '$lib/cache/offlineSwr';
+import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
 
 export type SessionShape = { user?: Record<string, unknown>; session?: Record<string, unknown> } | null;
 
-/** Client-safe session load (proxied Payload API for /users/me merge). */
+/** Server-only session load (direct CMS URL for /users/me merge). */
 export async function loadSession(
 	fetch: typeof globalThis.fetch,
-	request?: Request
+	request: Request
 ): Promise<SessionShape> {
-	if (browser && !isBrowserOnline()) {
-		return null;
-	}
-
-	const cookie = request?.headers.get('cookie');
+	const cookie = request.headers.get('cookie');
 	const sessionInit: RequestInit | undefined = cookie ? { headers: { cookie } } : undefined;
 
 	try {
@@ -23,17 +17,14 @@ export async function loadSession(
 
 		if (session?.user) {
 			try {
-				const payloadFetch = request ? createPayloadFetch(fetch, request) : fetch;
-				const base = PUBLIC_PAYLOAD_API_ENDPOINT.replace(/\/$/, '');
-				const meResponse = await payloadFetch(`${base}/users/me`, {
-					credentials: 'include'
-				});
+				const payloadFetch = createPayloadFetch(fetch, request);
+				const meResponse = await payloadFetch(`${getPayloadApiBaseUrl()}/users/me`);
 				const payloadMe = meResponse.ok ? await meResponse.json() : null;
 				if (payloadMe?.user) {
 					session.user = { ...session.user, ...payloadMe.user };
 				}
 			} catch {
-				// Offline or Payload unavailable — keep the base session.
+				// Payload unavailable — keep the base session.
 			}
 		}
 
