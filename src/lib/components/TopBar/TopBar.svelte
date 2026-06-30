@@ -333,6 +333,16 @@
 		gap: 1.5rem;
 	}
 
+	@media screen and (max-width: 767px) {
+		.menu-dialog__nav {
+			gap: 1.75rem;
+		}
+
+		.menu-dialog__links {
+			gap: 0.25rem;
+		}
+	}
+
 	.menu-dialog__section {
 		display: flex;
 		flex-direction: column;
@@ -342,11 +352,16 @@
 	.menu-dialog__section-title {
 		margin: 0;
 		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		font-weight: 500;
+		font-size: var(--fs-s);
+		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--color-primary-darker);
+
+		@media screen and (min-width: 768px) {
+			font-size: var(--fs-xs);
+			font-weight: 500;
+		}
 	}
 
 	.menu-dialog__links {
@@ -363,17 +378,25 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
-		padding: 0.5rem 0.25rem;
+		padding: 0.65rem 0.35rem;
 		border-radius: 2px;
-		color: var(--color-tertiary-darker);
-		font-family: var(--font-source-code-pro);
-		font-size: var(--fs-xs);
-		font-weight: 300;
+		color: var(--color-tertiary-darkest);
+		font-family: var(--font-oswald);
+		font-size: var(--fs-base);
+		font-weight: 500;
 		line-height: 1.35;
 		text-decoration: none;
 		transition:
 			background 150ms ease,
 			color 150ms ease;
+
+		@media screen and (min-width: 768px) {
+			padding: 0.5rem 0.25rem;
+			font-family: var(--font-source-code-pro);
+			font-size: var(--fs-xs);
+			font-weight: 400;
+			color: var(--color-tertiary-darker);
+		}
 	}
 
 	.menu-dialog__link:hover,
@@ -384,8 +407,12 @@
 
 	.menu-dialog__link-external {
 		flex-shrink: 0;
-		font-size: calc(var(--fs-xs) * 0.85);
+		font-size: var(--fs-xs);
 		color: var(--color-tertiary);
+
+		@media screen and (min-width: 768px) {
+			font-size: calc(var(--fs-xs) * 0.85);
+		}
 	}
 
 	.hide-on-desktop {
