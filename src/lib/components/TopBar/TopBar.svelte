@@ -306,7 +306,7 @@
 	}
 
 	.menu-dialog::backdrop {
-		background: rgba(0, 0, 0, 0.35);
+		background: rgba(0, 0, 0, 0.65);
 	}
 
 	.menu-dialog__panel {
@@ -339,7 +339,20 @@
 		}
 
 		.menu-dialog__links {
-			gap: 0.25rem;
+			gap: 0.35rem;
+		}
+
+		.menu-dialog__section-title {
+			font-size: var(--fs-m);
+		}
+
+		.menu-dialog__link {
+			padding: 0.85rem 0.5rem;
+			font-size: var(--fs-m);
+		}
+
+		.menu-dialog__link-external {
+			font-size: var(--fs-s);
 		}
 	}
 
@@ -352,14 +365,13 @@
 	.menu-dialog__section-title {
 		margin: 0;
 		font-family: var(--font-oswald);
-		font-size: var(--fs-s);
+		font-size: var(--fs-base);
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--color-primary-darker);
 
 		@media screen and (min-width: 768px) {
-			font-size: var(--fs-xs);
 			font-weight: 500;
 		}
 	}
@@ -391,9 +403,8 @@
 			color 150ms ease;
 
 		@media screen and (min-width: 768px) {
-			padding: 0.5rem 0.25rem;
+			padding: 0.55rem 0.25rem;
 			font-family: var(--font-source-code-pro);
-			font-size: var(--fs-xs);
 			font-weight: 400;
 			color: var(--color-tertiary-darker);
 		}
@@ -409,10 +420,6 @@
 		flex-shrink: 0;
 		font-size: var(--fs-xs);
 		color: var(--color-tertiary);
-
-		@media screen and (min-width: 768px) {
-			font-size: calc(var(--fs-xs) * 0.85);
-		}
 	}
 
 	.hide-on-desktop {
