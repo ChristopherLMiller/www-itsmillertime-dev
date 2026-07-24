@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Image from '$lib/components/Image';
-	import type { Kit, Media, Model } from '$lib/types/payload-types';
+	import type { Kit, Media, Model, ModelsTag } from '$lib/types/payload-types';
 	import { convertDate } from '$lib/utils/convertDate';
 	import { makeClockifyDurationFriendly } from '$lib/utils/makeClockifyDurationFriendly';
 
@@ -15,6 +15,20 @@
 			? (model.model_meta.kit as Kit)
 			: null
 	);
+
+	const headText = $derived(
+		kit
+			? `${typeof kit.manufacturer === 'object' && kit.manufacturer !== null ? kit.manufacturer.title : ''} • ${kit.kit_number ?? ''}`
+			: ''
+	);
+
+	const resolvedTags = $derived(
+		(model.model_meta.tags ?? []).filter(
+			(tag): tag is ModelsTag => typeof tag === 'object' && tag !== null && 'title' in tag
+		)
+	);
+
+	let tagsEl = $state<HTMLDivElement | null>(null);
 
 	$effect(() => {
 		async function getClockifyProjects() {
@@ -32,18 +46,60 @@
 
 		getClockifyProjects();
 	});
+
+	$effect(() => {
+		const el = tagsEl;
+		const tags = resolvedTags;
+		if (!el || tags.length === 0) return;
+
+		function fitTags() {
+			if (!el) return;
+			const tagEls = Array.from(el.querySelectorAll<HTMLElement>('[data-tag]'));
+			const moreEl = el.querySelector<HTMLElement>('[data-more]');
+
+			for (const tagEl of tagEls) {
+				tagEl.hidden = false;
+			}
+			if (moreEl) {
+				moreEl.hidden = true;
+				moreEl.textContent = '';
+			}
+
+			if (el.scrollWidth <= el.clientWidth + 1) return;
+
+			if (moreEl) moreEl.hidden = false;
+
+			let hidden = 0;
+			for (let i = tagEls.length - 1; i >= 0; i--) {
+				if (el.scrollWidth <= el.clientWidth + 1) break;
+				tagEls[i].hidden = true;
+				hidden += 1;
+				if (moreEl) moreEl.textContent = `+${hidden}`;
+			}
+		}
+
+		const frame = requestAnimationFrame(fitTags);
+		const observer = new ResizeObserver(fitTags);
+		observer.observe(el);
+
+		return () => {
+			cancelAnimationFrame(frame);
+			observer.disconnect();
+		};
+	});
 </script>
 
 {#if !isClockifyLoading}
 	<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
 		<div class="contents">
-			<p class="head">
-				{kit
-					? `${typeof kit.manufacturer === 'object' && kit.manufacturer !== null ? kit.manufacturer.title : ''} • ${kit.kit_number ?? ''}`
-					: ''}
-			</p>
+			<p class="head">{headText}</p>
 			<div class="card-image">
-				<Image image={model.model_meta.featuredImage as Media} />
+				<Image
+					image={model.model_meta.featuredImage as Media}
+					fixedAspectRatio={4 / 3}
+					objectFit="cover"
+					sizes="(min-width: 768px) 350px, 100vw"
+				/>
 				<span class={`status ${model.model_meta.status.toLowerCase()}`}
 					>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
 				>
@@ -76,13 +132,12 @@
 							</div>
 						</div>
 					{/if}
-					{#if model.model_meta.tags?.length}
-						<div class="tags">
-							{#each model.model_meta.tags as tag}
-								{#if typeof tag === 'object' && tag !== null && 'title' in tag}
-									<a href={`/models?tags=${tag.slug}`}>{tag.title}</a>
-								{/if}
+					{#if resolvedTags.length}
+						<div class="tags" bind:this={tagsEl}>
+							{#each resolvedTags as tag (tag.id)}
+								<a data-tag href={`/models?tag=${tag.slug}`}>{tag.title}</a>
 							{/each}
+							<span class="tags-more" data-more hidden></span>
 						</div>
 					{/if}
 				</div>
@@ -111,6 +166,7 @@
 		border-radius: 10px;
 		color: var(--color-primary);
 		height: 490px;
+		overflow: hidden;
 		transition: all 0.2s ease-in-out;
 
 		&.in_progress {
@@ -129,20 +185,31 @@
 	.contents {
 		display: grid;
 		grid-template-columns: 1fr;
-		grid-template-rows: 32px repeat(2, auto);
+		grid-template-rows: auto repeat(2, auto);
 		height: 100%;
+		min-width: 0;
 		background: var(--color-white-lighter);
 		border: 2px solid var(--color-primary-darker);
 		border-radius: 10px;
 	}
 	.head {
+		margin-block: 0;
+		text-indent: 0;
 		text-align: center;
-		padding-block-start: 5px;
+		padding-block: 0.35rem 0.15rem;
+		padding-inline: 0.5rem;
 		font-size: 18px;
+		line-height: 1.2;
+		min-width: 0;
 	}
 
 	.card-image {
 		position: relative;
+		min-width: 0;
+
+		:global(.image-container) {
+			width: 100%;
+		}
 
 		.status {
 			position: absolute;
@@ -170,15 +237,17 @@
 		text-align: center;
 		font-size: 20px;
 		margin-block-end: 0;
-		margin-block-end: 0;
 		line-height: 1.25em;
 		padding-block-start: 0.25em;
+		padding-inline: 0.5rem;
 		text-decoration: none;
 		color: var(--color-primary);
 	}
 
 	.details {
 		align-self: end;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.stats {
@@ -190,31 +259,54 @@
 		font-family: var(--font-oswald);
 		padding-inline: 0.5rem;
 		padding-block-end: 0.5rem;
+		min-width: 0;
 	}
 	.stat-row {
 		display: flex;
 		justify-content: space-between;
+		gap: 0.5rem;
 		padding: 0.25rem 0;
 		border-bottom: 1px dotted var(--color-tertiary-darker);
+		min-width: 0;
 	}
 	.stat-label {
 		color: var(--color-tertiary);
 		font-weight: bold;
+		flex-shrink: 0;
+	}
+
+	.value,
+	.vlaue {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		text-align: right;
 	}
 
 	.tags {
 		display: flex;
+		flex-wrap: nowrap;
 		gap: 0.5rem;
 		justify-content: center;
+		align-items: center;
 		font-size: var(--fs-xs);
-		flex-wrap: wrap;
+		max-width: 100%;
+		min-width: 0;
+		overflow: hidden;
 
-		a {
+		a,
+		.tags-more {
+			flex-shrink: 0;
 			background: var(--color-tertiary-lighter);
 			color: var(--color-white-lighter);
 			text-decoration: none;
 			padding: 0.25rem 0.5rem;
 			transform: skew(-10deg);
+		}
+
+		.tags-more {
+			cursor: default;
 		}
 	}
 
