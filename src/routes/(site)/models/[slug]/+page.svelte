@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Image from '$lib/components/Image';
 	import Icon from '$lib/components/Icon';
 	import Panel from '$lib/components/Panel';
@@ -8,6 +9,7 @@
 	import { type Kit, type Media } from '$lib/types/payload-types.js';
 	import { convertDate } from '$lib/utils/convertDate';
 	import { makeClockifyDurationFriendly } from '$lib/utils/makeClockifyDurationFriendly';
+	import { toRelatedLinks } from '$lib/utils/relatedResources';
 	import Disqus from '$lib/components/Disqus';
 	import ShareButtons from '$lib/components/ShareButtons';
 	import VideoPlayer from '$lib/components/VideoPlayer';
@@ -36,6 +38,18 @@
 	const clockifyDuration = $derived(
 		clockifyProject ? makeClockifyDurationFriendly(clockifyProject.duration, false, true) : null
 	);
+	const isAdmin = $derived(
+		!!page.data.session?.user &&
+			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
+	);
+	const cmsEditHref = $derived(
+		isAdmin && model.id != null
+			? `${PUBLIC_PAYLOAD_URL}/admin/collections/models/${model.id}`
+			: null
+	);
+	const relatedPosts = $derived(toRelatedLinks(model.relatedResources?.relatedPosts));
+	const relatedModels = $derived(toRelatedLinks(model.relatedResources?.relatedModels));
+	const hasRelatedResources = $derived(relatedPosts.length > 0 || relatedModels.length > 0);
 
 	$effect(() => {
 		async function getClockifyProject() {
@@ -75,6 +89,17 @@
 								<Icon name="clock" size={18} />
 								<span>{clockifyDuration}</span>
 							</span>
+						{/if}
+						{#if cmsEditHref}
+							<a
+								href={cmsEditHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="cms-edit-link"
+								aria-label="Edit this model in the CMS (opens in a new tab)"
+							>
+								Edit in CMS
+							</a>
 						{/if}
 					</div>
 					<div class="hero-share-wrapper">
@@ -140,6 +165,30 @@
 						</div>
 					{/if}
 				</StickyNote>
+
+				{#if hasRelatedResources}
+					<section class="related-section" aria-labelledby="model-related-heading">
+						<h2 id="model-related-heading" class="related-heading">Related</h2>
+						<ul class="related-list">
+							{#each relatedPosts as post (post.id)}
+								<li>
+									<a href={`/articles/${post.slug}`} class="related-link">
+										<span class="related-link-title">{post.title}</span>
+										<span class="related-link-meta">Article</span>
+									</a>
+								</li>
+							{/each}
+							{#each relatedModels as related (related.id)}
+								<li>
+									<a href={`/models/${related.slug}`} class="related-link">
+										<span class="related-link-title">{related.title}</span>
+										<span class="related-link-meta">Model</span>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					</section>
+				{/if}
 
 				<!-- Videos -->
 				{#if model.model_meta?.videos && model.model_meta.videos.length > 0}
@@ -265,6 +314,20 @@
 		color: var(--color-primary-darker);
 	}
 
+	.cms-edit-link {
+		font-family: var(--font-oswald);
+		font-size: var(--fs-xs);
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		text-decoration: underline;
+		color: var(--color-primary-darker);
+
+		&:hover {
+			color: var(--color-secondary);
+		}
+	}
+
 	.hero-share-wrapper :global(.hero-share) {
 		margin: 0;
 	}
@@ -288,6 +351,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2rem;
+		min-height: 100%;
 	}
 
 	.sidebar-column {
@@ -301,7 +365,70 @@
 		align-self: center;
 	}
 
+	.related-section {
+		border: var(--border-width) solid var(--color-primary-darker);
+		background: var(--linen-paper);
+		padding: 1rem;
+	}
+
+	.related-heading {
+		margin: 0 0 0.75rem;
+		font-family: var(--font-oswald);
+		font-size: var(--fs-base);
+		color: var(--color-primary-darker);
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.related-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.related-link {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		padding: 0.45rem 0;
+		border-bottom: 1px dotted color-mix(in srgb, var(--color-primary-darker) 30%, transparent);
+		text-decoration: none;
+		color: inherit;
+
+		&:first-child {
+			padding-top: 0;
+		}
+
+		&:last-child {
+			border-bottom: none;
+			padding-bottom: 0;
+		}
+
+		&:hover .related-link-title {
+			color: var(--color-secondary);
+		}
+	}
+
+	.related-link-title {
+		font-family: var(--font-oswald);
+		font-size: var(--fs-base);
+		line-height: 1.25;
+		color: var(--color-primary-darker);
+		transition: color 0.2s;
+	}
+
+	.related-link-meta {
+		font-family: var(--font-oswald);
+		font-size: var(--fs-xs);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-tertiary);
+	}
+
 	.build-log-wrapper {
+		flex: 1;
 		background: linear-gradient(135deg, #c9b287 0%, #b39d6f 100%);
 		border: var(--border-width) solid #7a6a4a;
 		padding: clamp(1rem, 1rem + 1vw, 2rem);

@@ -32,7 +32,7 @@
 		pagination={null}
 		showFilters={false}
 	>
-		<NewspaperArticleContent article={data.article}>
+		<NewspaperArticleContent article={data.article} relatedModels={data.relatedModels ?? []}>
 			{#snippet share()}
 				<ShareButtons url={page.url.href} title={data.article.title} />
 			{/snippet}

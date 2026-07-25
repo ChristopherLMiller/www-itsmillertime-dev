@@ -3,11 +3,13 @@ import {
 	ARTICLE_CACHE_TTL_S,
 	ARTICLE_STALE_THRESHOLD_S,
 	articleRedisKey,
-	type ArticlePageMeta
+	type ArticlePageMeta,
+	type ArticleRelatedModel
 } from '$lib/cache/articleCache';
 import { unwrapSwrCache, wrapForSwrCache } from '$lib/cache/payloadSwrCore';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { Post } from '$lib/types/payload-types';
+import { toRelatedLinks } from '$lib/utils/relatedResources';
 
 type CachedArticle = {
 	data: Post;
@@ -16,6 +18,17 @@ type CachedArticle = {
 
 function isPublishedArticle(article: Post | null | undefined): article is Post {
 	return article?._status === 'published';
+}
+
+/** Cached articles may predate depth:1 fetches and only store related post IDs. */
+function needsRelatedPostPopulation(article: Post): boolean {
+	const posts = article.relatedPosts;
+	if (!posts?.length) return false;
+	return posts.some(
+		(p) =>
+			typeof p === 'number' ||
+			(typeof p === 'object' && p != null && (!p.title || !p.slug))
+	);
 }
 
 export function buildArticlePageMeta(doc: Post, origin: string, slug: string): ArticlePageMeta {
@@ -43,8 +56,33 @@ async function fetchArticleByIdFromCMS(articleId: number | string): Promise<Post
 	return sdk.findByID({
 		collection: 'posts',
 		id: articleId,
+		depth: 1,
 		disableErrors: true
 	});
+}
+
+/** Models that list this article under relatedResources.relatedPosts (CMS has no article→model field). */
+async function fetchModelsRelatedToArticle(
+	articleId: number | string
+): Promise<ArticleRelatedModel[]> {
+	const sdk = getPayloadSDK();
+	const result = await sdk.find({
+		collection: 'models',
+		limit: 50,
+		depth: 0,
+		select: {
+			id: true,
+			title: true,
+			slug: true
+		},
+		where: {
+			'relatedResources.relatedPosts': {
+				equals: articleId
+			}
+		}
+	});
+
+	return toRelatedLinks(result.docs);
 }
 
 async function resolvePublishedArticleId(slug: string): Promise<number | string | null> {
@@ -90,6 +128,7 @@ async function refreshArticleInBackground(
 export type ArticlePageDataResult = {
 	article: Post;
 	meta: ArticlePageMeta;
+	relatedModels: ArticleRelatedModel[];
 	cacheStatus: 'HIT' | 'MISS';
 };
 
@@ -106,7 +145,7 @@ export async function loadArticlePageData(
 	let doc: Post;
 	let cacheStatus: 'HIT' | 'MISS' = 'MISS';
 
-	if (cachedArticle) {
+	if (cachedArticle && !needsRelatedPostPopulation(cachedArticle.data)) {
 		doc = cachedArticle.data;
 		cacheStatus = 'HIT';
 		if (cachedArticle.isStale) {
@@ -119,9 +158,12 @@ export async function loadArticlePageData(
 		await cacheManager.set(redisKey, wrapForSwrCache(freshArticle), ARTICLE_CACHE_TTL_S);
 	}
 
+	const relatedModels = await fetchModelsRelatedToArticle(articleId);
+
 	return {
 		article: doc,
 		meta: buildArticlePageMeta(doc, origin, slug),
+		relatedModels,
 		cacheStatus
 	};
 }

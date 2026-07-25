@@ -89,6 +89,16 @@
 		void goto(url, { keepFocus: true, noScroll: false });
 	}
 
+	function handleCategorySelect(event: Event) {
+		const target = event.target as HTMLSelectElement;
+		handleCategoryClick(target.value || 'all');
+	}
+
+	function handleTagSelect(event: Event) {
+		const target = event.target as HTMLSelectElement;
+		handleTagClick(target.value || 'all');
+	}
+
 	function clearFilters() {
 		const url = new URL(page.url);
 		url.searchParams.delete('category');
@@ -168,46 +178,84 @@
 
 	{#if showFilters}
 		<div class="filter-bar" style:view-transition-name="newspaper-filters">
-			<div class="filter-bar-line filter-bar-line--sections">
-				<span class="filter-label">Sections:</span>
-				<button
-					type="button"
-					class="filter-link filter-link--section"
-					class:filter-link--active={!selectedCategory}
-					onclick={() => handleCategoryClick('all')}>All</button
-				>
-				{#each categories as category (category.id)}
+			<div class="filter-bar-selects">
+				<div class="filter-select-group">
+					<label class="filter-label" for="newspaper-section-select">Sections</label>
+					<select
+						id="newspaper-section-select"
+						class="filter-select"
+						value={selectedCategory || 'all'}
+						onchange={handleCategorySelect}
+					>
+						<option value="all">All</option>
+						{#each categories as category (category.id)}
+							<option value={category.slug ?? ''}>{category.title}</option>
+						{/each}
+					</select>
+				</div>
+				<div class="filter-select-group">
+					<label class="filter-label" for="newspaper-topic-select">Topics</label>
+					<select
+						id="newspaper-topic-select"
+						class="filter-select"
+						value={selectedTag || 'all'}
+						onchange={handleTagSelect}
+					>
+						<option value="all">All</option>
+						{#each tags as tag (tag.id)}
+							<option value={tag.slug ?? ''}>{tag.title}</option>
+						{/each}
+					</select>
+				</div>
+				{#if hasFilters}
+					<button type="button" class="filter-clear filter-clear--selects" onclick={clearFilters}
+						>[clear]</button
+					>
+				{/if}
+			</div>
+
+			<div class="filter-bar-links">
+				<div class="filter-bar-line filter-bar-line--sections">
+					<span class="filter-label">Sections:</span>
 					<button
 						type="button"
 						class="filter-link filter-link--section"
-						class:filter-link--active={selectedCategory === category.slug}
-						onclick={() => handleCategoryClick(category.slug)}
+						class:filter-link--active={!selectedCategory}
+						onclick={() => handleCategoryClick('all')}>All</button
 					>
-						{category.title}
-					</button>
-				{/each}
-			</div>
-			<div class="filter-bar-line filter-bar-line--topics">
-				<span class="filter-label">Topics:</span>
-				<button
-					type="button"
-					class="filter-link filter-link--tag"
-					class:filter-link--active={!selectedTag}
-					onclick={() => handleTagClick('all')}>All</button
-				>
-				{#each tags as tag (tag.id)}
+					{#each categories as category (category.id)}
+						<button
+							type="button"
+							class="filter-link filter-link--section"
+							class:filter-link--active={selectedCategory === category.slug}
+							onclick={() => handleCategoryClick(category.slug)}
+						>
+							{category.title}
+						</button>
+					{/each}
+				</div>
+				<div class="filter-bar-line filter-bar-line--topics">
+					<span class="filter-label">Topics:</span>
 					<button
 						type="button"
 						class="filter-link filter-link--tag"
-						class:filter-link--active={selectedTag === tag.slug}
-						onclick={() => handleTagClick(tag.slug)}
+						class:filter-link--active={!selectedTag}
+						onclick={() => handleTagClick('all')}>All</button
 					>
-						{tag.title}
-					</button>
-				{/each}
-				{#if hasFilters}
-					<button type="button" class="filter-clear" onclick={clearFilters}>[clear]</button>
-				{/if}
+					{#each tags as tag (tag.id)}
+						<button
+							type="button"
+							class="filter-link filter-link--tag"
+							class:filter-link--active={selectedTag === tag.slug}
+							onclick={() => handleTagClick(tag.slug)}
+						>
+							{tag.title}
+						</button>
+					{/each}
+					{#if hasFilters}
+						<button type="button" class="filter-clear" onclick={clearFilters}>[clear]</button>
+					{/if}
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -368,6 +416,52 @@
 		border-bottom: 1px solid #ccc;
 	}
 
+	.filter-bar-selects {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		align-items: end;
+		gap: 0.55rem 0.65rem;
+	}
+
+	.filter-bar-links {
+		display: none;
+	}
+
+	.filter-select-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		min-width: 0;
+	}
+
+	.filter-select {
+		width: 100%;
+		min-width: 0;
+		padding: 0.35rem 1.6rem 0.35rem 0.45rem;
+		border: 1px solid #bbb;
+		border-radius: 0;
+		background-color: #fff;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.45rem center;
+		font-family: 'Times New Roman', Times, serif;
+		font-size: var(--fs-xs);
+		color: #333;
+		cursor: pointer;
+		appearance: none;
+
+		&:focus {
+			outline: 1px solid #8b0000;
+			outline-offset: 1px;
+		}
+	}
+
+	.filter-clear--selects {
+		grid-column: 1 / -1;
+		justify-self: start;
+		margin-left: 0;
+	}
+
 	.filter-bar-line {
 		display: flex;
 		align-items: baseline;
@@ -384,6 +478,10 @@
 		letter-spacing: 1px;
 		color: #333;
 		margin-right: 0.25rem;
+	}
+
+	.filter-select-group .filter-label {
+		margin-right: 0;
 	}
 
 	.filter-link {
@@ -439,6 +537,18 @@
 
 		&:hover {
 			color: #a00;
+		}
+	}
+
+	@media (min-width: 768px) {
+		.filter-bar-selects {
+			display: none;
+		}
+
+		.filter-bar-links {
+			display: flex;
+			flex-direction: column;
+			gap: 0.4rem;
 		}
 	}
 

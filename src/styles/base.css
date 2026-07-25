@@ -26,6 +26,17 @@
 		min-height: 100dvh;
 	}
 
+	/* Block background scroll while any modal <dialog> is open (showModal). */
+	html:has(dialog:modal) {
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
+	body:has(dialog:modal) {
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
 	@media (prefers-color-scheme: dark) {
 		body {
 			/* Solid fill; animated grunge is GrungeOverlay (WebGL) in the site layout */

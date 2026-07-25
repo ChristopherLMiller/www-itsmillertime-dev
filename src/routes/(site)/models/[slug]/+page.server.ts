@@ -5,6 +5,7 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 	const modelData = await getPayloadSDK(fetch, request).find({
 		collection: 'models',
+		depth: 1,
 		where: {
 			slug: {
 				equals: params.slug
@@ -20,7 +21,8 @@ export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 			clockify_project: true,
 			buildLog: true,
 			image: true,
-			meta: true
+			meta: true,
+			relatedResources: true
 		}
 	});
 

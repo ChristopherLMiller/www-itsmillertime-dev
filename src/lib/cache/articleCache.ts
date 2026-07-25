@@ -54,9 +54,17 @@ export type ArticlePageMeta = NonNullable<Post['meta']> & {
 	canonicalURL: string;
 };
 
+export type ArticleRelatedModel = {
+	id: number;
+	title: string;
+	slug: string;
+};
+
 export interface ArticleCacheData {
 	article: Post;
 	meta: ArticlePageMeta;
+	/** Models that list this article under relatedResources.relatedPosts */
+	relatedModels?: ArticleRelatedModel[];
 }
 
 export interface ArticlesListPagination {
