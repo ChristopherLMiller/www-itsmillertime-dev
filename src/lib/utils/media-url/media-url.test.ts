@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getMediaUrl, isVideoMedia } from './media-url';
+import { getMediaUrl, isGifMedia, isVideoMedia } from './media-url';
 
 describe('getMediaUrl', () => {
 	it('returns empty string for missing path', () => {
@@ -33,5 +33,21 @@ describe('isVideoMedia', () => {
 
 	it('returns false for plain images', () => {
 		expect(isVideoMedia({ mimeType: 'image/jpeg', url: '/a.jpg' })).toBe(false);
+	});
+});
+
+describe('isGifMedia', () => {
+	it('detects gif mime type', () => {
+		expect(isGifMedia({ mimeType: 'image/gif' })).toBe(true);
+	});
+
+	it('detects gif filename or url', () => {
+		expect(isGifMedia({ filename: 'dance.gif' })).toBe(true);
+		expect(isGifMedia({ url: '/api/media/file/dance.gif' })).toBe(true);
+	});
+
+	it('returns false for non-gifs', () => {
+		expect(isGifMedia({ mimeType: 'image/jpeg', filename: 'x.jpg' })).toBe(false);
+		expect(isGifMedia(null)).toBe(false);
 	});
 });

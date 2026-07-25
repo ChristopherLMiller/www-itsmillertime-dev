@@ -1,14 +1,383 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth/client';
 	import Panel from '$lib/components/Panel';
+	import { getAvatarUrl, gravatarProfileUrl, hashEmailForGravatar } from '$lib/utils/avatar';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+
+	type NsfwFiltering = 'hide' | 'blur' | 'show';
+	type AuthSession = {
+		id: string;
+		createdAt: string | Date;
+		expiresAt: string | Date;
+		ipAddress?: string | null;
+		userAgent?: string | null;
+		token?: string;
+	};
+	type ProfileUserView = {
+		id: string | number;
+		email?: string | null;
+		name?: string | null;
+		displayName?: string | null;
+		nsfwFiltering?: string | null;
+		bggUsername?: string | null;
+		image?: string | null;
+		role?: string[] | null;
+		emailVerified?: boolean | null;
+		twoFactorEnabled?: boolean | null;
+		banned?: boolean | null;
+		createdAt?: string;
+	};
 
 	let signingOut = $state(false);
+	let profileSaving = $state(false);
+	let prefsSaving = $state(false);
+	let passwordSaving = $state(false);
+	let emailSaving = $state(false);
+	let sessionsLoading = $state(false);
+	let revokingSessions = $state(false);
+	let deletingAccount = $state(false);
 
-	let session = $derived(page.data.session);
-	let user = $derived(session?.user);
-	let sess = $derived(session?.session);
+	let profileError = $state<string | null>(null);
+	let profileSuccess = $state<string | null>(null);
+	let prefsError = $state<string | null>(null);
+	let prefsSuccess = $state<string | null>(null);
+	let passwordError = $state<string | null>(null);
+	let passwordSuccess = $state<string | null>(null);
+	let emailError = $state<string | null>(null);
+	let emailSuccess = $state<string | null>(null);
+	let sessionsError = $state<string | null>(null);
+	let deleteError = $state<string | null>(null);
+
+	let displayName = $state('');
+	let name = $state('');
+	let nsfwFiltering = $state<NsfwFiltering | ''>('');
+	let bggUsername = $state('');
+
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let revokeOtherOnPasswordChange = $state(true);
+
+	let newEmail = $state('');
+
+	let deletePassword = $state('');
+	let deleteConfirm = $state('');
+
+	let otherSessions = $state<AuthSession[]>([]);
+	let lastAppliedProfileKey = $state<string | null>(null);
+	let sessionsLoadedForUserId = $state<string | number | null>(null);
+	let gravatarHash = $state('');
+	let hashedEmail = $state('');
+
+	const session = $derived(page.data.session);
+	/** Prefer layout session; keep Payload fields from SSR snapshot when client session omits them. */
+	const user = $derived.by((): ProfileUserView | undefined => {
+		const sessionUser = session?.user as ProfileUserView | undefined;
+		const snapshot = data.profileUser as ProfileUserView | undefined;
+		if (!sessionUser && !snapshot) return undefined;
+		const id = sessionUser?.id ?? snapshot?.id;
+		if (id == null) return undefined;
+		return {
+			...snapshot,
+			...sessionUser,
+			id,
+			displayName: sessionUser?.displayName ?? snapshot?.displayName ?? null,
+			nsfwFiltering: sessionUser?.nsfwFiltering ?? snapshot?.nsfwFiltering ?? null,
+			bggUsername: sessionUser?.bggUsername ?? snapshot?.bggUsername ?? null,
+			name: sessionUser?.name ?? snapshot?.name ?? null,
+			image: sessionUser?.image ?? snapshot?.image ?? null,
+			email: sessionUser?.email ?? snapshot?.email ?? null,
+			role: sessionUser?.role ?? null,
+			emailVerified: sessionUser?.emailVerified ?? null,
+			twoFactorEnabled: sessionUser?.twoFactorEnabled ?? null,
+			banned: sessionUser?.banned ?? null,
+			createdAt: sessionUser?.createdAt
+		};
+	});
+	const sess = $derived(session?.session);
+	const avatarSrc = $derived(
+		getAvatarUrl({
+			image: typeof user?.image === 'string' ? user.image : null,
+			gravatarHash: gravatarHash || null,
+			size: 192
+		})
+	);
+	const usingGravatar = $derived(
+		!user?.image && !!avatarSrc && typeof user?.email === 'string'
+	);
+	const gravatarEditUrl = $derived(
+		typeof user?.email === 'string' ? gravatarProfileUrl(user.email) : 'https://gravatar.com'
+	);
+
+	function profileKeyFromUser(u: ProfileUserView): string {
+		const nsfw = typeof u.nsfwFiltering === 'string' ? u.nsfwFiltering : '';
+		return [
+			u.id,
+			typeof u.displayName === 'string' ? u.displayName : '',
+			typeof u.name === 'string' ? u.name : '',
+			nsfw,
+			typeof u.bggUsername === 'string' ? u.bggUsername : ''
+		].join('\u0000');
+	}
+
+	function applyUserToForm(u: ProfileUserView) {
+		displayName = typeof u.displayName === 'string' ? u.displayName : '';
+		name = typeof u.name === 'string' ? u.name : '';
+		const nsfw = typeof u.nsfwFiltering === 'string' ? u.nsfwFiltering : '';
+		nsfwFiltering = nsfw === 'hide' || nsfw === 'blur' || nsfw === 'show' ? nsfw : '';
+		bggUsername = typeof u.bggUsername === 'string' ? u.bggUsername : '';
+	}
+
+	$effect(() => {
+		const u = user;
+		if (!u?.id) return;
+		const key = profileKeyFromUser(u);
+		if (key === lastAppliedProfileKey) return;
+		lastAppliedProfileKey = key;
+		applyUserToForm(u);
+	});
+
+	$effect(() => {
+		const u = user;
+		if (!u?.id) return;
+		if (sessionsLoadedForUserId === u.id) return;
+		sessionsLoadedForUserId = u.id;
+		void loadSessions();
+	});
+
+	$effect(() => {
+		const email = typeof user?.email === 'string' ? user.email : '';
+		if (!email || email === hashedEmail) return;
+		let cancelled = false;
+		void hashEmailForGravatar(email).then((hash) => {
+			if (cancelled) return;
+			gravatarHash = hash;
+			hashedEmail = email;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	function formatDate(dateString: string) {
+		return new Date(dateString).toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		});
+	}
+
+	function formatDateTime(value: string | Date) {
+		return new Date(value).toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+	}
+
+	function authErrorMessage(err: { message?: string | null } | null | undefined, fallback: string) {
+		return err?.message?.trim() || fallback;
+	}
+
+	async function patchProfileFields(body: Record<string, unknown>) {
+		const res = await fetch('/api/account/profile', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		const data = await res.json().catch(() => ({}));
+		if (!res.ok) {
+			throw new Error(
+				typeof data?.error === 'string' ? data.error : 'Failed to update profile fields'
+			);
+		}
+		return data;
+	}
+
+	async function saveProfile(e: SubmitEvent) {
+		e.preventDefault();
+		profileSaving = true;
+		profileError = null;
+		profileSuccess = null;
+
+		try {
+			const nextName = name.trim();
+			if (!nextName) {
+				profileError = 'Name is required.';
+				return;
+			}
+
+			const updateResult = await authClient.updateUser({ name: nextName });
+			if (updateResult.error) {
+				profileError = authErrorMessage(updateResult.error, 'Could not update name.');
+				return;
+			}
+
+			await patchProfileFields({
+				displayName: displayName.trim() || null
+			});
+
+			await invalidateAll();
+			profileSuccess = 'Profile saved.';
+		} catch (err) {
+			profileError = err instanceof Error ? err.message : 'Could not save profile.';
+		} finally {
+			profileSaving = false;
+		}
+	}
+
+	async function savePreferences(e: SubmitEvent) {
+		e.preventDefault();
+		prefsSaving = true;
+		prefsError = null;
+		prefsSuccess = null;
+
+		try {
+			await patchProfileFields({
+				nsfwFiltering: nsfwFiltering || null,
+				bggUsername: bggUsername.trim() || null
+			});
+			await invalidateAll();
+			prefsSuccess = 'Preferences saved.';
+		} catch (err) {
+			prefsError = err instanceof Error ? err.message : 'Could not save preferences.';
+		} finally {
+			prefsSaving = false;
+		}
+	}
+
+	async function changePassword(e: SubmitEvent) {
+		e.preventDefault();
+		passwordSaving = true;
+		passwordError = null;
+		passwordSuccess = null;
+
+		try {
+			if (!currentPassword || !newPassword || !confirmPassword) {
+				passwordError = 'Please fill in all password fields.';
+				return;
+			}
+			if (newPassword.length < 8) {
+				passwordError = 'New password must be at least 8 characters.';
+				return;
+			}
+			if (newPassword !== confirmPassword) {
+				passwordError = 'New passwords do not match.';
+				return;
+			}
+
+			const result = await authClient.changePassword({
+				currentPassword,
+				newPassword,
+				revokeOtherSessions: revokeOtherOnPasswordChange
+			});
+
+			if (result.error) {
+				passwordError = authErrorMessage(result.error, 'Could not change password.');
+				return;
+			}
+
+			currentPassword = '';
+			newPassword = '';
+			confirmPassword = '';
+			passwordSuccess = 'Password updated.';
+			if (revokeOtherOnPasswordChange) {
+				await loadSessions();
+			}
+		} catch (err) {
+			passwordError = err instanceof Error ? err.message : 'Could not change password.';
+		} finally {
+			passwordSaving = false;
+		}
+	}
+
+	async function changeEmail(e: SubmitEvent) {
+		e.preventDefault();
+		emailSaving = true;
+		emailError = null;
+		emailSuccess = null;
+
+		try {
+			const next = newEmail.trim();
+			if (!next) {
+				emailError = 'Enter a new email address.';
+				return;
+			}
+
+			const result = await authClient.changeEmail({
+				newEmail: next,
+				callbackURL: '/account/profile'
+			});
+
+			if (result.error) {
+				emailError = authErrorMessage(
+					result.error,
+					'Could not start email change. It may be disabled on the server.'
+				);
+				return;
+			}
+
+			emailSuccess = 'Check your inbox to confirm the email change.';
+			newEmail = '';
+		} catch (err) {
+			emailError = err instanceof Error ? err.message : 'Could not change email.';
+		} finally {
+			emailSaving = false;
+		}
+	}
+
+	async function loadSessions() {
+		sessionsLoading = true;
+		sessionsError = null;
+		try {
+			const result = await authClient.listSessions();
+			if (result.error) {
+				sessionsError = authErrorMessage(result.error, 'Could not load sessions.');
+				otherSessions = [];
+				return;
+			}
+
+			const currentToken =
+				typeof sess?.token === 'string'
+					? sess.token
+					: typeof sess?.id === 'string'
+						? sess.id
+						: null;
+			const list = (result.data ?? []) as AuthSession[];
+			otherSessions = list.filter((s) => {
+				if (!currentToken) return true;
+				return s.token !== currentToken && s.id !== currentToken;
+			});
+		} catch (err) {
+			sessionsError = err instanceof Error ? err.message : 'Could not load sessions.';
+			otherSessions = [];
+		} finally {
+			sessionsLoading = false;
+		}
+	}
+
+	async function revokeOtherSessions() {
+		revokingSessions = true;
+		sessionsError = null;
+		try {
+			const result = await authClient.revokeOtherSessions();
+			if (result.error) {
+				sessionsError = authErrorMessage(result.error, 'Could not revoke other sessions.');
+				return;
+			}
+			await loadSessions();
+		} catch (err) {
+			sessionsError = err instanceof Error ? err.message : 'Could not revoke other sessions.';
+		} finally {
+			revokingSessions = false;
+		}
+	}
 
 	async function handleSignOut() {
 		signingOut = true;
@@ -25,31 +394,39 @@
 		}
 	}
 
-	function formatDate(dateString: string) {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
-	}
+	async function deleteAccount(e: SubmitEvent) {
+		e.preventDefault();
+		deletingAccount = true;
+		deleteError = null;
 
-	function formatDateTime(dateString: string) {
-		return new Date(dateString).toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-	}
+		try {
+			if (deleteConfirm !== 'DELETE') {
+				deleteError = 'Type DELETE to confirm.';
+				return;
+			}
+			if (!deletePassword) {
+				deleteError = 'Enter your password to delete your account.';
+				return;
+			}
 
-	function getInitials(name: string) {
-		return name
-			.split(' ')
-			.map((n) => n[0])
-			.join('')
-			.toUpperCase()
-			.slice(0, 2);
+			const result = await authClient.deleteUser({
+				password: deletePassword
+			});
+
+			if (result.error) {
+				deleteError = authErrorMessage(
+					result.error,
+					'Could not delete account. Deletion may be disabled on the server.'
+				);
+				return;
+			}
+
+			window.location.href = '/';
+		} catch (err) {
+			deleteError = err instanceof Error ? err.message : 'Could not delete account.';
+		} finally {
+			deletingAccount = false;
+		}
 	}
 </script>
 
@@ -62,13 +439,29 @@
 		<div class="profile-header">
 			<Panel hasPadding={true} hasBorder={true}>
 				<div class="header-content">
-					{#if user.image}
-						<img src={user.image} alt={user.name ?? 'Avatar'} class="avatar" />
-					{:else}
-						<div class="avatar-placeholder">
-							{getInitials(user.displayName || user.name || 'U')}
-						</div>
-					{/if}
+					<div class="avatar-block">
+						{#if avatarSrc}
+							<img
+								src={avatarSrc}
+								alt={user.displayName || user.name || 'Avatar'}
+								class="avatar"
+								width="96"
+								height="96"
+							/>
+						{:else}
+							<div class="avatar-placeholder" aria-hidden="true">?</div>
+						{/if}
+						{#if usingGravatar}
+							<a
+								href={gravatarEditUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="avatar-link"
+							>
+								Edit on Gravatar
+							</a>
+						{/if}
+					</div>
 					<div class="header-info">
 						<h1>{user.displayName || user.name}</h1>
 						{#if user.displayName && user.name}
@@ -89,6 +482,19 @@
 								<span class="badge banned">Banned</span>
 							{/if}
 						</div>
+						{#if user.createdAt}
+							<p class="member-since">Member since {formatDate(user.createdAt)}</p>
+						{/if}
+					</div>
+					<div class="header-actions">
+						<button
+							type="button"
+							class="sign-out-btn header-sign-out"
+							onclick={handleSignOut}
+							disabled={signingOut || deletingAccount}
+						>
+							{signingOut ? 'Signing out...' : 'Sign Out'}
+						</button>
 					</div>
 				</div>
 			</Panel>
@@ -96,112 +502,254 @@
 
 		<div class="profile-grid">
 			<Panel hasPadding={true} hasBorder={true}>
-				<div class="section">
-					<h2>Account Details</h2>
-					<dl class="details-list">
-						<div class="detail-row">
-							<dt>User ID</dt>
-							<dd class="mono">{user.id}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>Display Name</dt>
-							<dd>{user.displayName ?? '—'}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>Member Since</dt>
-							<dd>{formatDate(user.createdAt)}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>Last Updated</dt>
-							<dd>{formatDateTime(user.updatedAt)}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>Email Verified</dt>
-							<dd>
-								<span
-									class="status"
-									class:active={user.emailVerified}
-									class:inactive={!user.emailVerified}
-								>
-									{user.emailVerified ? 'Yes' : 'No'}
-								</span>
-							</dd>
-						</div>
-						<div class="detail-row">
-							<dt>Two-Factor Auth</dt>
-							<dd>
-								<span
-									class="status"
-									class:active={user.twoFactorEnabled}
-									class:inactive={!user.twoFactorEnabled}
-								>
-									{user.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-								</span>
-							</dd>
-						</div>
-					</dl>
-				</div>
+				<section class="section">
+					<h2>Profile</h2>
+					{#if profileError}
+						<div class="message error" role="alert">{profileError}</div>
+					{/if}
+					{#if profileSuccess}
+						<div class="message success" role="status">{profileSuccess}</div>
+					{/if}
+					<form class="account-form" onsubmit={saveProfile}>
+						<label class="field">
+							<span>Display name</span>
+							<input
+								type="text"
+								name="displayName"
+								autocomplete="nickname"
+								bind:value={displayName}
+								disabled={profileSaving}
+								placeholder="How you're shown on the site"
+							/>
+						</label>
+						<label class="field">
+							<span>Name</span>
+							<input
+								type="text"
+								name="name"
+								autocomplete="name"
+								bind:value={name}
+								disabled={profileSaving}
+								required
+							/>
+						</label>
+						<button type="submit" class="submit-btn" disabled={profileSaving}>
+							{profileSaving ? 'Saving...' : 'Save profile'}
+						</button>
+					</form>
+				</section>
 			</Panel>
 
 			<Panel hasPadding={true} hasBorder={true}>
-				<div class="section">
+				<section class="section">
 					<h2>Preferences</h2>
-					<dl class="details-list">
-						<div class="detail-row">
-							<dt>NSFW Filtering</dt>
-							<dd>{user.nsfwFiltering ?? '—'}</dd>
-						</div>
-						{#if user.bggUsername}
-							<div class="detail-row">
-								<dt>BGG Username</dt>
-								<dd>
-									<a
-										href="https://boardgamegeek.com/user/{user.bggUsername}"
-										target="_blank"
-										rel="noopener"
-									>
-										{user.bggUsername}
-									</a>
-								</dd>
-							</div>
-						{/if}
-					</dl>
-				</div>
+					{#if prefsError}
+						<div class="message error" role="alert">{prefsError}</div>
+					{/if}
+					{#if prefsSuccess}
+						<div class="message success" role="status">{prefsSuccess}</div>
+					{/if}
+					<form class="account-form" onsubmit={savePreferences}>
+						<label class="field">
+							<span>NSFW filtering</span>
+							<select name="nsfwFiltering" bind:value={nsfwFiltering} disabled={prefsSaving}>
+								<option value="">Not set</option>
+								<option value="hide">Hide</option>
+								<option value="blur">Blur</option>
+								<option value="show">Show</option>
+							</select>
+						</label>
+						<label class="field">
+							<span>BoardGameGeek username</span>
+							<input
+								type="text"
+								name="bggUsername"
+								autocomplete="off"
+								bind:value={bggUsername}
+								disabled={prefsSaving}
+								placeholder="BGG username"
+							/>
+						</label>
+						<button type="submit" class="submit-btn" disabled={prefsSaving}>
+							{prefsSaving ? 'Saving...' : 'Save preferences'}
+						</button>
+					</form>
+				</section>
 			</Panel>
 
+			<div class="span-all">
 			<Panel hasPadding={true} hasBorder={true}>
-				<div class="section">
-					<h2>Current Session</h2>
-					<dl class="details-list">
-						<div class="detail-row">
-							<dt>Session ID</dt>
-							<dd class="mono">{sess.id}</dd>
+				<section class="section">
+					<h2>Security</h2>
+					<div class="security-grid">
+						<div class="security-col">
+							<h3>Change password</h3>
+							{#if passwordError}
+								<div class="message error" role="alert">{passwordError}</div>
+							{/if}
+							{#if passwordSuccess}
+								<div class="message success" role="status">{passwordSuccess}</div>
+							{/if}
+							<form class="account-form" onsubmit={changePassword}>
+								<label class="field">
+									<span>Current password</span>
+									<input
+										type="password"
+										name="currentPassword"
+										autocomplete="current-password"
+										bind:value={currentPassword}
+										disabled={passwordSaving}
+									/>
+								</label>
+								<label class="field">
+									<span>New password</span>
+									<input
+										type="password"
+										name="newPassword"
+										autocomplete="new-password"
+										bind:value={newPassword}
+										disabled={passwordSaving}
+									/>
+								</label>
+								<label class="field">
+									<span>Confirm new password</span>
+									<input
+										type="password"
+										name="confirmPassword"
+										autocomplete="new-password"
+										bind:value={confirmPassword}
+										disabled={passwordSaving}
+									/>
+								</label>
+								<label class="checkbox-field">
+									<input
+										type="checkbox"
+										bind:checked={revokeOtherOnPasswordChange}
+										disabled={passwordSaving}
+									/>
+									<span>Sign out other sessions</span>
+								</label>
+								<button type="submit" class="submit-btn" disabled={passwordSaving}>
+									{passwordSaving ? 'Updating...' : 'Update password'}
+								</button>
+							</form>
 						</div>
-						<div class="detail-row">
-							<dt>Created</dt>
-							<dd>{formatDateTime(sess.createdAt)}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>Expires</dt>
-							<dd>{formatDateTime(sess.expiresAt)}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>IP Address</dt>
-							<dd class="mono">{sess.ipAddress}</dd>
-						</div>
-						<div class="detail-row">
-							<dt>User Agent</dt>
-							<dd class="user-agent">{sess.userAgent}</dd>
-						</div>
-					</dl>
-				</div>
-			</Panel>
-		</div>
 
-		<div class="actions">
-			<button class="sign-out-btn" onclick={handleSignOut} disabled={signingOut}>
-				{signingOut ? 'Signing out...' : 'Sign Out'}
-			</button>
+						<div class="security-col">
+							<h3>Change email</h3>
+							<p class="hint">Current email: {user.email}</p>
+							{#if emailError}
+								<div class="message error" role="alert">{emailError}</div>
+							{/if}
+							{#if emailSuccess}
+								<div class="message success" role="status">{emailSuccess}</div>
+							{/if}
+							<form class="account-form" onsubmit={changeEmail}>
+								<label class="field">
+									<span>New email</span>
+									<input
+										type="email"
+										name="newEmail"
+										autocomplete="email"
+										bind:value={newEmail}
+										disabled={emailSaving}
+									/>
+								</label>
+								<button type="submit" class="submit-btn secondary" disabled={emailSaving}>
+									{emailSaving ? 'Sending...' : 'Request email change'}
+								</button>
+							</form>
+
+							<hr class="section-divider" />
+
+							<h3>Sessions</h3>
+							{#if sessionsError}
+								<div class="message error" role="alert">{sessionsError}</div>
+							{/if}
+							<dl class="details-list">
+								<div class="detail-row">
+									<dt>This device</dt>
+									<dd>
+										{formatDateTime(sess.createdAt)}
+										{#if sess.ipAddress}
+											· {sess.ipAddress}
+										{/if}
+									</dd>
+								</div>
+							</dl>
+							{#if sessionsLoading}
+								<p class="hint">Loading other sessions…</p>
+							{:else if otherSessions.length === 0}
+								<p class="hint">No other active sessions.</p>
+							{:else}
+								<ul class="session-list">
+									{#each otherSessions as other (other.id)}
+										<li>
+											<span>{formatDateTime(other.createdAt)}</span>
+											{#if other.ipAddress}
+												<span class="mono">{other.ipAddress}</span>
+											{/if}
+											{#if other.userAgent}
+												<span class="user-agent">{other.userAgent}</span>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+								<button
+									type="button"
+									class="submit-btn secondary"
+									onclick={revokeOtherSessions}
+									disabled={revokingSessions}
+								>
+									{revokingSessions ? 'Signing out…' : 'Sign out other sessions'}
+								</button>
+							{/if}
+						</div>
+					</div>
+				</section>
+			</Panel>
+			</div>
+
+			<div class="span-all">
+			<Panel hasPadding={true} hasBorder={true}>
+				<section class="section danger">
+					<h2>Danger zone</h2>
+					<p class="hint">
+						Deleting your account is permanent. Type <strong>DELETE</strong> and enter your password
+						to confirm.
+					</p>
+					{#if deleteError}
+						<div class="message error" role="alert">{deleteError}</div>
+					{/if}
+					<form class="account-form danger-form" onsubmit={deleteAccount}>
+						<label class="field">
+							<span>Confirmation</span>
+							<input
+								type="text"
+								name="deleteConfirm"
+								autocomplete="off"
+								bind:value={deleteConfirm}
+								disabled={deletingAccount}
+								placeholder="DELETE"
+							/>
+						</label>
+						<label class="field">
+							<span>Password</span>
+							<input
+								type="password"
+								name="deletePassword"
+								autocomplete="current-password"
+								bind:value={deletePassword}
+								disabled={deletingAccount}
+							/>
+						</label>
+						<button type="submit" class="submit-btn danger-btn" disabled={deletingAccount}>
+							{deletingAccount ? 'Deleting…' : 'Delete account'}
+						</button>
+					</form>
+				</section>
+			</Panel>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -210,31 +758,60 @@
 	.profile-container {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		padding-block: 2rem;
-		max-width: 800px;
+		gap: 1.25rem;
+		padding-block: 1.5rem;
+		max-width: 1100px;
 		margin-inline: auto;
 		width: 100%;
 	}
 
-	.header-content {
-		display: flex;
-		align-items: center;
-		gap: 1.5rem;
+	.profile-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1.25rem;
+		align-items: start;
+
+		@media (min-width: 800px) {
+			grid-template-columns: 1fr 1fr;
+		}
 	}
 
-	.avatar {
-		width: 80px;
-		height: 80px;
-		border-radius: 50%;
-		border: 3px solid var(--color-primary);
-		object-fit: cover;
+	.span-all {
+		grid-column: 1 / -1;
+		min-width: 0;
+	}
+
+	.header-content {
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: center;
+		gap: 1.25rem 1.5rem;
+
+		@media (max-width: 700px) {
+			grid-template-columns: auto 1fr;
+		}
+	}
+
+	.avatar-block {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.4rem;
 		flex-shrink: 0;
 	}
 
+	.avatar {
+		width: 96px;
+		height: 96px;
+		border-radius: 50%;
+		border: 3px solid var(--color-primary);
+		object-fit: cover;
+		background: var(--color-white-darker);
+	}
+
 	.avatar-placeholder {
-		width: 80px;
-		height: 80px;
+		width: 96px;
+		height: 96px;
 		border-radius: 50%;
 		border: 3px solid var(--color-primary);
 		background: var(--color-tertiary-darker);
@@ -245,13 +822,56 @@
 		font-family: var(--font-oswald);
 		font-size: var(--fs-s);
 		font-weight: 600;
-		flex-shrink: 0;
+	}
+
+	.avatar-link {
+		font-family: var(--font-roboto);
+		font-size: 0.7rem;
+		color: var(--color-primary-darker);
+		text-decoration: underline;
+		text-underline-offset: 0.12em;
 	}
 
 	.header-info {
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
+		min-width: 0;
+	}
+
+	.header-actions {
+		justify-self: end;
+
+		@media (max-width: 700px) {
+			grid-column: 1 / -1;
+			justify-self: stretch;
+		}
+	}
+
+	.security-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+
+		@media (min-width: 800px) {
+			grid-template-columns: 1fr 1fr;
+			gap: 1.75rem;
+		}
+	}
+
+	.security-col {
+		min-width: 0;
+	}
+
+	.danger-form {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 0.75rem;
+		align-items: end;
+
+		@media (min-width: 700px) {
+			grid-template-columns: 1fr 1fr auto;
+		}
 	}
 
 	h1 {
@@ -262,18 +882,18 @@
 		line-height: 1.1;
 	}
 
-	.name {
-		font-family: var(--font-roboto);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary-darkest);
-		margin: 0;
-	}
-
-	.email {
+	.name,
+	.email,
+	.member-since,
+	.hint {
 		font-family: var(--font-roboto);
 		font-size: var(--fs-xs);
 		color: var(--color-tertiary);
 		margin: 0;
+	}
+
+	.member-since {
+		margin-top: 0.25rem;
 	}
 
 	.badges {
@@ -313,12 +933,6 @@
 		color: var(--color-white-lightest);
 	}
 
-	.profile-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-		gap: 1.5rem;
-	}
-
 	.section h2 {
 		font-family: var(--font-oswald);
 		font-size: var(--fs-base);
@@ -328,11 +942,144 @@
 		border-bottom: 2px solid var(--color-tertiary-lightest);
 	}
 
+	.section h3 {
+		font-family: var(--font-oswald);
+		font-size: var(--fs-xs);
+		color: var(--color-tertiary-darkest);
+		margin: 0 0 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.section-divider {
+		border: none;
+		border-top: 1px solid var(--color-tertiary-lightest);
+		margin: 1.5rem 0;
+	}
+
+	.account-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		font-family: var(--font-special-elite);
+		font-size: 0.75rem;
+		color: var(--color-tertiary);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.field input,
+	.field select {
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border: 2px solid var(--color-tertiary-lighter);
+		border-radius: 4px;
+		font-family: var(--font-roboto);
+		font-size: var(--fs-base);
+		text-transform: none;
+		letter-spacing: normal;
+		background: var(--color-white-lightest);
+		color: var(--color-tertiary-darkest);
+		transition: border-color 0.2s ease;
+		box-sizing: border-box;
+
+		&:focus {
+			outline: none;
+			border-color: var(--color-primary);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+		}
+	}
+
+	.checkbox-field {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+		color: var(--color-tertiary-darkest);
+		text-transform: none;
+		letter-spacing: normal;
+	}
+
+	.submit-btn {
+		align-self: flex-start;
+		padding: 0.65rem 1.5rem;
+		border: 2px solid var(--color-primary);
+		border-radius: 4px;
+		background: var(--color-primary);
+		color: var(--color-white-lightest);
+		font-family: var(--font-roboto);
+		font-size: var(--fs-base);
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+
+		&:hover:not(:disabled) {
+			background: var(--color-primary-darker);
+			border-color: var(--color-primary-darker);
+		}
+
+		&:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+	}
+
+	.submit-btn.secondary {
+		background: transparent;
+		color: var(--color-primary-darker);
+
+		&:hover:not(:disabled) {
+			background: var(--color-white-darker);
+			border-color: var(--color-primary);
+			color: var(--color-primary-darker);
+		}
+	}
+
+	.submit-btn.danger-btn {
+		background: var(--color-primary-darker);
+		border-color: var(--color-primary-darker);
+
+		&:hover:not(:disabled) {
+			background: var(--color-primary);
+			border-color: var(--color-primary);
+		}
+	}
+
+	.message {
+		padding: 0.75rem 1rem;
+		border-radius: 4px;
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+		margin-bottom: 0.75rem;
+	}
+
+	.message.error {
+		background-color: oklch(0.9 0.05 25);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary-darker);
+	}
+
+	.message.success {
+		background-color: oklch(0.93 0.04 145);
+		border: 1px solid oklch(0.55 0.15 145);
+		color: oklch(0.35 0.1 145);
+	}
+
 	.details-list {
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
-		margin: 0;
+		margin: 0 0 0.75rem;
 	}
 
 	.detail-row {
@@ -356,7 +1103,28 @@
 		margin: 0;
 	}
 
-	dd.mono {
+	.session-list {
+		list-style: none;
+		margin: 0 0 0.75rem;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+	}
+
+	.session-list li {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		padding: 0.65rem 0.75rem;
+		border: 1px solid var(--color-tertiary-lightest);
+		border-radius: 4px;
+		font-family: var(--font-roboto);
+		font-size: var(--fs-xs);
+		color: var(--color-tertiary-darkest);
+	}
+
+	.mono {
 		font-family: var(--font-source-code-pro);
 	}
 
@@ -367,44 +1135,31 @@
 		color: var(--color-tertiary);
 	}
 
-	.status {
-		font-weight: 600;
-		font-size: 0.8rem;
-	}
-
-	.status.active {
-		color: oklch(0.55 0.15 145);
-	}
-
-	.status.inactive {
-		color: var(--color-primary);
-	}
-
-	.actions {
-		display: flex;
-		justify-content: center;
-	}
-
 	.sign-out-btn {
-		padding: 0.65rem 2.5rem;
-		border: 2px solid var(--color-primary);
+		padding: 0.65rem 1.5rem;
+		border: 2px solid var(--color-tertiary-lighter);
 		border-radius: 4px;
-		background: var(--color-primary);
-		color: var(--color-white-lightest);
+		background: transparent;
+		color: var(--color-tertiary-darkest);
 		font-family: var(--font-roboto);
 		font-size: var(--fs-base);
 		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.2s ease;
+		white-space: nowrap;
 
 		&:hover:not(:disabled) {
-			background: var(--color-primary-darker);
-			border-color: var(--color-primary-darker);
+			border-color: var(--color-primary);
+			color: var(--color-primary-darker);
 		}
 
 		&:disabled {
 			opacity: 0.6;
 			cursor: not-allowed;
 		}
+	}
+
+	.header-sign-out {
+		width: 100%;
 	}
 </style>

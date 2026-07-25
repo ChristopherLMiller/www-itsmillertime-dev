@@ -327,6 +327,25 @@
 		}
 	}
 
+	async function purgeCollectionCache(collection: string, label: string) {
+		if (!confirm(`Purge Redis cache for ${label}?`)) return;
+		cacheError = null;
+		try {
+			const res = await fetch('/api/admin/upstash-cache', {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'invalidate-collection', collection })
+			});
+			const data = (await res.json()) as { error?: string; deleted?: string[] };
+			if (!res.ok) throw new Error(data.error || res.statusText);
+			await loadAllUpstashKeys();
+			layoutClearMsg = `Purged ${data.deleted?.length ?? 0} ${label} cache key(s).`;
+		} catch (e) {
+			cacheError = e instanceof Error ? e.message : 'Purge failed';
+		}
+	}
+
 	async function clearLayoutBrowserCache() {
 		if (!browser) return;
 		layoutClearBusy = true;
@@ -522,6 +541,22 @@
 											onclick={() => loadAllUpstashKeys()}
 										>
 											{cacheLoading ? 'Loading…' : 'Refresh'}
+										</button>
+										<button
+											type="button"
+											class="admin-dock-btn"
+											disabled={cacheLoading}
+											onclick={() => purgeCollectionCache('posts', 'article')}
+										>
+											Purge articles
+										</button>
+										<button
+											type="button"
+											class="admin-dock-btn"
+											disabled={cacheLoading}
+											onclick={() => purgeCollectionCache('projects', 'projects')}
+										>
+											Purge projects
 										</button>
 										{#if cacheHasMore}
 											<span class="admin-dock-scan-cap" title="SCAN safety limit reached"

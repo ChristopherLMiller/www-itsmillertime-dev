@@ -1,4 +1,5 @@
 import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
+import { invalidateCacheForCollection } from '$lib/cache/invalidateCache.server';
 import {
 	deleteCacheKey,
 	getUpstashRedis,
@@ -27,7 +28,12 @@ export const GET: RequestHandler = async (event) => {
 	return json({ configured: true, keys: result.keys, nextCursor: String(result.nextCursor) });
 };
 
-type PostBody = { action?: string; key?: string };
+type PostBody = {
+	action?: string;
+	key?: string;
+	collection?: string;
+	id?: number | string;
+};
 
 export const POST: RequestHandler = async (event) => {
 	const user = await getMergedSessionUser(event);
@@ -47,12 +53,24 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'Invalid JSON' }, { status: 400 });
 	}
 
-	const { action, key } = body;
-	if (typeof key !== 'string' || key === '') {
-		return json({ error: 'key is required' }, { status: 400 });
-	}
+	const { action, key, collection, id } = body;
 
 	try {
+		if (action === 'invalidate-collection') {
+			if (typeof collection !== 'string' || !collection) {
+				return json({ error: 'collection is required' }, { status: 400 });
+			}
+			const result = await invalidateCacheForCollection(
+				collection,
+				id != null ? { id } : null
+			);
+			return json({ ok: true, ...result });
+		}
+
+		if (typeof key !== 'string' || key === '') {
+			return json({ error: 'key is required' }, { status: 400 });
+		}
+
 		if (action === 'peek') {
 			const peek = await peekKeyValue(redis, key);
 			return json(peek);

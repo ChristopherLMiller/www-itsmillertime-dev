@@ -68,20 +68,31 @@ export const GET: RequestHandler = async (event) => {
 		return json(doc);
 	}
 
+	// Animated GIF size variants are often tall frame-strips — always prefer the original.
+	const isGif =
+		doc.mimeType === 'image/gif' || !!doc.filename?.toLowerCase().endsWith('.gif');
+	const previewUrl = isGif
+		? (doc.url ?? doc.thumbnailURL ?? '')
+		: (doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '');
+
 	const payload = {
-		thumbnailURL: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
+		thumbnailURL: isGif ? (doc.url ?? doc.thumbnailURL ?? null) : (doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null),
 		id: doc.id,
 		blurhash: doc.blurhash ?? null,
-		width: doc.sizes?.thumbnail?.width ?? doc.width ?? null,
-		height: doc.sizes?.thumbnail?.height ?? doc.height ?? null,
-		url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '',
-		sizes: {
-			thumbnail: {
-				url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
-				width: doc.sizes?.thumbnail?.width ?? null,
-				height: doc.sizes?.thumbnail?.height ?? null
-			}
-		}
+		mimeType: doc.mimeType ?? null,
+		filename: doc.filename ?? null,
+		width: isGif ? (doc.width ?? null) : (doc.sizes?.thumbnail?.width ?? doc.width ?? null),
+		height: isGif ? (doc.height ?? null) : (doc.sizes?.thumbnail?.height ?? doc.height ?? null),
+		url: previewUrl,
+		sizes: isGif
+			? {}
+			: {
+					thumbnail: {
+						url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
+						width: doc.sizes?.thumbnail?.width ?? null,
+						height: doc.sizes?.thumbnail?.height ?? null
+					}
+				}
 	};
 
 	return json(payload);

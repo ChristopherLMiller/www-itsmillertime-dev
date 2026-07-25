@@ -16,8 +16,7 @@
 	} from '$lib/utils/gallery-image-tracking/types';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
-	import { isVideoMedia } from '$lib/utils/media-url';
-	import { getMediaUrl } from '$lib/utils/media-url';
+	import { getMediaUrl, isGifMedia, isVideoMedia } from '$lib/utils/media-url';
 	import ExifIcon from '$lib/components/ExifIcon';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
@@ -25,6 +24,10 @@
 
 	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
 	function buildSrcsets(img: Media | undefined, proxy: boolean) {
+		// Payload AVIF/JPEG derivatives of animated GIFs are often vertical frame strips.
+		if (isGifMedia(img ?? null)) {
+			return { avifSrcset: '', jpegSrcset: '' };
+		}
 		const s = img?.sizes;
 		const avif: string[] = [];
 		const jpeg: string[] = [];

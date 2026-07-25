@@ -1,11 +1,17 @@
 import { browser } from '$app/environment';
-import { PUBLIC_PAYLOAD_API_ENDPOINT } from '$env/static/public';
 import { isBrowserOnline } from '$lib/cache/offlineSwr';
-import { createPayloadFetch } from '$lib/payload';
+import { extractPayloadMeUser, mergeSessionUser } from '$lib/auth/mergePayloadUser';
 
-export type SessionShape = { user?: Record<string, unknown>; session?: Record<string, unknown> } | null;
+export type SessionShape = {
+	user?: Record<string, unknown>;
+	session?: Record<string, unknown>;
+} | null;
 
-/** Client-safe session load (proxied Payload API for /users/me merge). */
+/**
+ * Client-safe session load.
+ * Merges Better Auth get-session with Payload `/users/me` via same-origin `/api/users/me`
+ * so auth cookies stay on the site (direct CMS fetches cannot send them cross-origin).
+ */
 export async function loadSession(
 	fetch: typeof globalThis.fetch,
 	request?: Request
@@ -23,14 +29,13 @@ export async function loadSession(
 
 		if (session?.user) {
 			try {
-				const payloadFetch = request ? createPayloadFetch(fetch, request) : fetch;
-				const base = PUBLIC_PAYLOAD_API_ENDPOINT.replace(/\/$/, '');
-				const meResponse = await payloadFetch(`${base}/users/me`, {
+				const meResponse = await fetch('/api/users/me', {
+					...sessionInit,
 					credentials: 'include'
 				});
-				const payloadMe = meResponse.ok ? await meResponse.json() : null;
-				if (payloadMe?.user) {
-					session.user = { ...session.user, ...payloadMe.user };
+				if (meResponse.ok) {
+					const payloadMe = await meResponse.json();
+					session.user = mergeSessionUser(session.user, extractPayloadMeUser(payloadMe));
 				}
 			} catch {
 				// Offline or Payload unavailable — keep the base session.

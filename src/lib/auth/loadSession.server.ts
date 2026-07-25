@@ -1,7 +1,11 @@
+import { extractPayloadMeUser, mergeSessionUser } from '$lib/auth/mergePayloadUser';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
 
-export type SessionShape = { user?: Record<string, unknown>; session?: Record<string, unknown> } | null;
+export type SessionShape = {
+	user?: Record<string, unknown>;
+	session?: Record<string, unknown>;
+} | null;
 
 /** Server-only session load (direct CMS URL for /users/me merge). */
 export async function loadSession(
@@ -19,9 +23,9 @@ export async function loadSession(
 			try {
 				const payloadFetch = createPayloadFetch(fetch, request);
 				const meResponse = await payloadFetch(`${getPayloadApiBaseUrl()}/users/me`);
-				const payloadMe = meResponse.ok ? await meResponse.json() : null;
-				if (payloadMe?.user) {
-					session.user = { ...session.user, ...payloadMe.user };
+				if (meResponse.ok) {
+					const payloadMe = await meResponse.json();
+					session.user = mergeSessionUser(session.user, extractPayloadMeUser(payloadMe));
 				}
 			} catch {
 				// Payload unavailable — keep the base session.

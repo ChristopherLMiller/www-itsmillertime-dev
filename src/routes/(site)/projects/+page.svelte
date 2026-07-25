@@ -83,7 +83,7 @@
 	}
 </script>
 
-<div class="filing-cabinet">
+<div class="project-grid">
 	{#each data.projects as project (project.id)}
 		{@const displayStatus = getDisplayStatus(project.projectStatus)}
 		{@const statusClass = getStatusClass(project.projectStatus)}
@@ -92,158 +92,118 @@
 		{@const techNames = getTechnologyNames(project.technologies)}
 		{@const screenshotUrl = getFirstScreenshotUrl(project.screenshots)}
 		{@const editHref = cmsEditHref(project)}
-		<article class="manila-folder" id="project-{project.id}">
-			<!-- Folder SVG inline -->
-			<svg class="folder" viewBox="0 0 450 400">
-				<path
-					style="fill:#c2ab7a"
-					d="m112.09 32.76c-6.41 0-13.78-0.01-22.28 0l-27.91 0.31c-33.05 0.38-35.68 0.07-37.75 8.1-0.74 2.07-2.2 4.95-3.22 6.26-1.79 2.3-1.87 7.85-1.87 160.48 0 87.01 0.32 158.51 0.69 158.87 0.37 0.37 92.96 0.55 205.75 0.41l205.06-0.25 0.28-152.72c0.25-148.06 0.19-152.76-1.62-154.5-1.03-0.99-2.43-3.48-3.1-5.53-0.66-2.05-2.4-4.68-3.87-5.84-2.62-2.08-3.26-2.12-29.97-1.63-75.33 0.47-148.74 1.15-228.44 0.7-2.75-0.91-3.92-2.09-5.84-6.26-3.55-7.7-1.03-8.41-45.91-8.4z"
-				/>
-				<path
-					style="fill:#d2bb89"
-					d="m172.95 66.21c-17.02 0-23.38 5.73-29.98 19.4-28.49 0.32-98.99 0.45-104.08 0.45-5.1 0-18.41 8.21-18.41 18.4v31.88 212.53 18.38h18.41 110.69 261.53 18.4v-18.38-212.53-31.88-19.84c0-10.19-8.21-18.4-18.4-18.4z"
-				/>
-			</svg>
-			<!-- Paper document on top of folder -->
-			<div class="paper-document">
-				<!-- Top section with photo and stamps -->
-				{#if screenshotUrl}
-					<div class="document-header">
-						<div class="attached-photo">
-							<div class="photo-tape"></div>
-							<img src={screenshotUrl} alt={project.title} />
-							<div class="photo-caption">FIG. 1</div>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Typed report section -->
-				<div class="typed-report">
-					<div class="report-header">
-						<span class="report-title">PROJECT DOSSIER</span>
-						<span class="report-id">#{String(project.id).padStart(4, '0')}</span>
-					</div>
-
-					<div class="report-field">
-						<span class="field-label">SUBJECT:</span>
-						<span class="field-value">{project.title}</span>
-					</div>
-
-					<div class="report-field report-field--inline-meta">
-						<span class="field-label">CLASSIFICATION:</span>
-						<span class="field-value">
-							{categoryTitle}
-							{#if editHref}
-								<span class="meta-sep" aria-hidden="true">|</span>
-								<a
-									href={editHref}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="cms-edit-link"
-									aria-label="Edit this project in the CMS (opens in a new tab)"
-								>
-									Edit in CMS
-								</a>
-							{/if}
-						</span>
-					</div>
-
-					{#if techNames.length > 0}
-						<div class="report-field">
-							<span class="field-label">TECHNOLOGIES:</span>
-							<span class="field-value project-tech-tags">
-								{#each techNames as tech (tech)}
-									<span class="project-tech-tag">{tech}</span>
-								{/each}
-							</span>
-						</div>
-					{/if}
-
-					<div class="report-field report-field--meta">
-						<span class="field-label">FILED:</span>
-						<span class="field-value">{filedLabel}</span>
-						{#if project.version}
-							<span class="version-badge" title="Current version">{project.version}</span>
-						{/if}
-					</div>
-
-					<div class="report-body">
-						<span class="field-label">SUMMARY:</span>
-						{#if project.content?.root?.children?.length}
-							<div class="report-content">
-								<Lexical data={project.content} />
-							</div>
-						{:else}
-							<p>{project.shortDescription}</p>
-						{/if}
-					</div>
-
-					<div class="classification-footer">
-						<div class="classification-stamp classification-stamp--footer {statusClass}">
-							{displayStatus}
-						</div>
+		<article class="paper-document" id="project-{project.id}">
+			{#if screenshotUrl}
+				<div class="document-header">
+					<div class="attached-photo">
+						<div class="photo-tape"></div>
+						<img src={screenshotUrl} alt={project.title} />
+						<div class="photo-caption">FIG. 1</div>
 					</div>
 				</div>
+			{/if}
 
-				<!-- Links section -->
-				{#if project.links && project.links.length > 0}
-					<div class="document-links">
-						<div class="links-header">EXTERNAL REFERENCES</div>
-						<div class="link-tags">
-							{#each project.links as link (link.id ?? link.url)}
-								<a
-									href={link.url}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="link-tag {link.type}"
-								>
-									{link.label || link.type}
-								</a>
+			<div class="typed-report">
+				<div class="report-header">
+					<span class="report-title">PROJECT DOSSIER</span>
+					<span class="report-id">#{String(project.id).padStart(4, '0')}</span>
+				</div>
+
+				<div class="report-field">
+					<span class="field-label">SUBJECT:</span>
+					<span class="field-value">{project.title}</span>
+				</div>
+
+				<div class="report-field report-field--inline-meta">
+					<span class="field-label">CLASSIFICATION:</span>
+					<span class="field-value">
+						{categoryTitle}
+						{#if editHref}
+							<span class="meta-sep" aria-hidden="true">|</span>
+							<a
+								href={editHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="cms-edit-link"
+								aria-label="Edit this project in the CMS (opens in a new tab)"
+							>
+								Edit in CMS
+							</a>
+						{/if}
+					</span>
+				</div>
+
+				{#if techNames.length > 0}
+					<div class="report-field">
+						<span class="field-label">TECHNOLOGIES:</span>
+						<span class="field-value project-tech-tags">
+							{#each techNames as tech (tech)}
+								<span class="project-tech-tag">{tech}</span>
 							{/each}
-						</div>
+						</span>
 					</div>
 				{/if}
+
+				<div class="report-field report-field--meta">
+					<span class="field-label">FILED:</span>
+					<span class="field-value">{filedLabel}</span>
+					{#if project.version}
+						<span class="version-badge" title="Current version">{project.version}</span>
+					{/if}
+				</div>
+
+				<div class="report-body">
+					<span class="field-label">SUMMARY:</span>
+					{#if project.content?.root?.children?.length}
+						<div class="report-content">
+							<Lexical data={project.content} />
+						</div>
+					{:else}
+						<p>{project.shortDescription}</p>
+					{/if}
+				</div>
+
+				<div class="classification-footer">
+					<div class="classification-stamp classification-stamp--footer {statusClass}">
+						{displayStatus}
+					</div>
+				</div>
 			</div>
+
+			{#if project.links && project.links.length > 0}
+				<div class="document-links">
+					<div class="links-header">EXTERNAL REFERENCES</div>
+					<div class="link-tags">
+						{#each project.links as link (link.id ?? link.url)}
+							<a
+								href={link.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="link-tag {link.type}"
+							>
+								{link.label || link.type}
+							</a>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</article>
 	{/each}
 </div>
 
 <style lang="postcss">
-	.filing-cabinet {
+	.project-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 3rem 4rem;
+		gap: 2rem 2.5rem;
 		padding: 2rem;
 	}
 
-	.manila-folder {
-		position: relative;
-		transition: transform 0.2s;
-
-		&:hover {
-			transform: translateY(-5px);
-			z-index: 10;
-		}
-	}
-
-	/* Folder SVG - positioned behind paper, rotated 90 degrees */
-	.folder {
-		position: absolute;
-		width: 140%;
-		height: 140%;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%) rotate(90deg);
-		z-index: 1;
-		filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.3));
-	}
-
-	/* Paper document - 8.5" x 11" US Letter, positioned on folder */
+	/* Paper document — 8.5" x 11" US Letter */
 	.paper-document {
 		--ruled-step: 24px;
 		position: relative;
 		aspect-ratio: 8.5 / 11;
-		margin: 12% 8% 5% 8%;
 		background: #fff;
 		background-image:
 			linear-gradient(
@@ -271,7 +231,12 @@
 			0 0 0 1px rgba(0, 0, 0, 0.05);
 		padding: var(--ruled-step) 1.5rem var(--ruled-step) 35px;
 		overflow: auto;
-		z-index: 2;
+		transition: transform 0.2s;
+
+		&:hover {
+			transform: translateY(-5px);
+			z-index: 10;
+		}
 
 		&::before {
 			content: '';
@@ -600,7 +565,7 @@
 	}
 
 	@media (max-width: 900px) {
-		.filing-cabinet {
+		.project-grid {
 			grid-template-columns: 1fr;
 		}
 	}
