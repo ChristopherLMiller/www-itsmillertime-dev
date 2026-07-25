@@ -4,13 +4,17 @@
 	import { page } from '$app/state';
 	import type { Media } from '$lib/types/payload-types';
 	import Icon from '$lib/components/Icon';
-	import { getMediaUrl } from '$lib/utils/media-url';
+	import { getMediaUrl, isGifMedia } from '$lib/utils/media-url';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 
 	// All size keys to inspect — mimeType on each entry determines which <source> it belongs to
 	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
 
 	function buildSrcsets(img: Media | null | undefined) {
+		// Payload AVIF/JPEG derivatives of animated GIFs are often vertical frame strips.
+		if (isGifMedia(img)) {
+			return { avifSrcset: '', jpegSrcset: '' };
+		}
 		const s = img?.sizes;
 		const avif: string[] = [];
 		const jpeg: string[] = [];
@@ -83,6 +87,11 @@
 
 	const aspectRatioStyle = $derived.by(() => {
 		if (fixedAspectRatio != null) return String(fixedAspectRatio);
+		// GIF thumbnails can be filmstrips with bogus height — prefer original dims.
+		if (isGifMedia(image)) {
+			if (image?.width && image?.height) return `${image.width} / ${image.height}`;
+			return '1';
+		}
 		const thumb = image?.sizes?.thumbnail;
 		if (thumb?.width && thumb?.height) return `${thumb.width} / ${thumb.height}`;
 		if (!image?.width || !image?.height) return '1';

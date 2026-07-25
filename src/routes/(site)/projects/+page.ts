@@ -6,12 +6,7 @@ import {
 	type ProjectsCacheData
 } from '$lib/cache/projectCache';
 import { browserCache } from '$lib/cache/browserCache';
-import {
-	fetchJson,
-	isBrowserOnline,
-	isCacheEntryFresh,
-	scheduleBackgroundRefresh
-} from '$lib/cache/offlineSwr';
+import { fetchJson, isBrowserOnline, isCacheEntryFresh } from '$lib/cache/offlineSwr';
 import type { PageLoad } from './$types';
 
 export const ssr = false;
@@ -23,75 +18,62 @@ export const load: PageLoad = async ({ fetch, url, depends }) => {
 
 	depends(`app:projects:${page}:${limit}`);
 
-	if (browser) {
+	async function fromIdb(isErrorFallback = false) {
+		if (!browser) return null;
 		const entry = await browserCache.getEntry<ProjectsCacheData>(idbKey);
-		if (entry) {
-			const isFresh = isCacheEntryFresh(entry.cachedAt, PROJECTS_STALE_THRESHOLD_S);
+		if (!entry) return null;
+		return {
+			projects: entry.data.projects,
+			meta: entry.data.meta,
+			page,
+			limit,
+			_isFromCache: true,
+			_cacheIsFresh: isErrorFallback
+				? false
+				: isCacheEntryFresh(entry.cachedAt, PROJECTS_STALE_THRESHOLD_S)
+		};
+	}
 
-			if (!isFresh) {
-				scheduleBackgroundRefresh(idbKey, async () => {
-					const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-					const data = await fetchJson<ProjectsCacheData>(`/api/projects-data?${q}`, fetch);
-					await browserCache.set(idbKey, data);
-				});
+	if (isBrowserOnline()) {
+		try {
+			const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+			const { projects, meta } = await fetchJson<ProjectsCacheData>(
+				`/api/projects-data?${q}`,
+				fetch
+			);
+
+			if (browser) {
+				await browserCache.set(idbKey, { projects, meta });
 			}
 
 			return {
-				projects: entry.data.projects,
-				meta: entry.data.meta,
+				projects,
+				meta,
 				page,
 				limit,
-				_isFromCache: true,
-				_cacheIsFresh: isFresh
+				_isFromCache: false,
+				_cacheIsFresh: true
 			};
-		}
-	}
+		} catch (err) {
+			const cached = await fromIdb(true);
+			if (cached) return cached;
 
-	if (!isBrowserOnline()) {
-		throw error(
-			503,
-			'Projects are not available offline yet. Open this page once while online to cache it.'
-		);
-	}
-
-	try {
-		const q = new URLSearchParams({ page: String(page), limit: String(limit) });
-		const { projects, meta } = await fetchJson<ProjectsCacheData>(`/api/projects-data?${q}`, fetch);
-
-		if (browser) {
-			await browserCache.set(idbKey, { projects, meta });
-		}
-
-		return {
-			projects,
-			meta,
-			page,
-			limit,
-			_isFromCache: false,
-			_cacheIsFresh: true
-		};
-	} catch (err) {
-		if (browser) {
-			const entry = await browserCache.getEntry<ProjectsCacheData>(idbKey);
-			if (entry) {
-				return {
-					projects: entry.data.projects,
-					meta: entry.data.meta,
-					page,
-					limit,
-					_isFromCache: true,
-					_cacheIsFresh: isCacheEntryFresh(entry.cachedAt, PROJECTS_STALE_THRESHOLD_S)
-				};
+			if (err instanceof Error && err.message === 'offline') {
+				throw error(
+					503,
+					'Projects are not available offline yet. Open this page once while online to cache it.'
+				);
 			}
-		}
 
-		if (err instanceof Error && err.message === 'offline') {
-			throw error(
-				503,
-				'Projects are not available offline yet. Open this page once while online to cache it.'
-			);
+			throw err;
 		}
-
-		throw err;
 	}
+
+	const cached = await fromIdb();
+	if (cached) return cached;
+
+	throw error(
+		503,
+		'Projects are not available offline yet. Open this page once while online to cache it.'
+	);
 };

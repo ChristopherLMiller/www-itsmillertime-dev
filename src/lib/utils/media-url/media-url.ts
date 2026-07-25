@@ -21,3 +21,19 @@ export function isVideoMedia(
 	const url = media.url ?? '';
 	return url.includes('youtube.com/watch') || url.includes('youtu.be/');
 }
+
+/**
+ * Animated GIFs must use the original file. Payload size variants (AVIF/JPEG)
+ * often stack every frame into a tall static "filmstrip".
+ */
+export function isGifMedia(
+	media:
+		| { mimeType?: string | null; filename?: string | null; url?: string | null }
+		| null
+		| undefined
+): boolean {
+	if (!media) return false;
+	if (media.mimeType === 'image/gif') return true;
+	const name = (media.filename ?? media.url ?? '').toLowerCase();
+	return name.endsWith('.gif') || name.includes('.gif?');
+}

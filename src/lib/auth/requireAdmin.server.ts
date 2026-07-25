@@ -1,3 +1,4 @@
+import { extractPayloadMeUser, mergeSessionUser } from '$lib/auth/mergePayloadUser';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -17,10 +18,7 @@ export async function getMergedSessionUser(event: RequestEvent) {
 	const payloadFetch = createPayloadFetch(event.fetch, event.request);
 	const meRes = await payloadFetch(`${getPayloadApiBaseUrl()}/users/me`);
 	const payloadMe = meRes.ok ? await meRes.json() : null;
-	if (payloadMe?.user) {
-		return { ...session.user, ...payloadMe.user };
-	}
-	return session.user;
+	return mergeSessionUser(session.user, extractPayloadMeUser(payloadMe));
 }
 
 export function isAdminRole(user: { role?: unknown } | null | undefined): boolean {

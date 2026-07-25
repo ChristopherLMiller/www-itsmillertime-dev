@@ -6,15 +6,10 @@ import {
 	type ArticleCacheData
 } from '$lib/cache/articleCache';
 import { browserCache } from '$lib/cache/browserCache';
-import {
-	fetchJson,
-	isBrowserOnline,
-	isCacheEntryFresh,
-	scheduleBackgroundRefresh
-} from '$lib/cache/offlineSwr';
+import { fetchJson, isBrowserOnline, isCacheEntryFresh } from '$lib/cache/offlineSwr';
 import type { PageLoad } from './$types';
 
-/** Client-only load so IndexedDB is available on revisits and soft navigations. */
+/** Client-only load so IndexedDB is available for offline revisits. */
 export const ssr = false;
 
 export const load: PageLoad = async ({ params, fetch, depends }) => {
@@ -23,77 +18,61 @@ export const load: PageLoad = async ({ params, fetch, depends }) => {
 	const slug = params.slug;
 	const idbKey = articleIdbKey(slug);
 
-	if (browser) {
+	async function fromIdb(isErrorFallback = false) {
+		if (!browser) return null;
 		const entry = await browserCache.getEntry<ArticleCacheData>(idbKey);
-		if (entry) {
-			const isFresh = isCacheEntryFresh(entry.cachedAt, ARTICLE_STALE_THRESHOLD_S);
+		if (!entry) return null;
+		return {
+			article: entry.data.article,
+			meta: entry.data.meta,
+			relatedModels: entry.data.relatedModels ?? [],
+			_isFromCache: true,
+			_cacheIsFresh: isErrorFallback
+				? false
+				: isCacheEntryFresh(entry.cachedAt, ARTICLE_STALE_THRESHOLD_S)
+		};
+	}
 
-			if (!isFresh) {
-				scheduleBackgroundRefresh(idbKey, async () => {
-					const data = await fetchJson<ArticleCacheData>(`/api/articles/${slug}`, fetch);
-					await browserCache.set(idbKey, {
-						article: data.article,
-						meta: data.meta,
-						relatedModels: data.relatedModels ?? []
-					});
-				});
+	// Online: always hit the API so CMS edits (after Redis invalidation) show immediately.
+	// IndexedDB is only for offline / failed-network fallback.
+	if (isBrowserOnline()) {
+		try {
+			const { article, meta, relatedModels = [] } = await fetchJson<ArticleCacheData>(
+				`/api/articles/${slug}`,
+				fetch
+			);
+
+			if (browser) {
+				await browserCache.set(idbKey, { article, meta, relatedModels });
 			}
 
 			return {
-				article: entry.data.article,
-				meta: entry.data.meta,
-				relatedModels: entry.data.relatedModels ?? [],
-				_isFromCache: true,
-				_cacheIsFresh: isFresh
+				article,
+				meta,
+				relatedModels,
+				_isFromCache: false,
+				_cacheIsFresh: true
 			};
-		}
-	}
+		} catch (err) {
+			const cached = await fromIdb(true);
+			if (cached) return cached;
 
-	if (!isBrowserOnline()) {
-		throw error(
-			503,
-			'This article is not available offline yet. Open it once while online to cache it.'
-		);
-	}
-
-	try {
-		const { article, meta, relatedModels = [] } = await fetchJson<ArticleCacheData>(
-			`/api/articles/${slug}`,
-			fetch
-		);
-
-		if (browser) {
-			await browserCache.set(idbKey, { article, meta, relatedModels });
-		}
-
-		return {
-			article,
-			meta,
-			relatedModels,
-			_isFromCache: false,
-			_cacheIsFresh: true
-		};
-	} catch (err) {
-		if (browser) {
-			const entry = await browserCache.getEntry<ArticleCacheData>(idbKey);
-			if (entry) {
-				return {
-					article: entry.data.article,
-					meta: entry.data.meta,
-					relatedModels: entry.data.relatedModels ?? [],
-					_isFromCache: true,
-					_cacheIsFresh: isCacheEntryFresh(entry.cachedAt, ARTICLE_STALE_THRESHOLD_S)
-				};
+			if (err instanceof Error && err.message === 'offline') {
+				throw error(
+					503,
+					'This article is not available offline yet. Open it once while online to cache it.'
+				);
 			}
-		}
 
-		if (err instanceof Error && err.message === 'offline') {
-			throw error(
-				503,
-				'This article is not available offline yet. Open it once while online to cache it.'
-			);
+			throw err;
 		}
-
-		throw err;
 	}
+
+	const cached = await fromIdb();
+	if (cached) return cached;
+
+	throw error(
+		503,
+		'This article is not available offline yet. Open it once while online to cache it.'
+	);
 };

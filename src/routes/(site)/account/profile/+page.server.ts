@@ -10,5 +10,22 @@ export const load: PageServerLoad = async ({ parent, fetch, request }) => {
 	if (!session?.user) {
 		redirect(302, '/account/login');
 	}
-	return {};
+
+	const user = session.user;
+	return {
+		profileUser: {
+			id: user.id,
+			email: user.email ?? null,
+			name: typeof user.name === 'string' ? user.name : null,
+			displayName: typeof user.displayName === 'string' ? user.displayName : null,
+			nsfwFiltering:
+				user.nsfwFiltering === 'hide' ||
+				user.nsfwFiltering === 'blur' ||
+				user.nsfwFiltering === 'show'
+					? user.nsfwFiltering
+					: null,
+			bggUsername: typeof user.bggUsername === 'string' ? user.bggUsername : null,
+			image: typeof user.image === 'string' ? user.image : null
+		}
+	};
 };
