@@ -394,45 +394,60 @@
 
 	dialog {
 		&.lightbox {
+			box-sizing: border-box;
+			position: fixed;
+			inset: 0;
 			border: 0;
-			width: 100%;
-			height: 100%;
+			width: 100vw;
+			height: 100dvh;
+			max-width: 100vw;
+			max-height: 100dvh;
 			padding: 0;
 			margin: 0;
-			max-width: 100vw;
-			max-height: 100vh;
+			overflow: hidden;
+			overscroll-behavior: contain;
 			background: rgba(0, 0, 0, 0.95);
-			position: relative;
 		}
 
 		.lightbox-contents {
+			box-sizing: border-box;
 			display: flex;
 			justify-content: center;
 			align-items: center;
 			width: 100%;
 			height: 100%;
+			min-height: 0;
 			padding: 5rem;
 			position: relative;
+			overflow: hidden;
 		}
 
 		.image-wrapper {
 			position: relative;
 			width: 100%;
 			height: 100%;
+			min-width: 0;
+			min-height: 0;
 			display: flex;
 			justify-content: center;
 			align-items: center;
+			overflow: hidden;
 		}
 
 		.lightbox-picture {
 			position: absolute;
-			display: block;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 			max-width: 100%;
 			max-height: 100%;
 		}
 
 		.lightbox-image {
 			display: block;
+			width: auto;
+			height: auto;
 			max-width: 100%;
 			max-height: 100%;
 			object-fit: contain;
@@ -521,7 +536,7 @@
 
 	@media (max-width: 768px) {
 		.lightbox-contents {
-			padding: 3rem 1rem;
+			padding: 3.5rem 1rem 3rem;
 		}
 
 		.nav-button {

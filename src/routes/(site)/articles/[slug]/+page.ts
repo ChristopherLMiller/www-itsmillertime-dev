@@ -31,13 +31,18 @@ export const load: PageLoad = async ({ params, fetch, depends }) => {
 			if (!isFresh) {
 				scheduleBackgroundRefresh(idbKey, async () => {
 					const data = await fetchJson<ArticleCacheData>(`/api/articles/${slug}`, fetch);
-					await browserCache.set(idbKey, data);
+					await browserCache.set(idbKey, {
+						article: data.article,
+						meta: data.meta,
+						relatedModels: data.relatedModels ?? []
+					});
 				});
 			}
 
 			return {
 				article: entry.data.article,
 				meta: entry.data.meta,
+				relatedModels: entry.data.relatedModels ?? [],
 				_isFromCache: true,
 				_cacheIsFresh: isFresh
 			};
@@ -52,15 +57,19 @@ export const load: PageLoad = async ({ params, fetch, depends }) => {
 	}
 
 	try {
-		const { article, meta } = await fetchJson<ArticleCacheData>(`/api/articles/${slug}`, fetch);
+		const { article, meta, relatedModels = [] } = await fetchJson<ArticleCacheData>(
+			`/api/articles/${slug}`,
+			fetch
+		);
 
 		if (browser) {
-			await browserCache.set(idbKey, { article, meta });
+			await browserCache.set(idbKey, { article, meta, relatedModels });
 		}
 
 		return {
 			article,
 			meta,
+			relatedModels,
 			_isFromCache: false,
 			_cacheIsFresh: true
 		};
@@ -71,6 +80,7 @@ export const load: PageLoad = async ({ params, fetch, depends }) => {
 				return {
 					article: entry.data.article,
 					meta: entry.data.meta,
+					relatedModels: entry.data.relatedModels ?? [],
 					_isFromCache: true,
 					_cacheIsFresh: isCacheEntryFresh(entry.cachedAt, ARTICLE_STALE_THRESHOLD_S)
 				};

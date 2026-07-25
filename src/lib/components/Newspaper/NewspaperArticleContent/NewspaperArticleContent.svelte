@@ -3,16 +3,19 @@
 	import Image from '$lib/components/Image';
 	import Lexical from '$lib/components/Lexical';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import type { ArticleRelatedModel } from '$lib/cache/articleCache';
 	import type { Media, Post, PostsTag } from '$lib/types/payload-types';
+	import { toRelatedLinks } from '$lib/utils/relatedResources';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
 		article: Post;
+		relatedModels?: ArticleRelatedModel[];
 		share?: Snippet;
 		footer?: Snippet;
 	}
 
-	let { article, share, footer }: Props = $props();
+	let { article, relatedModels = [], share, footer }: Props = $props();
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -24,6 +27,9 @@
 			? `${PUBLIC_PAYLOAD_URL}/admin/collections/posts/${article.id}`
 			: null
 	);
+
+	const relatedPosts = $derived(toRelatedLinks(article.relatedPosts));
+	const hasRelatedResources = $derived(relatedPosts.length > 0 || relatedModels.length > 0);
 
 	function featuredMedia(post: Post): Media | null {
 		const fi = post.featuredImage;
@@ -149,6 +155,26 @@
 		>
 			<Lexical data={article.content as never} />
 		</div>
+
+		{#if hasRelatedResources}
+			<aside class="article-related" aria-label="Related links">
+				<h3 class="article-related-title">Related</h3>
+				<div class="article-related-cards">
+					{#each relatedPosts as post (post.id)}
+						<a href={`/articles/${post.slug}`} class="article-related-card">
+							<span class="article-related-card-meta">Article</span>
+							<span class="article-related-card-title">{post.title}</span>
+						</a>
+					{/each}
+					{#each relatedModels as model (model.id)}
+						<a href={`/models/${model.slug}`} class="article-related-card">
+							<span class="article-related-card-meta">Model</span>
+							<span class="article-related-card-title">{model.title}</span>
+						</a>
+					{/each}
+				</div>
+			</aside>
+		{/if}
 
 		{#if footer}
 			<div class="article-footer">
@@ -301,6 +327,61 @@
 
 	.article-lexical :global(a) {
 		color: #8b0000;
+	}
+
+	.article-related {
+		break-inside: avoid;
+		margin: 0 0 0.85rem;
+		font-family: 'Times New Roman', Times, serif;
+	}
+
+	.article-related-title {
+		margin: 0 0 0.55rem;
+		font-family: 'Times New Roman', Times, serif;
+		font-size: 1.17em;
+		font-weight: 700;
+		line-height: 1.25;
+		color: #1a1a1a;
+		break-after: avoid;
+	}
+
+	.article-related-cards {
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+	}
+
+	.article-related-card {
+		display: block;
+		break-inside: avoid;
+		padding: 0.5rem 0.65rem;
+		border: 1px solid #ccc;
+		background: #e5e3db;
+		text-decoration: none;
+		color: #1a1a1a;
+
+		&:hover .article-related-card-title {
+			color: #8b0000;
+		}
+	}
+
+	.article-related-card-meta {
+		display: block;
+		margin-bottom: 0.12rem;
+		font-size: var(--fs-xs);
+		line-height: 1.35;
+		letter-spacing: 0.4px;
+		text-transform: uppercase;
+		color: #888;
+	}
+
+	.article-related-card-title {
+		display: block;
+		font-size: var(--fs-base);
+		font-weight: 700;
+		line-height: 1.3;
+		color: #1a1a1a;
+		transition: color 0.15s;
 	}
 
 	.article-footer {

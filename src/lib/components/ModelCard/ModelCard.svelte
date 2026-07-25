@@ -185,7 +185,7 @@
 	.contents {
 		display: grid;
 		grid-template-columns: 1fr;
-		grid-template-rows: auto repeat(2, auto);
+		grid-template-rows: max-content max-content 1fr;
 		height: 100%;
 		min-width: 0;
 		background: var(--color-white-lighter);
@@ -201,14 +201,17 @@
 		font-size: 18px;
 		line-height: 1.2;
 		min-width: 0;
+		align-self: start;
 	}
 
 	.card-image {
 		position: relative;
 		min-width: 0;
+		align-self: start;
 
 		:global(.image-container) {
 			width: 100%;
+			border-block: 2px solid var(--color-primary-darker);
 		}
 
 		.status {

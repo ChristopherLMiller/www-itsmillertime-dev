@@ -303,16 +303,21 @@
 		height: auto;
 		max-width: min(calc(100vw - 2rem), 26rem);
 		max-height: calc(100vh - 2rem);
+		overscroll-behavior: contain;
 	}
 
 	.menu-dialog::backdrop {
 		background: rgba(0, 0, 0, 0.65);
+		overscroll-behavior: none;
+		touch-action: none;
 	}
 
 	.menu-dialog__panel {
 		width: min(26rem, calc(100vw - 2rem));
 		max-height: calc(100vh - 2rem);
 		overflow-y: auto;
+		overscroll-behavior: contain;
+		touch-action: pan-y;
 		padding: 1.25rem 1.375rem;
 		background: var(--color-white) var(--linen-paper);
 		border: var(--border-width) solid var(--color-primary-darker);
