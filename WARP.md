@@ -43,15 +43,16 @@ pnpm run build
 - **Frontend**: SvelteKit 5 with TypeScript
 - **Styling**: Custom CSS with Stylelint for validation
 - **Content Source**: Payload CMS (external/headless)
-- **Caching**: Upstash Redis with stale-while-revalidate pattern
+- **Caching**: Client-side TanStack Query with an IndexedDB persister (stale-while-revalidate + offline)
 - **Type Safety**: TypeScript with automated Zod schema generation
 
 ### Key Directories
 
 - `src/routes/(site)/` - Main website routes using SvelteKit's group layout
-- `src/routes/api/` - API routes for proxying CMS data with caching
+- `src/routes/api/` - API routes that fetch Payload directly (no cache layer)
 - `src/lib/queries/` - Data fetching functions for different content types
-- `src/lib/cache/` - Caching infrastructure (Upstash Redis)
+- `src/lib/query/` - TanStack Query client, IndexedDB persister, and query definitions
+- `src/lib/cache/` - Server-side Payload fetchers + shared query/data types
 - `src/lib/types/` - TypeScript type definitions (auto-generated from CMS)
 - `src/lib/schemas/zod/` - Zod validation schemas (AI-generated from types)
 - `scripts/` - Automation scripts for type syncing and schema generation
@@ -65,18 +66,17 @@ pnpm run build
 
 ### Caching Strategy
 
-- **Primary Cache**: Upstash Redis with configurable TTL (default: 1 hour)
-- **Cache Key Format**: `payload:<endpoint>-<querystring>`
-- **Stale-While-Revalidate**: Serves stale data immediately, refreshes in background after 5 minutes
-- **Cache Controls**: Support for `cache=false` and `refresh=true` query parameters
+There is **no Redis / server cache**. Content is fetched directly from Payload and
+cached in the browser with TanStack Query:
 
-### API Proxy Pattern
+- **Client cache**: TanStack Query (`src/lib/query/client.ts`) with `staleTime` 5 min, `gcTime` 30 days.
+- **Persistence / offline**: `PersistQueryClientProvider` + an IndexedDB async-storage persister (`src/lib/query/idbPersister.ts`) serialize the query cache so content is instant on revisit and available offline.
+- **Stale-While-Revalidate**: cached content paints immediately, a background refetch runs when stale, and the view updates reactively if the data changed.
+- **Query definitions**: `src/lib/query/queries.ts` (layout globals, articles list, article detail, projects).
 
-The `/api/payload` endpoint acts as a caching proxy to the external Payload CMS:
+### API Pattern
 
-- Handles all CMS queries through unified interface
-- Implements automatic background refresh for stale data
-- Provides cache status headers (`X-Cache: HIT|MISS|REFRESHED`)
+Same-origin SvelteKit endpoints (`/api/layout-data`, `/api/articles-data`, `/api/articles/[slug]`, `/api/projects-data`) fetch Payload directly through the server SDK (`src/lib/payload/sdk.server.ts`) and return JSON with no caching. The browser reaches them via TanStack Query.
 
 ## Environment Variables
 
@@ -84,8 +84,7 @@ Required environment variables:
 
 - `PAYLOAD_TYPES_URL` - URL to fetch TypeScript types (defaults to GitHub)
 - `PUBLIC_PAYLOAD_API_ENDPOINT` - Payload CMS API base URL
-- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL
-- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST token
+- `PAYLOAD_INTERNAL_URL` - Server-side Payload REST base URL (must include `/api`)
 - `ANTHROPIC_API_KEY` - For AI-powered Zod schema generation
 - `ANTHROPIC_MODEL` - AI model to use (defaults to claude-3-7-sonnet-latest)
 
@@ -100,21 +99,24 @@ Required environment variables:
 
 ### Working with Queries
 
-All query functions follow the pattern:
+Client data is fetched with TanStack Query. Define options in `src/lib/query/queries.ts`
+and consume them in components:
 
-```typescript
-export const getContentType = async (fetch, params) => {
-	const response = await fetch(`/api/payload?endpoint=content&${qs.stringify(params)}`);
-	const data = PayloadResponseSchema(ContentSchema).parse(await response.json());
-	return data;
-};
+```svelte
+<script lang="ts">
+	import { createQuery } from '@tanstack/svelte-query';
+	import { projectsQueryOptions } from '$lib/query/queries';
+
+	const query = createQuery(() => projectsQueryOptions(1, 50));
+	const projects = $derived(query.data?.projects ?? []);
+</script>
 ```
 
 ### Cache Management
 
-- Use `?refresh=true` to force cache refresh during development
-- Use `?cache=false` to bypass caching entirely
-- Cache keys automatically include all query parameters
+- Cached content is stored per query key and persisted to IndexedDB.
+- Admin dock → **Browser** tab inspects and clears the persisted offline cache.
+- Adjust freshness via `staleTime` / `gcTime` in `src/lib/query/client.ts`.
 
 ## Code Style and Configuration
 

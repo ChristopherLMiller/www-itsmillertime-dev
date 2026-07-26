@@ -1,20 +1,5 @@
 import type { Project } from '$lib/types/payload-types';
 
-/** IndexedDB / Upstash key segment for a projects list query (prefix `payload:` in Redis). */
-export function projectsListCacheKey(page: number, limit: number): string {
-	return `projects:list:${page}:${limit}`;
-}
-
-export function projectsIdbKey(page: number, limit: number): string {
-	return projectsListCacheKey(page, limit);
-}
-
-/** Serve from cache immediately; trigger a background refresh if older than this. */
-export const PROJECTS_STALE_THRESHOLD_S = 5 * 60; // 5 minutes
-
-/** Redis EXPIRE for the projects list payload. */
-export const PROJECTS_CACHE_TTL_S = 30 * 24 * 60 * 60; // 30 days
-
 export interface ProjectsListMeta {
 	totalDocs: number;
 	limit: number;

@@ -8,6 +8,5 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		throw error(404, 'Article not found');
 	}
 
-	const { cacheStatus, ...payload } = result;
-	return json(payload, { headers: { 'X-Cache': cacheStatus } });
+	return json(result);
 };

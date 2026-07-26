@@ -3,9 +3,12 @@
 	import NavButton from '$lib/components/navigation/NavButton';
 	import NavLink from '$lib/components/navigation/NavLink';
 	import { filterNavItems } from '$lib/components/navigation/visibility';
+	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
 
+	const siteLayout = getSiteLayoutContext();
+	let navigation = $derived(siteLayout ? siteLayout().navigation : page.data.navigation);
 	let user = $derived(page.data.session?.user ?? null);
-	let visibleNavItems = $derived(filterNavItems(page.data.navigation.navItems, user));
+	let visibleNavItems = $derived(filterNavItems(navigation?.navItems ?? [], user));
 </script>
 
 <nav>

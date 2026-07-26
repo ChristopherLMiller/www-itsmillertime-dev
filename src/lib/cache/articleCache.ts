@@ -1,14 +1,5 @@
 import type { Post, PostsCategory, PostsTag } from '$lib/types/payload-types';
 
-/** IndexedDB key per article slug; Upstash uses `article:{id}` with the `payload:` prefix. */
-export function articleIdbKey(slug: string): string {
-	return `article:slug:${slug}`;
-}
-
-export function articleRedisKey(articleId: number | string): string {
-	return `article:${articleId}`;
-}
-
 /** Default query parameters applied when URL params are omitted. */
 export const ARTICLES_LIST_DEFAULTS = {
 	sort: '-publishedAt',
@@ -25,30 +16,6 @@ export type ArticlesListQuery = {
 	category: string;
 	tag: string;
 };
-
-const UNSET_FILTER = '_';
-
-/**
- * Redis + IndexedDB key for an articles list query.
- * Always includes sort, page, limit, category, and tag (defaults applied; unset filters use "_").
- */
-export function articlesListCacheKey(query: ArticlesListQuery): string {
-	const category = query.category || UNSET_FILTER;
-	const tag = query.tag || UNSET_FILTER;
-	return `articles:list:sort:${query.sort}:page:${query.page}:limit:${query.limit}:category:${category}:tag:${tag}`;
-}
-
-/** Alias — browser cache uses the same key shape as Upstash. */
-export const articlesListIdbKey = articlesListCacheKey;
-
-/** Serve from cache immediately; trigger a background refresh if older than this. */
-export const ARTICLE_STALE_THRESHOLD_S = 5 * 60; // 5 minutes
-
-/** Redis EXPIRE for individual article payloads. */
-export const ARTICLE_CACHE_TTL_S = 30 * 24 * 60 * 60; // 30 days
-
-/** Redis EXPIRE for articles list payloads. */
-export const ARTICLES_LIST_CACHE_TTL_S = 30 * 24 * 60 * 60; // 30 days
 
 export type ArticlePageMeta = NonNullable<Post['meta']> & {
 	canonicalURL: string;

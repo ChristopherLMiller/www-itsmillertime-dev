@@ -4,6 +4,7 @@
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import { navStore, type NavState } from '../../../stores/navigation';
 	import { filterNavItems } from '$lib/components/navigation/visibility';
+	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
 
 	type MenuLink = {
 		title: string;
@@ -11,10 +12,12 @@
 		external?: boolean;
 	};
 
+	const siteLayout = getSiteLayoutContext();
+	let navigation = $derived(siteLayout ? siteLayout().navigation : page.data.navigation);
 	let user = $derived(page.data.session?.user ?? null);
 	let isLoggedIn = $derived(!!user);
 	let isAdmin = $derived(isLoggedIn && (user?.role as string[] | undefined)?.includes('admin'));
-	let visibleNavItems = $derived(filterNavItems(page.data.navigation.navItems, user));
+	let visibleNavItems = $derived(filterNavItems(navigation?.navItems ?? [], user));
 
 	let navState = $state<NavState>({ isOpen: false, activeDropdown: null });
 	let currentPath = $state(page.url.pathname);
@@ -41,9 +44,7 @@
 	});
 
 	const appLinks = $derived.by((): MenuLink[] => {
-		const links: MenuLink[] = [
-			{ title: 'Storefront', href: storefrontUrl, external: true }
-		];
+		const links: MenuLink[] = [{ title: 'Storefront', href: storefrontUrl, external: true }];
 		if (isAdmin) {
 			links.push(
 				{ title: 'Medusa App', href: medusaAdminUrl, external: true },
@@ -113,7 +114,9 @@
 </script>
 
 <div class="top-bar-element">
-	<a class="top-bar-element__brand" href="/"><strong>I</strong>ts<strong>M</strong>iller<strong>T</strong>ime</a>
+	<a class="top-bar-element__brand" href="/"
+		><strong>I</strong>ts<strong>M</strong>iller<strong>T</strong>ime</a
+	>
 
 	<div class="menu-tab-wrap">
 		<button

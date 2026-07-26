@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { createQuery } from '@tanstack/svelte-query';
 	import Lexical from '$lib/components/Lexical';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import { projectsQueryOptions } from '$lib/query/queries';
 	import type { PageData } from './$types';
 	import type { Project } from '$lib/types/payload-types';
 
 	let { data }: { data: PageData } = $props();
+
+	const query = createQuery(() => projectsQueryOptions(data.page, data.limit));
+	const projects = $derived(query.data?.projects ?? []);
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -84,7 +89,14 @@
 </script>
 
 <div class="project-grid">
-	{#each data.projects as project (project.id)}
+	{#if query.isPending && projects.length === 0}
+		<p class="state-message">Loading projects…</p>
+	{:else if query.isError && projects.length === 0}
+		<p class="state-message">
+			Projects are not available offline yet. Open this page once while online to cache it.
+		</p>
+	{/if}
+	{#each projects as project (project.id)}
 		{@const displayStatus = getDisplayStatus(project.projectStatus)}
 		{@const statusClass = getStatusClass(project.projectStatus)}
 		{@const filedLabel = getFiledLabel(project.createdAt)}
@@ -199,6 +211,13 @@
 		padding: 2rem;
 	}
 
+	.state-message {
+		grid-column: 1 / -1;
+		text-align: center;
+		padding: 3rem 1rem;
+		font-family: var(--font-special-elite);
+	}
+
 	/* Paper document — 8.5" x 11" US Letter */
 	.paper-document {
 		--ruled-step: 24px;
@@ -289,7 +308,6 @@
 		margin-top: 2px;
 		font-family: var(--font-special-elite);
 	}
-
 
 	.classification-stamp {
 		padding: 4px 12px;
