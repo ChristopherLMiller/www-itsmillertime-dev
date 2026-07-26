@@ -12,11 +12,14 @@
 	import type { LayoutCacheData } from '$lib/cache/layoutCache';
 	import { layoutQueryOptions } from '$lib/query/queries';
 	import { setSiteLayoutContext } from '$lib/query/siteLayoutContext';
+	import type { Snippet } from 'svelte';
 
-	let { data, children } = $props<{
+	interface Props {
 		data: { initialLayout?: LayoutCacheData | null };
-		children?: import('svelte').Snippet;
-	}>();
+		children?: Snippet;
+	}
+
+	let { data, children }: Props = $props();
 
 	// Navigation + siteMeta come straight from Payload (cached in IndexedDB via the
 	// persisted QueryClient). SSR seeds `initialData`; the browser revalidates in
