@@ -69,8 +69,8 @@
 
 	/* App Constraints */
 	--top-bar-height: 3rem;
-	/* Fluid gutters: 0.75rem through 768px → 2rem @ 1400px */
-	--side-margins: clamp(0.75rem, 0.198vi - 0.769rem, 2rem);
+	/* Fluid gutters: 0.75rem @ 768px → 2rem @ 1400px (slope is px-based vi, not rem) */
+	--side-margins: clamp(0.75rem, 3.165vi - 0.769rem, 2rem);
 
 	/* Layout breakpoints (use literal px in @media — custom properties are unreliable there) */
 	--layout-nav-desktop-min: 768px;

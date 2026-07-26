@@ -109,11 +109,6 @@
 			</div>
 		</div>
 
-		<!-- Mobile Share Buttons (shown only on smaller screens) -->
-		<div class="mobile-share-wrapper">
-			<ShareButtons url={page.url.href} title={model.title} className="mobile-share" />
-		</div>
-
 		<!-- Two-Column Content -->
 		<div class="content-grid">
 			<!-- Left Column: Build Log Timeline -->
@@ -138,33 +133,35 @@
 			<!-- Right Column: Sidebar -->
 			<aside class="sidebar-column">
 				<!-- Kit Info -->
-				<StickyNote title="About the Kit">
-					<div>
-						<strong>Manufacturer:</strong>
-						{kit && typeof kit.manufacturer === 'object' && kit.manufacturer !== null
-							? kit.manufacturer.title
-							: ''}
-					</div>
-					<div>
-						<strong>Scale:</strong>
-						{kit && typeof kit.scale === 'object' && kit.scale !== null ? kit.scale.title : ''}
-					</div>
-					<div><strong>Year Released:</strong> {kit?.year_released}</div>
-					<div><strong>Kit Number:</strong> {kit?.kit_number}</div>
-					{#if kit?.scalemates}
-						<div><a href={kit.scalemates}>Scalemates Link</a></div>
-					{/if}
-					{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
+				<div class="kit-note">
+					<StickyNote title="About the Kit">
 						<div>
-							<strong>Tags:</strong>
-							{#each model.model_meta.tags as tag, i}
-								{#if typeof tag === 'object' && tag !== null}
-									{tag.title}{i < model.model_meta.tags.length - 1 ? ', ' : ''}
-								{/if}
-							{/each}
+							<strong>Manufacturer:</strong>
+							{kit && typeof kit.manufacturer === 'object' && kit.manufacturer !== null
+								? kit.manufacturer.title
+								: ''}
 						</div>
-					{/if}
-				</StickyNote>
+						<div>
+							<strong>Scale:</strong>
+							{kit && typeof kit.scale === 'object' && kit.scale !== null ? kit.scale.title : ''}
+						</div>
+						<div><strong>Year Released:</strong> {kit?.year_released}</div>
+						<div><strong>Kit Number:</strong> {kit?.kit_number}</div>
+						{#if kit?.scalemates}
+							<div><a href={kit.scalemates}>Scalemates Link</a></div>
+						{/if}
+						{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
+							<div>
+								<strong>Tags:</strong>
+								{#each model.model_meta.tags as tag, i}
+									{#if typeof tag === 'object' && tag !== null}
+										{tag.title}{i < model.model_meta.tags.length - 1 ? ', ' : ''}
+									{/if}
+								{/each}
+							</div>
+						{/if}
+					</StickyNote>
+				</div>
 
 				{#if hasRelatedResources}
 					<section class="related-section" aria-labelledby="model-related-heading">
@@ -214,7 +211,6 @@
 
 		<!-- Comments Section -->
 		<section class="comments-section">
-			<h2 class="font-oswald color-primary-darker">Comments</h2>
 			<Disqus identifier={`model-${model.slug}`} title={model.title} url={page.url.href} />
 		</section>
 	</Panel>
@@ -332,17 +328,11 @@
 		margin: 0;
 	}
 
-	/* Mobile Share Buttons - hidden by default */
-	.mobile-share-wrapper {
-		display: none;
-	}
-
 	/* Two-Column Layout */
 	.content-grid {
 		display: grid;
 		grid-template-columns: 2fr 1fr;
 		gap: 2rem;
-		margin-bottom: 2rem;
 		padding: clamp(1rem, 1rem + 1vw, 2rem);
 		padding-top: 0;
 	}
@@ -361,8 +351,9 @@
 		align-self: start;
 	}
 
-	.sidebar-column :global(.sticky-note) {
-		align-self: center;
+	.kit-note {
+		display: flex;
+		justify-content: center;
 	}
 
 	.related-section {
@@ -476,13 +467,8 @@
 	/* Comments Section */
 	.comments-section {
 		width: 100%;
-		margin-top: 2rem;
 		padding: clamp(1rem, 1rem + 1vw, 2rem);
-	}
-
-	.comments-section h2 {
-		font-size: var(--fs-m);
-		margin-bottom: 1rem;
+		padding-top: 0;
 	}
 
 	.placeholder {
@@ -493,67 +479,82 @@
 
 	/* Responsive Design */
 	@media (max-width: 768px) {
+		/* Stack title/meta under the image so long names don't cover the photo */
+		.hero {
+			display: flex;
+			flex-direction: column;
+		}
+
 		.hero-fade {
+			/* Soft bottom edge into the stacked title area; keep it short so the photo stays visible */
 			background: linear-gradient(
 				180deg,
-				rgba(228, 228, 228, 0) 30%,
-				rgba(228, 228, 228, 0.95) 70%,
-				rgba(228, 228, 228, 1) 90%
+				rgba(228, 228, 228, 0) 70%,
+				rgba(228, 228, 228, 0.65) 88%,
+				rgba(228, 228, 228, 1) 100%
 			);
 		}
 
 		.hero-content {
-			padding: 1.5rem;
+			position: static;
+			padding: 1rem 1.5rem 1.25rem;
 		}
 
 		.hero-content h1 {
 			font-size: clamp(1.5rem, 4vw, 2rem);
 			margin-bottom: 0.75rem;
+			text-shadow: none;
 		}
 
 		.hero-meta {
 			flex-direction: column;
 			align-items: flex-start;
+			gap: 0.75rem;
 		}
 
-		/* Hide share buttons in hero on smaller screens */
 		.hero-share-wrapper {
-			display: none;
+			width: 100%;
 		}
 
-		/* Show mobile share buttons */
-		.mobile-share-wrapper {
-			display: block;
-			padding: 1rem clamp(1rem, 1rem + 1vw, 2rem);
-			border-bottom: 2px solid var(--color-primary-lighter);
-		}
-
-		:global(.mobile-share) {
-			margin: 0;
-			justify-content: center;
+		.hero-share-wrapper :global(.hero-share) {
+			justify-content: flex-start;
 		}
 
 		.content-grid {
 			grid-template-columns: 1fr;
 		}
 
+		/* Flatten columns so kit note can sit above the build log on mobile */
+		.main-column,
+		.sidebar-column {
+			display: contents;
+		}
+
+		.kit-note {
+			order: 1;
+		}
+
+		.build-log-wrapper {
+			order: 2;
+		}
+
+		.related-section {
+			order: 3;
+		}
+
+		.videos-section {
+			order: 4;
+		}
+
 		.photo-grid {
+			order: 5;
 			grid-template-columns: 1fr;
 		}
 	}
 
 	@media (max-width: 480px) {
-		.hero-fade {
-			background: linear-gradient(
-				180deg,
-				rgba(228, 228, 228, 0) 20%,
-				rgba(228, 228, 228, 0.98) 60%,
-				rgba(228, 228, 228, 1) 85%
-			);
-		}
-
 		.hero-content {
-			padding: 1rem;
+			padding: 0.85rem 1rem 1rem;
 		}
 
 		.hero-content h1 {
