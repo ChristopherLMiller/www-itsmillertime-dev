@@ -57,7 +57,7 @@ const baseInit = { credentials: 'include' as RequestCredentials };
 
 /**
  * Cookie + dev-fallback chain only (no SWR). Safe to import from client bundles.
- * Server code that needs Upstash SWR should use `getPayloadSDK` from `$lib/payload/sdk.server`.
+ * Server code should use `getPayloadSDK` from `$lib/payload/sdk.server`.
  */
 export function createPayloadInnerFetch(
 	fetch?: typeof globalThis.fetch,

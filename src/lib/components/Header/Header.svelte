@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { SiteMeta } from '$lib/types/payload-types';
+	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
 
-	const siteMeta: SiteMeta = $derived(page.data.siteMeta);
+	const siteLayout = getSiteLayoutContext();
+	const siteMeta: SiteMeta | undefined = $derived(
+		siteLayout ? siteLayout().siteMeta : page.data.siteMeta
+	);
 	const path = $derived(page.url.pathname);
-	const currentPage = $derived(findMatchingPath(path, siteMeta.siteMeta));
+	const currentPage = $derived(findMatchingPath(path, siteMeta?.siteMeta));
 
-	function findMatchingPath(url: string, siteMeta: SiteMeta['siteMeta']) {
+	function findMatchingPath(url: string, siteMeta: SiteMeta['siteMeta'] | undefined) {
 		// First try for exact match
 		const exactMatch = siteMeta?.find((item) => item.path === url);
 		if (exactMatch) return exactMatch;

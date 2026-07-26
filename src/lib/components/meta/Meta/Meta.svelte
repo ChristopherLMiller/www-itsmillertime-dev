@@ -2,9 +2,14 @@
 	import { page } from '$app/state';
 	import { getMediaUrl } from '$lib/utils/media-url';
 	import { PUBLIC_FACEBOOK_APP_ID } from '$env/static/public';
+	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
+	import { pageMetaOverride } from '$lib/stores/pageMeta';
+
+	const siteLayout = getSiteLayoutContext();
+	const siteMeta = $derived(siteLayout ? siteLayout().siteMeta : page.data.siteMeta);
 
 	let meta = $derived({
-		...page.data.meta
+		...($pageMetaOverride ?? page.data.meta)
 	});
 
 	function toAbsoluteUrl(url: string | null | undefined): string {
@@ -20,11 +25,11 @@
 		}
 		// Home path will match all and return something random, make it deterministic
 		if (page.url.pathname === '/') {
-			return `${page.data.siteMeta.siteMeta.find((pageMeta: { title: string }) => pageMeta?.title.toLowerCase().includes('home')).title} | ItsMillerTime`;
+			return `${siteMeta?.siteMeta?.find((pageMeta: { title: string }) => pageMeta?.title.toLowerCase().includes('home'))?.title} | ItsMillerTime`;
 		}
 
 		// Check if there is a site meta object for the path
-		const pageMeta = page.data.siteMeta.siteMeta.find((pageMeta: { path: string }) =>
+		const pageMeta = siteMeta?.siteMeta?.find((pageMeta: { path: string }) =>
 			pageMeta?.path.includes(page.url.pathname)
 		);
 
@@ -59,11 +64,11 @@
 		}
 		// Home path will match all and return something random, make it deterministic
 		if (page.url.pathname === '/') {
-			return `${page.data.siteMeta.siteMeta.find((pageMeta: { title: string }) => pageMeta?.title.toLowerCase().includes('home')).description} | ItsMillerTime`;
+			return `${siteMeta?.siteMeta?.find((pageMeta: { title: string }) => pageMeta?.title.toLowerCase().includes('home'))?.description} | ItsMillerTime`;
 		}
 
 		// Check if there is a site meta object for the path
-		const pageMeta = page.data.siteMeta?.siteMeta?.find((pageMeta: { path: string }) =>
+		const pageMeta = siteMeta?.siteMeta?.find((pageMeta: { path: string }) =>
 			pageMeta?.path.includes(page.url.pathname)
 		);
 		return pageMeta?.description || description;

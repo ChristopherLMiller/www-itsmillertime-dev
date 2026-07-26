@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { isBrowserOnline } from '$lib/cache/offlineSwr';
+import { isBrowserOnline } from '$lib/utils/online';
 import { extractPayloadMeUser, mergeSessionUser } from '$lib/auth/mergePayloadUser';
 
 export type SessionShape = {

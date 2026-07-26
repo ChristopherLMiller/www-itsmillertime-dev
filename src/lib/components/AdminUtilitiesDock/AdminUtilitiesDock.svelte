@@ -1,17 +1,14 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { invalidate, onNavigate } from '$app/navigation';
+	import { invalidateAll, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
+	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
-		BROWSER_CACHE_DB_NAME,
-		BROWSER_CACHE_SCHEMA_VERSION,
-		BROWSER_CACHE_STORE_NAME,
-		browserCache,
-		LAYOUT_CACHE_KEY_LEGACY,
-		LAYOUT_META_CACHE_KEY,
-		LAYOUT_NAV_CACHE_KEY,
-		type IdbCacheRow
-	} from '$lib/cache/browserCache';
+		clearPersistedQueryCache,
+		QUERY_CACHE_DB_NAME,
+		QUERY_CACHE_STORE_NAME,
+		readPersistedQueryCache
+	} from '$lib/query/idbPersister';
 	import { PUBLIC_PAYLOAD_URL, PUBLIC_URL } from '$env/static/public';
 	import { cubicOut } from 'svelte/easing';
 	import { untrack } from 'svelte';
@@ -24,15 +21,17 @@
 	hljs.registerLanguage('json', json);
 	hljs.registerLanguage('plaintext', plaintext);
 
-	type AdminTab = 'upstash' | 'browser' | 'cms' | 'site';
+	type AdminTab = 'browser' | 'cms' | 'site';
 
-	const TAB_ORDER: AdminTab[] = ['upstash', 'browser', 'cms', 'site'];
+	const TAB_ORDER: AdminTab[] = ['browser', 'cms', 'site'];
+
+	const queryClient = useQueryClient();
 
 	let user = $derived(page.data.session?.user ?? null);
 	let isAdmin = $derived(!!user && (user?.role as string[] | undefined)?.includes('admin'));
 
 	let panelOpen = $state(false);
-	let activeTab = $state<AdminTab>('upstash');
+	let activeTab = $state<AdminTab>('browser');
 	let rootEl: HTMLDivElement | undefined = $state();
 
 	const cms = `${PUBLIC_PAYLOAD_URL}/admin`;
@@ -45,18 +44,13 @@
 		users: `${cms}/collections/users`
 	};
 
-	let cacheKeys = $state<{ key: string; ttl: number }[]>([]);
-	let cacheHasMore = $state(false);
-	let cacheLoading = $state(false);
-	let cacheConfigured = $state(true);
-	let cacheError = $state<string | null>(null);
-
-	let peekKey = $state<string | null>(null);
-	let peekText = $state<string | null>(null);
-	let peekLoading = $state(false);
-	let peekCopyFeedback = $state<'idle' | 'copied' | 'error'>('idle');
-
-	let copyPeekTimeoutId: ReturnType<typeof setTimeout> | undefined;
+	let persistedCacheText = $state<string | null>(null);
+	let persistedCacheLoading = $state(false);
+	let persistedCacheError = $state<string | null>(null);
+	let clearBusy = $state(false);
+	let clearMsg = $state<string | null>(null);
+	let copyFeedback = $state<'idle' | 'copied' | 'error'>('idle');
+	let copyTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 	/** Pretty-print when possible so hljs JSON grammar matches; handle BOM and JSON-in-a-string. */
 	function prettyJsonForPeek(raw: string): string | null {
@@ -100,145 +94,58 @@
 		}
 	}
 
-	let layoutClearBusy = $state(false);
-	let layoutClearMsg = $state<string | null>(null);
-
-	let idbEntries = $state<IdbCacheRow[]>([]);
-	let idbLoading = $state(false);
-	let idbError = $state<string | null>(null);
-	let idbCopyFeedbackKey = $state<string | null>(null);
-	let idbCopyTimeoutId: ReturnType<typeof setTimeout> | undefined;
-
-	function stringifyIdbData(data: unknown): string {
-		try {
-			return JSON.stringify(data, null, 2);
-		} catch {
-			return String(data);
-		}
-	}
-
-	function formatIdbCachedAt(ms: number): string {
-		try {
-			return new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-		} catch {
-			return String(ms);
-		}
-	}
-
-	async function loadIdbEntries() {
+	async function loadPersistedCache() {
 		if (!browser) return;
-		idbLoading = true;
-		idbError = null;
+		persistedCacheLoading = true;
+		persistedCacheError = null;
 		try {
-			const probe = await browserCache.probe();
-			if (!probe.ok) {
-				idbError = probe.error ?? 'IndexedDB is not available in this browser.';
-				idbEntries = [];
-				return;
-			}
-
-			idbEntries = await browserCache.listAllEntries();
+			const data = await readPersistedQueryCache();
+			persistedCacheText = data == null ? null : JSON.stringify(data, null, 2);
 		} catch (e) {
-			idbError = e instanceof Error ? e.message : 'Failed to read IndexedDB';
-			idbEntries = [];
+			persistedCacheError = e instanceof Error ? e.message : 'Failed to read IndexedDB';
+			persistedCacheText = null;
 		} finally {
-			idbLoading = false;
+			persistedCacheLoading = false;
 		}
 	}
 
-	async function copyIdbJson(key: string, json: string, e?: MouseEvent) {
+	async function copyPersistedCache(e?: MouseEvent) {
 		e?.stopPropagation();
-		if (!browser) return;
+		if (!browser || persistedCacheText == null) return;
 		try {
-			await navigator.clipboard.writeText(json);
-			idbCopyFeedbackKey = key;
-			if (idbCopyTimeoutId !== undefined) clearTimeout(idbCopyTimeoutId);
-			idbCopyTimeoutId = setTimeout(() => {
-				idbCopyFeedbackKey = null;
-				idbCopyTimeoutId = undefined;
-			}, 2000);
+			await navigator.clipboard.writeText(persistedCacheText);
+			copyFeedback = 'copied';
 		} catch {
-			/* ignore */
+			copyFeedback = 'error';
 		}
+		if (copyTimeoutId !== undefined) clearTimeout(copyTimeoutId);
+		copyTimeoutId = setTimeout(() => {
+			copyFeedback = 'idle';
+			copyTimeoutId = undefined;
+		}, 2000);
 	}
 
-	function formatTtl(ttl: number): string {
-		if (ttl === -2) return '—';
-		if (ttl === -1) return 'no expiry';
-		if (ttl < 60) return `${ttl}s`;
-		if (ttl < 3600) return `${Math.floor(ttl / 60)}m`;
-		const h = Math.floor(ttl / 3600);
-		const m = Math.floor((ttl % 3600) / 60);
-		return `${h}h ${m}m`;
-	}
-
-	const UPSTASH_SCAN_COUNT = '200';
-	const UPSTASH_MAX_PAGES = 500;
-
-	/** Paginate SCAN until cursor returns to 0 (all keys matching the pattern). */
-	async function loadAllUpstashKeys() {
-		if (cacheLoading) return;
-		cacheLoading = true;
-		cacheError = null;
+	async function clearOfflineCache() {
+		if (!browser) return;
+		clearBusy = true;
+		clearMsg = null;
 		try {
-			cacheKeys = [];
-			peekKey = null;
-			peekText = null;
-
-			let cursor = '0';
-			const match = '*';
-
-			for (let page = 0; page < UPSTASH_MAX_PAGES; page++) {
-				const q = new URLSearchParams({ cursor, match, count: UPSTASH_SCAN_COUNT });
-				const res = await fetch(`/api/admin/upstash-cache?${q}`, { credentials: 'include' });
-				const data = (await res.json()) as {
-					configured?: boolean;
-					error?: string;
-					keys?: { key: string; ttl: number }[];
-					nextCursor?: string;
-				};
-				if (!res.ok) {
-					cacheConfigured = data.configured !== false;
-					throw new Error(data.error || res.statusText);
-				}
-				cacheConfigured = true;
-				const newKeys = data.keys ?? [];
-				cacheKeys = [...cacheKeys, ...newKeys];
-				const next = String(data.nextCursor ?? '0');
-				cacheHasMore = next !== '0';
-				if (next === '0') break;
-				cursor = next;
-			}
-		} catch (e) {
-			cacheError = e instanceof Error ? e.message : 'Failed to load';
+			queryClient.clear();
+			await clearPersistedQueryCache();
+			await invalidateAll();
+			clearMsg = 'Offline cache cleared; data reloaded.';
+			await loadPersistedCache();
+		} catch {
+			clearMsg = 'Could not clear offline cache.';
 		} finally {
-			cacheLoading = false;
+			clearBusy = false;
 		}
 	}
-
-	// Only react to panelOpen + activeTab. Do not track reads inside loadAllUpstashKeys (e.g. cacheLoading),
-	// or the effect re-runs when loading finishes and would refetch in a tight loop (and hammer layout/session).
-	$effect(() => {
-		if (!panelOpen || activeTab !== 'upstash') return;
-		untrack(() => {
-			void loadAllUpstashKeys();
-		});
-	});
-
-	$effect(() => {
-		const _runWhenPeekKeyOrTextChanges = [peekKey, peekText];
-		void _runWhenPeekKeyOrTextChanges;
-		peekCopyFeedback = 'idle';
-		if (copyPeekTimeoutId !== undefined) {
-			clearTimeout(copyPeekTimeoutId);
-			copyPeekTimeoutId = undefined;
-		}
-	});
 
 	$effect(() => {
 		if (!panelOpen || activeTab !== 'browser') return;
 		untrack(() => {
-			void loadIdbEntries();
+			void loadPersistedCache();
 		});
 	});
 
@@ -257,114 +164,6 @@
 			body.style.overflow = prevBody;
 		};
 	});
-
-	async function doPeek(key: string) {
-		if (peekKey === key && peekText !== null) {
-			peekKey = null;
-			peekText = null;
-			return;
-		}
-		peekLoading = true;
-		cacheError = null;
-		try {
-			const res = await fetch('/api/admin/upstash-cache', {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'peek', key })
-			});
-			const data = (await res.json()) as { error?: string; preview?: string };
-			if (!res.ok) throw new Error(data.error || res.statusText);
-			peekKey = key;
-			peekText = data.preview ?? '';
-		} catch (e) {
-			cacheError = e instanceof Error ? e.message : 'Peek failed';
-		} finally {
-			peekLoading = false;
-		}
-	}
-
-	async function copyPeekValue(raw: string, e?: MouseEvent) {
-		e?.stopPropagation();
-		if (!browser) return;
-		try {
-			await navigator.clipboard.writeText(raw);
-			peekCopyFeedback = 'copied';
-			if (copyPeekTimeoutId !== undefined) clearTimeout(copyPeekTimeoutId);
-			copyPeekTimeoutId = setTimeout(() => {
-				peekCopyFeedback = 'idle';
-				copyPeekTimeoutId = undefined;
-			}, 2000);
-		} catch {
-			peekCopyFeedback = 'error';
-			if (copyPeekTimeoutId !== undefined) clearTimeout(copyPeekTimeoutId);
-			copyPeekTimeoutId = setTimeout(() => {
-				peekCopyFeedback = 'idle';
-				copyPeekTimeoutId = undefined;
-			}, 2500);
-		}
-	}
-
-	async function doDelete(key: string) {
-		if (!confirm(`Delete this Upstash cache key?\n\n${key}`)) return;
-		cacheError = null;
-		try {
-			const res = await fetch('/api/admin/upstash-cache', {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'delete', key })
-			});
-			const data = (await res.json()) as { error?: string };
-			if (!res.ok) throw new Error(data.error || res.statusText);
-			await loadAllUpstashKeys();
-			if (peekKey === key) {
-				peekKey = null;
-				peekText = null;
-			}
-		} catch (e) {
-			cacheError = e instanceof Error ? e.message : 'Delete failed';
-		}
-	}
-
-	async function purgeCollectionCache(collection: string, label: string) {
-		if (!confirm(`Purge Redis cache for ${label}?`)) return;
-		cacheError = null;
-		try {
-			const res = await fetch('/api/admin/upstash-cache', {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'invalidate-collection', collection })
-			});
-			const data = (await res.json()) as { error?: string; deleted?: string[] };
-			if (!res.ok) throw new Error(data.error || res.statusText);
-			await loadAllUpstashKeys();
-			layoutClearMsg = `Purged ${data.deleted?.length ?? 0} ${label} cache key(s).`;
-		} catch (e) {
-			cacheError = e instanceof Error ? e.message : 'Purge failed';
-		}
-	}
-
-	async function clearLayoutBrowserCache() {
-		if (!browser) return;
-		layoutClearBusy = true;
-		layoutClearMsg = null;
-		try {
-			await Promise.all([
-				browserCache.clear(LAYOUT_NAV_CACHE_KEY),
-				browserCache.clear(LAYOUT_META_CACHE_KEY),
-				browserCache.clear(LAYOUT_CACHE_KEY_LEGACY)
-			]);
-			await invalidate('app:layout');
-			layoutClearMsg = 'IndexedDB layout cache cleared; layout reloaded.';
-			await loadIdbEntries();
-		} catch {
-			layoutClearMsg = 'Could not clear browser cache.';
-		} finally {
-			layoutClearBusy = false;
-		}
-	}
 
 	function closePanel() {
 		panelOpen = false;
@@ -465,19 +264,6 @@
 							<button
 								type="button"
 								class="admin-dock-tab-btn"
-								class:admin-dock-tab-btn--active={activeTab === 'upstash'}
-								role="tab"
-								id="admin-tab-upstash"
-								aria-selected={activeTab === 'upstash'}
-								aria-controls="admin-panel-upstash"
-								tabindex={activeTab === 'upstash' ? 0 : -1}
-								onclick={() => setTab('upstash')}
-							>
-								Upstash
-							</button>
-							<button
-								type="button"
-								class="admin-dock-tab-btn"
 								class:admin-dock-tab-btn--active={activeTab === 'browser'}
 								role="tab"
 								id="admin-tab-browser"
@@ -518,127 +304,6 @@
 
 						<div class="admin-dock-panels">
 							<div
-								id="admin-panel-upstash"
-								class="admin-dock-panel"
-								role="tabpanel"
-								aria-labelledby="admin-tab-upstash"
-								hidden={activeTab !== 'upstash'}
-							>
-								<p class="admin-dock-section-lead">
-									All keys in Upstash Redis (SCAN until complete). Use Refresh to reload after
-									changes.
-								</p>
-								{#if !cacheConfigured}
-									<p class="admin-dock-note">
-										Redis env vars are not set on this server, so listing keys is unavailable.
-									</p>
-								{:else}
-									<div class="admin-dock-row">
-										<button
-											type="button"
-											class="admin-dock-btn"
-											disabled={cacheLoading}
-											onclick={() => loadAllUpstashKeys()}
-										>
-											{cacheLoading ? 'Loading…' : 'Refresh'}
-										</button>
-										<button
-											type="button"
-											class="admin-dock-btn"
-											disabled={cacheLoading}
-											onclick={() => purgeCollectionCache('posts', 'article')}
-										>
-											Purge articles
-										</button>
-										<button
-											type="button"
-											class="admin-dock-btn"
-											disabled={cacheLoading}
-											onclick={() => purgeCollectionCache('projects', 'projects')}
-										>
-											Purge projects
-										</button>
-										{#if cacheHasMore}
-											<span class="admin-dock-scan-cap" title="SCAN safety limit reached"
-												>Partial list (limit)</span
-											>
-										{/if}
-									</div>
-									{#if cacheError}
-										<p class="admin-dock-error">{cacheError}</p>
-									{/if}
-									{#if cacheKeys.length > 0}
-										<ul class="admin-dock-cache-list">
-											{#each cacheKeys as row (row.key)}
-												<li class="admin-dock-cache-row">
-													<div class="admin-dock-cache-line">
-														<div class="admin-dock-cache-left">
-															<span class="admin-dock-cache-ttl">{formatTtl(row.ttl)}</span>
-															<span class="admin-dock-cache-key" title={row.key}>{row.key}</span>
-														</div>
-														<div class="admin-dock-cache-actions">
-															<button
-																type="button"
-																class="admin-dock-linkish"
-																disabled={peekLoading}
-																onclick={(e) => {
-																	e.stopPropagation();
-																	void doPeek(row.key);
-																}}
-															>
-																{peekKey === row.key ? 'Hide value' : 'Expand value'}
-															</button>
-															<button
-																type="button"
-																class="admin-dock-linkish danger"
-																onclick={(e) => {
-																	e.stopPropagation();
-																	void doDelete(row.key);
-																}}
-															>
-																Delete
-															</button>
-														</div>
-													</div>
-													{#if peekKey === row.key && peekText !== null}
-														<div class="admin-dock-peek">
-															<div class="admin-dock-peek-toolbar">
-																<button
-																	type="button"
-																	class="admin-dock-linkish"
-																	disabled={!browser}
-																	onclick={(e) => {
-																		e.stopPropagation();
-																		if (peekText !== null) void copyPeekValue(peekText, e);
-																	}}
-																>
-																	{peekCopyFeedback === 'copied'
-																		? 'Copied'
-																		: peekCopyFeedback === 'error'
-																			? 'Copy failed'
-																			: 'Copy value'}
-																</button>
-															</div>
-															<div
-																class="admin-dock-peek-code-wrap"
-																role="region"
-																aria-label="Cached value"
-															>
-																<pre class="admin-dock-peek-pre"><code
-																		class="hljs admin-dock-peek-code"
-																		>{@html highlightPeekHtml(peekText)}</code
-																	></pre>
-															</div>
-														</div>
-													{/if}
-												</li>
-											{/each}
-										</ul>
-									{/if}
-								{/if}
-							</div>
-
-							<div
 								id="admin-panel-browser"
 								class="admin-dock-panel"
 								role="tabpanel"
@@ -646,87 +311,69 @@
 								hidden={activeTab !== 'browser'}
 							>
 								<p class="admin-dock-section-lead">
-									Client-side IndexedDB used for instant layout navigations.
+									Offline cache: the persisted TanStack Query store in IndexedDB (articles,
+									projects, and layout globals) used for instant loads and offline support.
 								</p>
 								<p class="admin-dock-note admin-dock-idb-meta-line">
-									<code class="admin-dock-idb-code-label">{BROWSER_CACHE_DB_NAME}</code>
+									<code class="admin-dock-idb-code-label">{QUERY_CACHE_DB_NAME}</code>
 									·
-									<code class="admin-dock-idb-code-label">{BROWSER_CACHE_STORE_NAME}</code>
+									<code class="admin-dock-idb-code-label">{QUERY_CACHE_STORE_NAME}</code>
 								</p>
 								<div class="admin-dock-row">
 									<button
 										type="button"
 										class="admin-dock-btn"
-										disabled={idbLoading || !browser}
-										onclick={() => loadIdbEntries()}
+										disabled={persistedCacheLoading || !browser}
+										onclick={() => loadPersistedCache()}
 									>
-										{idbLoading ? 'Loading…' : 'Refresh'}
+										{persistedCacheLoading ? 'Loading…' : 'Refresh'}
 									</button>
 									<button
 										type="button"
 										class="admin-dock-btn"
-										disabled={layoutClearBusy || !browser}
-										onclick={clearLayoutBrowserCache}
+										disabled={clearBusy || !browser}
+										onclick={clearOfflineCache}
 									>
-										{layoutClearBusy ? 'Clearing…' : 'Clear layout cache'}
+										{clearBusy ? 'Clearing…' : 'Clear offline cache'}
 									</button>
+									{#if persistedCacheText != null}
+										<button
+											type="button"
+											class="admin-dock-linkish"
+											disabled={!browser}
+											onclick={(e) => copyPersistedCache(e)}
+										>
+											{copyFeedback === 'copied'
+												? 'Copied'
+												: copyFeedback === 'error'
+													? 'Copy failed'
+													: 'Copy JSON'}
+										</button>
+									{/if}
 								</div>
-								{#if layoutClearMsg}
-									<p class="admin-dock-success">{layoutClearMsg}</p>
+								{#if clearMsg}
+									<p class="admin-dock-success">{clearMsg}</p>
 								{/if}
-								{#if idbError}
-									<p class="admin-dock-error">{idbError}</p>
+								{#if persistedCacheError}
+									<p class="admin-dock-error">{persistedCacheError}</p>
 								{/if}
-								{#if idbLoading && idbEntries.length === 0 && !idbError}
+								{#if persistedCacheLoading && persistedCacheText == null && !persistedCacheError}
 									<p class="admin-dock-note">Reading IndexedDB…</p>
-								{:else if !idbLoading && idbEntries.length === 0 && !idbError}
+								{:else if !persistedCacheLoading && persistedCacheText == null && !persistedCacheError}
 									<p class="admin-dock-note">
-										No entries in <code>{BROWSER_CACHE_DB_NAME}</code> yet. Visit layout, article, or
-										project pages while online first — going offline does not remove IndexedDB, but a
-										full page refresh while offline needs those entries to already exist.
+										No persisted cache yet. Visit article, project, or any site page while online
+										first so its data is cached for offline use.
 									</p>
-								{:else if idbEntries.length > 0}
-									<ul class="admin-dock-idb-list">
-										{#each idbEntries as row (row.key)}
-											<li class="admin-dock-idb-entry">
-												<div class="admin-dock-idb-entry-head">
-													<span class="admin-dock-idb-key" title={row.key}>{row.key}</span>
-													<div class="admin-dock-idb-head-right">
-														<span class="admin-dock-cache-ttl"
-															>{formatIdbCachedAt(row.cachedAt)}</span
-														>
-														{#if row.schemaVersion !== BROWSER_CACHE_SCHEMA_VERSION}
-															<span
-																class="admin-dock-idb-stale"
-																title="Entry does not match current schema; ignored by reads"
-																>schema v{row.schemaVersion}</span
-															>
-														{/if}
-														<button
-															type="button"
-															class="admin-dock-linkish"
-															disabled={!browser}
-															onclick={(e) => {
-																e.stopPropagation();
-																void copyIdbJson(row.key, stringifyIdbData(row.data), e);
-															}}
-														>
-															{idbCopyFeedbackKey === row.key ? 'Copied' : 'Copy JSON'}
-														</button>
-													</div>
-												</div>
-												<div
-													class="admin-dock-peek-code-wrap admin-dock-idb-data-wrap"
-													role="region"
-													aria-label="Entry payload for {row.key}"
-												>
-													<pre class="admin-dock-peek-pre"><code class="hljs admin-dock-peek-code"
-															>{@html highlightPeekHtml(stringifyIdbData(row.data))}</code
-														></pre>
-												</div>
-											</li>
-										{/each}
-									</ul>
+								{:else if persistedCacheText != null}
+									<div
+										class="admin-dock-peek-code-wrap admin-dock-idb-data-wrap"
+										role="region"
+										aria-label="Persisted query cache"
+									>
+										<pre class="admin-dock-peek-pre"><code class="hljs admin-dock-peek-code"
+												>{@html highlightPeekHtml(persistedCacheText)}</code
+											></pre>
+									</div>
 								{/if}
 							</div>
 
@@ -851,7 +498,7 @@
 	}
 
 	.admin-dock-dialog {
-		/* Shared caps for JSON/value code blocks (Upstash peek + IndexedDB). */
+		/* Shared caps for JSON/value code blocks (persisted cache view). */
 		--admin-dock-code-max-h: min(48vh, 30rem);
 		--admin-dock-idb-code-max-h: min(52vh, 32rem);
 
@@ -1044,62 +691,6 @@
 		background: color-mix(in oklch, var(--color-tertiary-darkest) 80%, transparent);
 	}
 
-	.admin-dock-idb-list {
-		margin: 0.5rem 0 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.admin-dock-idb-entry {
-		margin-top: 0.65rem;
-		padding-top: 0.65rem;
-		border-top: 1px solid color-mix(in oklch, var(--color-tertiary) 45%, transparent);
-	}
-
-	.admin-dock-idb-entry:first-child {
-		margin-top: 0.35rem;
-		padding-top: 0;
-		border-top: none;
-	}
-
-	.admin-dock-idb-entry-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.5rem;
-		margin-bottom: 0.35rem;
-		min-width: 0;
-	}
-
-	.admin-dock-idb-key {
-		font-family: var(--font-source-code-pro);
-		font-size: var(--fs-base);
-		line-height: var(--line-height);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		flex: 1;
-		min-width: 0;
-		text-align: left;
-	}
-
-	.admin-dock-idb-head-right {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: flex-end;
-		gap: 0.35rem 0.55rem;
-		flex-shrink: 0;
-	}
-
-	.admin-dock-idb-stale {
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		line-height: 1.25;
-		color: var(--color-primary-lighter);
-		opacity: 0.95;
-	}
-
 	.admin-dock-row {
 		display: flex;
 		flex-wrap: wrap;
@@ -1130,86 +721,6 @@
 		}
 	}
 
-	.admin-dock-cache-list {
-		margin: 0.35rem 0 0;
-		padding: 0;
-		list-style: none;
-		border-top: 1px solid var(--color-tertiary);
-	}
-
-	.admin-dock-cache-row {
-		padding: 0.4rem 0;
-		border-bottom: 1px solid color-mix(in oklch, var(--color-tertiary) 55%, transparent);
-	}
-
-	.admin-dock-cache-line {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.65rem;
-		width: 100%;
-		min-width: 0;
-	}
-
-	.admin-dock-cache-left {
-		display: flex;
-		align-items: baseline;
-		gap: 0.55rem;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.admin-dock-cache-key {
-		font-family: var(--font-source-code-pro);
-		font-size: var(--fs-base);
-		line-height: var(--line-height);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		flex: 1;
-		min-width: 0;
-		text-align: left;
-		color: var(--color-white-lighter);
-		font-weight: 400;
-	}
-
-	.admin-dock-scan-cap {
-		font-size: var(--fs-xs);
-		line-height: var(--line-height);
-		opacity: 0.85;
-		align-self: center;
-	}
-
-	.admin-dock-cache-ttl {
-		flex-shrink: 0;
-		white-space: nowrap;
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		line-height: var(--line-height);
-		font-weight: 500;
-		letter-spacing: 0.03em;
-		font-variant-numeric: tabular-nums;
-		color: color-mix(in oklch, var(--color-white-lighter) 72%, var(--color-secondary-lightest) 28%);
-		padding: 0.1rem 0.45rem;
-		border-radius: 0.25rem;
-		background: color-mix(in oklch, var(--color-tertiary-darkest) 65%, var(--color-tertiary) 35%);
-		border: 1px solid color-mix(in oklch, var(--color-tertiary) 50%, transparent);
-		box-shadow: inset 0 1px 0 color-mix(in oklch, var(--color-white-lighter) 8%, transparent);
-	}
-
-	.admin-dock-cache-actions {
-		display: flex;
-		flex-wrap: nowrap;
-		justify-content: flex-end;
-		align-items: baseline;
-		gap: 0.45rem 0.65rem;
-		flex-shrink: 0;
-	}
-
-	.admin-dock-cache-row .admin-dock-peek {
-		margin-top: 0.35rem;
-	}
-
 	.admin-dock-linkish {
 		cursor: pointer;
 		padding: 0;
@@ -1231,28 +742,10 @@
 			outline-offset: 2px;
 		}
 
-		&.danger {
-			color: var(--color-primary-lighter);
-		}
-
 		&:disabled {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
-	}
-
-	.admin-dock-peek {
-		margin-top: 0.5rem;
-		padding: 0.45rem;
-		border-radius: 0.25rem;
-		background: var(--color-tertiary-darkest);
-		border: 1px solid var(--color-tertiary);
-	}
-
-	.admin-dock-peek-toolbar {
-		display: flex;
-		justify-content: flex-end;
-		margin-bottom: 0.35rem;
 	}
 
 	.admin-dock-peek-code-wrap {
@@ -1266,12 +759,6 @@
 
 	.admin-dock-peek-code-wrap.admin-dock-idb-data-wrap {
 		max-height: var(--admin-dock-idb-code-max-h);
-	}
-
-	/* After the rules above so it wins: single IndexedDB row uses most of the viewport. */
-	.admin-dock-idb-list:has(> .admin-dock-idb-entry:only-child)
-		.admin-dock-peek-code-wrap.admin-dock-idb-data-wrap {
-		max-height: min(56vh, 36rem);
 	}
 
 	.admin-dock-peek-pre {

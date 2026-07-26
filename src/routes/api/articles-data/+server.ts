@@ -10,7 +10,6 @@ export const GET: RequestHandler = async ({ url }) => {
 	const sort = url.searchParams.get('sort') || undefined;
 
 	const result = await loadArticlesListPageData(page, limit, category, tag, sort);
-	const { cacheStatus, ...payload } = result;
 
-	return json(payload, { headers: { 'X-Cache': cacheStatus } });
+	return json(result);
 };
