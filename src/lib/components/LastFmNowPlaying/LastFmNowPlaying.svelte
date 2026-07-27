@@ -175,14 +175,49 @@
 			void 0;
 		}
 
-		fetchNowPlaying();
+		let intervalId: ReturnType<typeof setInterval> | null = null;
+		let idleId: number | undefined;
+		let idleTimeoutId: ReturnType<typeof setTimeout> | undefined;
+		let cancelled = false;
 
-		const intervalId = setInterval(() => {
-			fetchNowPlaying();
-		}, refreshIntervalMs);
+		function startPolling() {
+			if (cancelled) return;
+			void fetchNowPlaying();
+			intervalId = setInterval(() => {
+				if (document.visibilityState === 'hidden') return;
+				void fetchNowPlaying();
+			}, refreshIntervalMs);
+		}
+
+		function onVisibilityChange() {
+			if (document.visibilityState === 'visible' && !cancelled) {
+				void fetchNowPlaying();
+			}
+		}
+
+		// Defer network + interval until after first paint so every page's critical path stays clear.
+		const ric = (
+			window as Window & {
+				requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+			}
+		).requestIdleCallback;
+		if (typeof ric === 'function') {
+			idleId = ric(startPolling, { timeout: 3000 });
+		} else {
+			idleTimeoutId = setTimeout(startPolling, 1500);
+		}
+
+		document.addEventListener('visibilitychange', onVisibilityChange);
 
 		return () => {
-			clearInterval(intervalId);
+			cancelled = true;
+			const cancelIdle = (
+				window as Window & { cancelIdleCallback?: (id: number) => void }
+			).cancelIdleCallback;
+			if (idleId !== undefined && typeof cancelIdle === 'function') cancelIdle(idleId);
+			if (idleTimeoutId !== undefined) clearTimeout(idleTimeoutId);
+			if (intervalId !== null) clearInterval(intervalId);
+			document.removeEventListener('visibilitychange', onVisibilityChange);
 		};
 	});
 </script>
