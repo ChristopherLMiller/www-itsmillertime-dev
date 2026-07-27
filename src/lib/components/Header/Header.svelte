@@ -42,6 +42,8 @@
 		margin-block-end: var(--top-bar-height);
 		clip-path: polygon(0 0, 100% 0, 100% calc(100% - clamp(3rem, 6vw, 6rem)), 0 100%);
 		background: var(--color-primary);
+		/* padding-block + description line + large title — avoids collapse before siteMeta */
+		min-height: calc(1rem + clamp(3rem, 6vw, 6rem) + 1.5em + var(--fs-l));
 	}
 
 	.meta {
@@ -53,6 +55,10 @@
 
 		.page-description {
 			letter-spacing: 0.5px;
+			min-height: 1.5em;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		.page-title {
@@ -61,6 +67,10 @@
 			font-weight: 600;
 			text-transform: uppercase;
 			line-height: 1;
+			min-height: var(--fs-l);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 	}
 </style>

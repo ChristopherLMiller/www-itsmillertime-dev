@@ -1,25 +1,25 @@
 .font-special-elite {
-	font-family: 'Special Elite', serif;
+	font-family: var(--font-special-elite);
 }
 
 .font-permanent-marker {
-	font-family: 'Permanent Marker', serif;
+	font-family: var(--font-permanent-marker);
 }
 
 .font-oswald {
-	font-family: 'Oswald', serif;
+	font-family: var(--font-oswald);
 	font-optical-sizing: auto;
 }
 
 .font-source-code-pro {
-	font-family: 'Source Code Pro', serif;
+	font-family: var(--font-source-code-pro);
 	font-optical-sizing: auto;
 }
 
 .font-roboto {
-	font-family: 'Roboto', serif;
+	font-family: var(--font-roboto);
 }
 
 .font-delius {
-	font-family: 'Delius', serif;
+	font-family: 'Delius', 'Comic Sans MS', cursive;
 }

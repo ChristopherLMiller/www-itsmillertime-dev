@@ -47,6 +47,9 @@
 
 		@media (min-width: 768px) {
 			display: flex;
+			flex-wrap: nowrap;
+			/* One row: 30px icon + 0.5rem padding top/bottom */
+			min-height: calc(30px + 1rem);
 		}
 	}
 </style>

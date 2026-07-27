@@ -6,7 +6,13 @@
 
 <a href={navItem.link} class={`${navItem.link === page.url.pathname ? 'active' : ''}`}>
 	{#if navItem.icon}
-		<img src={`${PUBLIC_PAYLOAD_URL}${navItem.icon.url}`} alt={navItem.title} />
+		<img
+			src={`${PUBLIC_PAYLOAD_URL}${navItem.icon.url}`}
+			alt={navItem.title}
+			width="30"
+			height="30"
+			decoding="async"
+		/>
 	{/if}
 	{navItem.title}
 </a>
@@ -26,7 +32,10 @@
 		position: relative;
 		background: var(--color-secondary-darker);
 		box-shadow: var(--box-shadow-elev-0);
-		transition: all 0.2s cubic-bezier(0.6, -0.28, 0.74, 0.05);
+		transition:
+			transform 0.2s cubic-bezier(0.6, -0.28, 0.74, 0.05),
+			box-shadow 0.2s cubic-bezier(0.6, -0.28, 0.74, 0.05),
+			background 0.2s cubic-bezier(0.6, -0.28, 0.74, 0.05);
 
 		&.active {
 			background: var(--color-secondary);

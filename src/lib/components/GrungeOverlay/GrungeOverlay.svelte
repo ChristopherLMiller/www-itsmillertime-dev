@@ -331,20 +331,21 @@
 
 			let tStart = performance.now();
 			let lastFrameAt = 0;
-			let scrolling = false;
-			let scrollResumeId: ReturnType<typeof setTimeout> | undefined;
+			let paused = false;
+			let resumeId: ReturnType<typeof setTimeout> | undefined;
 			const FRAME_MS = highPerf ? 0 : 1000 / 30;
 			const SCROLL_RESUME_MS = 150;
+			const INTERACTION_RESUME_MS = 500;
 
 			function startLoop() {
-				if (mqMotion.matches || document.visibilityState === 'hidden' || scrolling) return;
+				if (mqMotion.matches || document.visibilityState === 'hidden' || paused) return;
 				cancelAnimationFrame(animId);
 				lastFrameAt = 0;
 				animId = requestAnimationFrame(tick);
 			}
 
 			function tick(now: number) {
-				if (mqMotion.matches || scrolling) return;
+				if (mqMotion.matches || paused) return;
 				if (document.visibilityState === 'hidden') return;
 				if (FRAME_MS > 0 && now - lastFrameAt < FRAME_MS) {
 					animId = requestAnimationFrame(tick);
@@ -356,25 +357,34 @@
 				animId = requestAnimationFrame(tick);
 			}
 
-			function onScroll() {
+			function pauseTemporarily(resumeMs: number) {
 				if (mqMotion.matches) return;
-				if (!scrolling) {
-					scrolling = true;
+				if (!paused) {
+					paused = true;
 					cancelAnimationFrame(animId);
 				}
-				if (scrollResumeId !== undefined) clearTimeout(scrollResumeId);
-				scrollResumeId = setTimeout(() => {
-					scrolling = false;
-					scrollResumeId = undefined;
+				if (resumeId !== undefined) clearTimeout(resumeId);
+				resumeId = setTimeout(() => {
+					paused = false;
+					resumeId = undefined;
 					tStart = performance.now();
 					startLoop();
-				}, SCROLL_RESUME_MS);
+				}, resumeMs);
+			}
+
+			function onScroll() {
+				pauseTemporarily(SCROLL_RESUME_MS);
+			}
+
+			/** Free GPU/main thread during clicks so INP isn't fighting WebGL. */
+			function pauseForInteraction() {
+				pauseTemporarily(INTERACTION_RESUME_MS);
 			}
 
 			function onVisibilityChange() {
 				if (document.visibilityState === 'hidden') {
 					cancelAnimationFrame(animId);
-				} else if (!mqMotion.matches && !scrolling) {
+				} else if (!mqMotion.matches && !paused) {
 					tStart = performance.now();
 					startLoop();
 				}
@@ -384,7 +394,7 @@
 				cancelAnimationFrame(animId);
 				if (mqMotion.matches) {
 					render(0);
-				} else if (!scrolling) {
+				} else if (!paused) {
 					tStart = performance.now();
 					startLoop();
 				}
@@ -403,6 +413,8 @@
 			mqMotion.addEventListener('change', onMotionChange);
 			document.addEventListener('visibilitychange', onVisibilityChange);
 			window.addEventListener('scroll', onScroll, { passive: true });
+			document.addEventListener('pointerdown', pauseForInteraction, { capture: true, passive: true });
+			document.addEventListener('keydown', pauseForInteraction, { capture: true, passive: true });
 
 			if (mqMotion.matches) {
 				render(0);
@@ -416,7 +428,9 @@
 				document.removeEventListener('visibilitychange', onVisibilityChange);
 				mqMotion.removeEventListener('change', onMotionChange);
 				window.removeEventListener('scroll', onScroll);
-				if (scrollResumeId !== undefined) clearTimeout(scrollResumeId);
+				document.removeEventListener('pointerdown', pauseForInteraction, true);
+				document.removeEventListener('keydown', pauseForInteraction, true);
+				if (resumeId !== undefined) clearTimeout(resumeId);
 				cancelAnimationFrame(animId);
 				ro.disconnect();
 				g.deleteProgram(prog);

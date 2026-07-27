@@ -2,13 +2,19 @@
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 
-	export let identifier: string;
-	export let title: string;
-	export let url: string;
+	type DisqusProps = {
+		identifier: string;
+		title: string;
+		url: string;
+	};
+
+	const { identifier, title, url }: DisqusProps = $props();
 
 	const shortname = 'itsmillertimedev';
 
-	onMount(() => {
+	let wrapperEl: HTMLDivElement | undefined = $state();
+
+	function mountDisqus() {
 		if (!browser) return;
 
 		// Prevent duplicate embeds during navigation
@@ -36,10 +42,28 @@
 		s.setAttribute('data-timestamp', Date.now().toString());
 		s.async = true;
 		d.body.appendChild(s);
+	}
+
+	onMount(() => {
+		if (!browser || !wrapperEl) return;
+
+		// Below-fold: only inject when near viewport so late iframe growth
+		// doesn't compete with above-the-fold CLS measurement.
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (!entries.some((entry) => entry.isIntersecting)) return;
+				observer.disconnect();
+				mountDisqus();
+			},
+			{ rootMargin: '200px 0px' }
+		);
+		observer.observe(wrapperEl);
+
+		return () => observer.disconnect();
 	});
 </script>
 
-<div class="disqus-wrapper">
+<div class="disqus-wrapper" bind:this={wrapperEl}>
 	<div id="disqus_thread"></div>
 </div>
 
@@ -50,10 +74,16 @@
 		border: var(--border-width) solid var(--color-tertiary);
 		border-radius: 4px;
 		padding: 1rem;
+		/* Reserve space so embed load doesn't shove the footer */
+		min-height: 24rem;
 
 		:global(a) {
 			background: rgba(228, 228, 228, 1);
 			color: rgb(100, 26, 18, 1);
 		}
+	}
+
+	#disqus_thread {
+		min-height: 20rem;
 	}
 </style>

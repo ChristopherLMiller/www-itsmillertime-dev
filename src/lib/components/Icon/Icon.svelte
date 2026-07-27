@@ -10,6 +10,7 @@
 			| 'npm'
 			| 'globe'
 			| 'play'
+			| 'square'
 			| 'book'
 			| 'link'
 			| 'eye';
@@ -67,6 +68,8 @@
 		></path>
 	{:else if name === 'play'}
 		<polygon points="5 3 19 12 5 21 5 3"></polygon>
+	{:else if name === 'square'}
+		<rect x="6" y="6" width="12" height="12" fill={color} stroke="none"></rect>
 	{:else if name === 'book'}
 		<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
 		<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>

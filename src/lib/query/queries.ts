@@ -35,6 +35,8 @@ export function layoutQueryOptions(initialData?: LayoutCacheData | null) {
 		queryKey: queryKeys.layout,
 		queryFn: () => getJson<LayoutCacheData>('/api/layout-data'),
 		enabled: browser,
+		placeholderData: (previousData: LayoutCacheData | undefined) => previousData,
+		refetchOnMount: false,
 		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
 	};
 }
