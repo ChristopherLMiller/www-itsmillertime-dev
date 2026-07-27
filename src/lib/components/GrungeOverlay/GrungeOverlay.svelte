@@ -161,247 +161,279 @@
 	}
 
 	onMount(() => {
+		let cancelled = false;
 		let offMql: (() => void) | undefined;
+		let idleId: number | undefined;
+		let idleTimeoutId: ReturnType<typeof setTimeout> | undefined;
+		let disposeGl: (() => void) | undefined;
+
 		if (modeProp === undefined) {
 			mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 		} else {
 			mode = modeProp;
 		}
 
-		/** Narrow viewports + touch / coarse pointer: throttle cost (shader is fill-rate heavy). */
-		const mqPerf = window.matchMedia('(max-width: 768px), (pointer: coarse)');
+		/** `?grungePerf=high` restores uncapped desktop cost for local QA only. */
+		const highPerf =
+			import.meta.env.DEV &&
+			(window.location.search.includes('grungePerf=high') ||
+				window.location.search.includes('grungePerf=desktop'));
 
-		/** `?grungePerf=mobile` | `low` or `desktop` | `high` — preview tier on any device (local QA). */
-		const perfOverride = ((): 'mobile' | 'desktop' | null => {
-			const q = new URLSearchParams(window.location.search).get('grungePerf');
-			if (q === 'mobile' || q === 'low') return 'mobile';
-			if (q === 'desktop' || q === 'high') return 'desktop';
-			return null;
-		})();
-		function perfTierActive(): boolean {
-			if (perfOverride === 'mobile') return true;
-			if (perfOverride === 'desktop') return false;
-			return mqPerf.matches;
-		}
-		if (perfOverride !== null && import.meta.env.DEV) {
-			console.info(
-				`[GrungeOverlay] grungePerf=${perfOverride} — canvas uses ${perfTierActive() ? 'mobile (lower DPR, ~30fps cap)' : 'desktop'} tier`
-			);
+		function scheduleAfterPaint(task: () => void) {
+			const run = () => {
+				if (cancelled) return;
+				task();
+			};
+			const ric = (
+				window as Window & {
+					requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+				}
+			).requestIdleCallback;
+			if (typeof ric === 'function') {
+				idleId = ric(run, { timeout: 2000 });
+				return;
+			}
+			// Fallback: wait two frames so first paint / LCP can settle first.
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					idleTimeoutId = setTimeout(run, 0);
+				});
+			});
 		}
 
-		const gl = (canvas.getContext('webgl', {
-			alpha: true,
-			premultipliedAlpha: false,
-			powerPreference: perfTierActive() ? 'low-power' : 'default'
-		}) ??
-			canvas.getContext('experimental-webgl', {
+		function startWebGl() {
+			if (cancelled || !canvas || !host) return;
+
+			const gl = (canvas.getContext('webgl', {
 				alpha: true,
 				premultipliedAlpha: false,
-				powerPreference: perfTierActive() ? 'low-power' : 'default'
-			})) as WebGLRenderingContext | null;
+				powerPreference: 'low-power'
+			}) ??
+				canvas.getContext('experimental-webgl', {
+					alpha: true,
+					premultipliedAlpha: false,
+					powerPreference: 'low-power'
+				})) as WebGLRenderingContext | null;
 
-		if (!gl) {
-			console.warn('[GrungeOverlay] WebGL not available');
-			offMql?.();
-			return;
-		}
-
-		const g = gl;
-
-		const prog = g.createProgram()!;
-		const vs = compileShader(g, g.VERTEX_SHADER, VERT);
-		const fs = compileShader(g, g.FRAGMENT_SHADER, FRAG);
-		if (
-			!g.getShaderParameter(vs, g.COMPILE_STATUS) ||
-			!g.getShaderParameter(fs, g.COMPILE_STATUS)
-		) {
-			console.error('[GrungeOverlay] vertex or fragment shader failed to compile');
-			g.deleteShader(vs);
-			g.deleteShader(fs);
-			g.deleteProgram(prog);
-			offMql?.();
-			return;
-		}
-		g.attachShader(prog, vs);
-		g.attachShader(prog, fs);
-		g.linkProgram(prog);
-		if (!g.getProgramParameter(prog, g.LINK_STATUS)) {
-			console.error('[GrungeOverlay] program link error:', g.getProgramInfoLog(prog));
-			g.deleteShader(vs);
-			g.deleteShader(fs);
-			g.deleteProgram(prog);
-			offMql?.();
-			return;
-		}
-		g.deleteShader(vs);
-		g.deleteShader(fs);
-		g.useProgram(prog);
-
-		const buf = g.createBuffer();
-		g.bindBuffer(g.ARRAY_BUFFER, buf);
-		g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), g.STATIC_DRAW);
-		const aloc = g.getAttribLocation(prog, 'a_pos');
-		if (aloc < 0) {
-			console.error('[GrungeOverlay] a_pos not found in program');
-			offMql?.();
-			g.deleteProgram(prog);
-			g.deleteBuffer(buf);
-			return;
-		}
-		g.enableVertexAttribArray(aloc);
-		g.vertexAttribPointer(aloc, 2, g.FLOAT, false, 0, 0);
-
-		g.enable(g.BLEND);
-		g.blendFunc(g.SRC_ALPHA, g.ONE_MINUS_SRC_ALPHA);
-
-		const uTime = g.getUniformLocation(prog, 'u_time');
-		const uOp = g.getUniformLocation(prog, 'u_opacity');
-		const uSc = g.getUniformLocation(prog, 'u_scale');
-		const uSp = g.getUniformLocation(prog, 'u_speed');
-		const uRes = g.getUniformLocation(prog, 'u_res');
-		const uDark = g.getUniformLocation(prog, 'u_dark');
-
-		const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-		function effectiveDevicePixelRatio(): number {
-			const raw = devicePixelRatio || 1;
-			if (perfTierActive()) {
-				/* Mobile GPUs choke on full 2× retina over the whole viewport; ~1–1.25× is enough for grain. */
-				return Math.min(1.25, raw);
+			if (!gl) {
+				console.warn('[GrungeOverlay] WebGL not available');
+				return;
 			}
-			return Math.min(2, raw);
-		}
 
-		function render(t: number) {
+			const g = gl;
+
+			const prog = g.createProgram()!;
+			const vs = compileShader(g, g.VERTEX_SHADER, VERT);
+			const fs = compileShader(g, g.FRAGMENT_SHADER, FRAG);
+			if (
+				!g.getShaderParameter(vs, g.COMPILE_STATUS) ||
+				!g.getShaderParameter(fs, g.COMPILE_STATUS)
+			) {
+				console.error('[GrungeOverlay] vertex or fragment shader failed to compile');
+				g.deleteShader(vs);
+				g.deleteShader(fs);
+				g.deleteProgram(prog);
+				return;
+			}
+			g.attachShader(prog, vs);
+			g.attachShader(prog, fs);
+			g.linkProgram(prog);
+			if (!g.getProgramParameter(prog, g.LINK_STATUS)) {
+				console.error('[GrungeOverlay] program link error:', g.getProgramInfoLog(prog));
+				g.deleteShader(vs);
+				g.deleteShader(fs);
+				g.deleteProgram(prog);
+				return;
+			}
+			g.deleteShader(vs);
+			g.deleteShader(fs);
 			g.useProgram(prog);
+
+			const buf = g.createBuffer();
 			g.bindBuffer(g.ARRAY_BUFFER, buf);
+			g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), g.STATIC_DRAW);
+			const aloc = g.getAttribLocation(prog, 'a_pos');
+			if (aloc < 0) {
+				console.error('[GrungeOverlay] a_pos not found in program');
+				g.deleteProgram(prog);
+				g.deleteBuffer(buf);
+				return;
+			}
 			g.enableVertexAttribArray(aloc);
 			g.vertexAttribPointer(aloc, 2, g.FLOAT, false, 0, 0);
-			g.clearColor(0, 0, 0, 0);
-			g.clear(g.COLOR_BUFFER_BIT);
-			g.uniform1f(uTime, t);
-			g.uniform1f(uOp, opacity);
-			g.uniform1f(uSc, scale);
-			g.uniform1f(uSp, speed);
-			g.uniform2f(uRes, canvas.width, canvas.height);
-			g.uniform1f(uDark, mode === 'dark' ? 1.0 : 0.0);
-			g.drawArrays(g.TRIANGLE_STRIP, 0, 4);
-		}
 
-		function redrawIfStatic() {
-			if (mqMotion.matches) render(0);
-		}
+			g.enable(g.BLEND);
+			g.blendFunc(g.SRC_ALPHA, g.ONE_MINUS_SRC_ALPHA);
 
-		const setSize = () => {
-			const dpr = effectiveDevicePixelRatio();
-			const rect = host.getBoundingClientRect();
-			let cssW = rect.width;
-			let cssH = rect.height;
-			if (cssW < 2 || cssH < 2) {
-				cssW = window.innerWidth;
-				cssH = window.innerHeight;
+			const uTime = g.getUniformLocation(prog, 'u_time');
+			const uOp = g.getUniformLocation(prog, 'u_opacity');
+			const uSc = g.getUniformLocation(prog, 'u_scale');
+			const uSp = g.getUniformLocation(prog, 'u_speed');
+			const uRes = g.getUniformLocation(prog, 'u_res');
+			const uDark = g.getUniformLocation(prog, 'u_dark');
+
+			const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+			/** Cap fill-rate everywhere; highPerf QA can opt into full retina. */
+			function effectiveDevicePixelRatio(): number {
+				const raw = devicePixelRatio || 1;
+				if (highPerf) return Math.min(2, raw);
+				return Math.min(1.25, raw);
 			}
-			const w = Math.max(1, Math.floor(cssW * dpr));
-			const h = Math.max(1, Math.floor(cssH * dpr));
-			if (w !== canvas.width || h !== canvas.height) {
-				canvas.width = w;
-				canvas.height = h;
-				g.viewport(0, 0, w, h);
-			}
-			redrawIfStatic();
-		};
 
-		const ro = new ResizeObserver(() => {
+			function render(t: number) {
+				g.useProgram(prog);
+				g.bindBuffer(g.ARRAY_BUFFER, buf);
+				g.enableVertexAttribArray(aloc);
+				g.vertexAttribPointer(aloc, 2, g.FLOAT, false, 0, 0);
+				g.clearColor(0, 0, 0, 0);
+				g.clear(g.COLOR_BUFFER_BIT);
+				g.uniform1f(uTime, t);
+				g.uniform1f(uOp, opacity);
+				g.uniform1f(uSc, scale);
+				g.uniform1f(uSp, speed);
+				g.uniform2f(uRes, canvas.width, canvas.height);
+				g.uniform1f(uDark, mode === 'dark' ? 1.0 : 0.0);
+				g.drawArrays(g.TRIANGLE_STRIP, 0, 4);
+			}
+
+			function redrawIfStatic() {
+				if (mqMotion.matches) render(0);
+			}
+
+			const setSize = () => {
+				const dpr = effectiveDevicePixelRatio();
+				const rect = host.getBoundingClientRect();
+				let cssW = rect.width;
+				let cssH = rect.height;
+				if (cssW < 2 || cssH < 2) {
+					cssW = window.innerWidth;
+					cssH = window.innerHeight;
+				}
+				const w = Math.max(1, Math.floor(cssW * dpr));
+				const h = Math.max(1, Math.floor(cssH * dpr));
+				if (w !== canvas.width || h !== canvas.height) {
+					canvas.width = w;
+					canvas.height = h;
+					g.viewport(0, 0, w, h);
+				}
+				redrawIfStatic();
+			};
+
+			const ro = new ResizeObserver(() => {
+				setSize();
+			});
+			ro.observe(host);
 			setSize();
-		});
-		ro.observe(host);
-		setSize();
-		requestAnimationFrame(() => {
-			setSize();
-		});
+			requestAnimationFrame(() => {
+				setSize();
+			});
 
-		let tStart = performance.now();
-		let lastFrameAt = 0;
+			let tStart = performance.now();
+			let lastFrameAt = 0;
+			let scrolling = false;
+			let scrollResumeId: ReturnType<typeof setTimeout> | undefined;
+			const FRAME_MS = highPerf ? 0 : 1000 / 30;
+			const SCROLL_RESUME_MS = 150;
 
-		function frameBudgetMs(): number {
-			return perfTierActive() ? 1000 / 30 : 0;
-		}
-
-		function tick(now: number) {
-			if (mqMotion.matches) return;
-			if (document.visibilityState === 'hidden') {
-				return;
-			}
-			const minMs = frameBudgetMs();
-			if (minMs > 0 && now - lastFrameAt < minMs) {
-				animId = requestAnimationFrame(tick);
-				return;
-			}
-			lastFrameAt = now;
-			const t = (performance.now() - tStart) / 1000;
-			render(t);
-			animId = requestAnimationFrame(tick);
-		}
-
-		function onVisibilityChange() {
-			if (document.visibilityState === 'hidden') {
+			function startLoop() {
+				if (mqMotion.matches || document.visibilityState === 'hidden' || scrolling) return;
 				cancelAnimationFrame(animId);
-			} else if (!mqMotion.matches) {
-				tStart = performance.now();
 				lastFrameAt = 0;
-				cancelAnimationFrame(animId);
 				animId = requestAnimationFrame(tick);
 			}
-		}
 
-		function onPerfTierChange() {
-			setSize();
-			if (!mqMotion.matches && document.visibilityState !== 'hidden') {
-				tStart = performance.now();
-				lastFrameAt = 0;
+			function tick(now: number) {
+				if (mqMotion.matches || scrolling) return;
+				if (document.visibilityState === 'hidden') return;
+				if (FRAME_MS > 0 && now - lastFrameAt < FRAME_MS) {
+					animId = requestAnimationFrame(tick);
+					return;
+				}
+				lastFrameAt = now;
+				const t = (performance.now() - tStart) / 1000;
+				render(t);
+				animId = requestAnimationFrame(tick);
 			}
-		}
 
-		function onMotionChange() {
-			cancelAnimationFrame(animId);
+			function onScroll() {
+				if (mqMotion.matches) return;
+				if (!scrolling) {
+					scrolling = true;
+					cancelAnimationFrame(animId);
+				}
+				if (scrollResumeId !== undefined) clearTimeout(scrollResumeId);
+				scrollResumeId = setTimeout(() => {
+					scrolling = false;
+					scrollResumeId = undefined;
+					tStart = performance.now();
+					startLoop();
+				}, SCROLL_RESUME_MS);
+			}
+
+			function onVisibilityChange() {
+				if (document.visibilityState === 'hidden') {
+					cancelAnimationFrame(animId);
+				} else if (!mqMotion.matches && !scrolling) {
+					tStart = performance.now();
+					startLoop();
+				}
+			}
+
+			function onMotionChange() {
+				cancelAnimationFrame(animId);
+				if (mqMotion.matches) {
+					render(0);
+				} else if (!scrolling) {
+					tStart = performance.now();
+					startLoop();
+				}
+			}
+
+			if (modeProp === undefined) {
+				const mq = window.matchMedia('(prefers-color-scheme: dark)');
+				const onScheme = () => {
+					mode = mq.matches ? 'dark' : 'light';
+					redrawIfStatic();
+				};
+				mq.addEventListener('change', onScheme);
+				offMql = () => mq.removeEventListener('change', onScheme);
+			}
+
+			mqMotion.addEventListener('change', onMotionChange);
+			document.addEventListener('visibilitychange', onVisibilityChange);
+			window.addEventListener('scroll', onScroll, { passive: true });
+
 			if (mqMotion.matches) {
 				render(0);
 			} else {
-				tStart = performance.now();
-				lastFrameAt = 0;
-				animId = requestAnimationFrame(tick);
+				startLoop();
 			}
-		}
 
-		if (modeProp === undefined) {
-			const mq = window.matchMedia('(prefers-color-scheme: dark)');
-			const onScheme = () => {
-				mode = mq.matches ? 'dark' : 'light';
-				redrawIfStatic();
+			disposeGl = () => {
+				offMql?.();
+				offMql = undefined;
+				document.removeEventListener('visibilitychange', onVisibilityChange);
+				mqMotion.removeEventListener('change', onMotionChange);
+				window.removeEventListener('scroll', onScroll);
+				if (scrollResumeId !== undefined) clearTimeout(scrollResumeId);
+				cancelAnimationFrame(animId);
+				ro.disconnect();
+				g.deleteProgram(prog);
+				g.deleteBuffer(buf);
 			};
-			mq.addEventListener('change', onScheme);
-			offMql = () => mq.removeEventListener('change', onScheme);
 		}
 
-		mqMotion.addEventListener('change', onMotionChange);
-		document.addEventListener('visibilitychange', onVisibilityChange);
-		mqPerf.addEventListener('change', onPerfTierChange);
-
-		if (mqMotion.matches) {
-			render(0);
-		} else {
-			animId = requestAnimationFrame(tick);
-		}
+		scheduleAfterPaint(startWebGl);
 
 		return () => {
-			offMql?.();
-			document.removeEventListener('visibilitychange', onVisibilityChange);
-			mqPerf.removeEventListener('change', onPerfTierChange);
-			mqMotion.removeEventListener('change', onMotionChange);
-			cancelAnimationFrame(animId);
-			ro.disconnect();
-			g.deleteProgram(prog);
-			g.deleteBuffer(buf);
+			cancelled = true;
+			const cancelIdle = (
+				window as Window & { cancelIdleCallback?: (id: number) => void }
+			).cancelIdleCallback;
+			if (idleId !== undefined && typeof cancelIdle === 'function') cancelIdle(idleId);
+			if (idleTimeoutId !== undefined) clearTimeout(idleTimeoutId);
+			disposeGl?.();
 		};
 	});
 </script>

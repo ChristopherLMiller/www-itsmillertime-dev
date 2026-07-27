@@ -1,4 +1,5 @@
 import { extractPayloadMeUser, mergeSessionUser } from '$lib/auth/mergePayloadUser';
+import { hasBetterAuthCookie } from '$lib/auth/hasBetterAuthCookie';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -8,16 +9,28 @@ import type { RequestEvent } from '@sveltejs/kit';
  * so `role` (e.g. admin) is present when the user is logged in.
  */
 export async function getMergedSessionUser(event: RequestEvent) {
-	const sessionRes = await event.fetch(`${event.url.origin}/api/auth/get-session`, {
-		headers: { cookie: event.request.headers.get('cookie') ?? '' }
-	});
+	const cookie = event.request.headers.get('cookie') ?? '';
+	const payloadFetch = createPayloadFetch(event.fetch, event.request);
+
+	const mePromise = hasBetterAuthCookie(cookie)
+		? payloadFetch(`${getPayloadApiBaseUrl()}/users/me`).catch(() => null)
+		: Promise.resolve(null);
+
+	const [sessionRes, meRes] = await Promise.all([
+		event.fetch(`${event.url.origin}/api/auth/get-session`, {
+			headers: { cookie }
+		}),
+		mePromise
+	]);
 	if (!sessionRes.ok) return null;
 	const session = await sessionRes.json();
 	if (!session?.user) return null;
 
-	const payloadFetch = createPayloadFetch(event.fetch, event.request);
-	const meRes = await payloadFetch(`${getPayloadApiBaseUrl()}/users/me`);
-	const payloadMe = meRes.ok ? await meRes.json() : null;
+	let payloadMe = meRes?.ok ? await meRes.json() : null;
+	if (!payloadMe) {
+		const fallback = await payloadFetch(`${getPayloadApiBaseUrl()}/users/me`);
+		payloadMe = fallback.ok ? await fallback.json() : null;
+	}
 	return mergeSessionUser(session.user, extractPayloadMeUser(payloadMe));
 }
 

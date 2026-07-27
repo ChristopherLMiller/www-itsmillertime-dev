@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import NavigationProgress from '$lib/components/NavigationProgress';
-	import LastFmNowPlaying from '$lib/components/LastFmNowPlaying';
+	import LastFmNowPlayingLazy from '$lib/components/LastFmNowPlaying/LastFmNowPlayingLazy.svelte';
 	import Footer from '$lib/components/Footer';
 	import Header from '$lib/components/Header';
 	import Meta from '$lib/components/meta/Meta';
 	import Navigation from '$lib/components/navigation/Navigation';
 	import GrungeOverlay from '$lib/components/GrungeOverlay';
-	import AdminUtilitiesDock from '$lib/components/AdminUtilitiesDock';
+	import AdminUtilitiesDockLazy from '$lib/components/AdminUtilitiesDock/AdminUtilitiesDockLazy.svelte';
 	import TopBar from '$lib/components/TopBar';
 	import type { LayoutCacheData } from '$lib/cache/layoutCache';
 	import { layoutQueryOptions } from '$lib/query/queries';
@@ -46,8 +46,8 @@
 			</main>
 		</div>
 		<Footer />
-		<LastFmNowPlaying />
-		<AdminUtilitiesDock />
+		<LastFmNowPlayingLazy />
+		<AdminUtilitiesDockLazy />
 	</div>
 </div>
 
