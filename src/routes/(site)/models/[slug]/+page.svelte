@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import ClockifyTimer from '$lib/components/ClockifyTimer';
 	import Image from '$lib/components/Image';
 	import Icon from '$lib/components/Icon';
 	import Panel from '$lib/components/Panel';
@@ -51,17 +52,17 @@
 	const relatedModels = $derived(toRelatedLinks(model.relatedResources?.relatedModels));
 	const hasRelatedResources = $derived(relatedPosts.length > 0 || relatedModels.length > 0);
 
-	$effect(() => {
-		async function getClockifyProject() {
-			if (!data.model.clockify_project) return;
-			const response = await fetch(`/api/clockify/projects/${data.model.clockify_project}`);
-
-			if (response.ok) {
-				clockifyProject = await response.json();
-			}
+	async function refreshClockifyProject() {
+		if (!model.clockify_project) return;
+		const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
+		if (response.ok) {
+			clockifyProject = await response.json();
 		}
+	}
 
-		getClockifyProject();
+	$effect(() => {
+		if (!data.model.clockify_project) return;
+		refreshClockifyProject();
 	});
 </script>
 
@@ -89,6 +90,13 @@
 								<Icon name="clock" size={18} />
 								<span>{clockifyDuration}</span>
 							</span>
+						{/if}
+						{#if model.clockify_project}
+							<ClockifyTimer
+								projectId={model.clockify_project}
+								description={model.title}
+								onChange={refreshClockifyProject}
+							/>
 						{/if}
 						{#if cmsEditHref}
 							<a

@@ -58,14 +58,15 @@
 	--box-shadow-inset-2: inset 0 -6px 0 var(--color-primary-darker);
 	--box-shadow-inset-3: inset 0 -10px 0 var(--color-primary-darker);
 
-	/* Fonts */
-	--font-crimson-text: 'Crimson Text', Georgia, serif;
-	--font-special-elite: 'Special Elite', serif;
-	--font-permanent-marker: 'Permanent Marker', serif;
-	--font-oswald: 'Oswald', serif;
-	--font-source-code-pro: 'Source Code Pro', serif;
-	--font-roboto: 'Roboto', serif;
-	--font-vt323: 'VT323', monospace;
+	/* Fonts — generic fallbacks match the webfont category to reduce metric CLS */
+	--font-crimson-text: 'Crimson Text', 'Times New Roman', Times, serif;
+	--font-special-elite: 'Special Elite', 'Courier New', Courier, monospace;
+	--font-permanent-marker: 'Permanent Marker', 'Comic Sans MS', cursive;
+	--font-oswald: 'Oswald', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+	--font-source-code-pro: 'Source Code Pro', ui-monospace, 'Cascadia Code', Menlo, Consolas,
+		'DejaVu Sans Mono', monospace;
+	--font-roboto: 'Roboto', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+	--font-vt323: 'VT323', ui-monospace, Menlo, Consolas, monospace;
 
 	/* App Constraints */
 	--top-bar-height: 3rem;

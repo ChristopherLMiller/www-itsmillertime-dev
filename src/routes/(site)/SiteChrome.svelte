@@ -27,8 +27,8 @@
 	const layoutQuery = createQuery(() => layoutQueryOptions(data.initialLayout));
 
 	setSiteLayoutContext(() => ({
-		navigation: layoutQuery.data?.navigation,
-		siteMeta: layoutQuery.data?.siteMeta
+		navigation: layoutQuery.data?.navigation ?? data.initialLayout?.navigation,
+		siteMeta: layoutQuery.data?.siteMeta ?? data.initialLayout?.siteMeta
 	}));
 </script>
 

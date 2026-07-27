@@ -99,7 +99,13 @@
 			<p>Be sure to see the latest and greatest content from me:</p>
 			<div class="icons">
 				<a href="https://github.com/ChristopherLMiller" target="_blank" aria-label="GitHub profile"
-					><img src="https://cdn.itsmillertime.dev/6/github_a145b04078.svg" alt="github icon" /></a
+					><img
+						src="https://cdn.itsmillertime.dev/6/github_a145b04078.svg"
+						alt="github icon"
+						width="50"
+						height="50"
+						decoding="async"
+					/></a
 				>
 				<a
 					href="https://www.linkedin.com/in/christopher-l-miller/"
@@ -108,12 +114,18 @@
 					><img
 						src="https://cdn.itsmillertime.dev/6/linkedin_3376a13066.svg"
 						alt="linkedin icon"
+						width="50"
+						height="50"
+						decoding="async"
 					/></a
 				>
 				<a href="https://www.instagram.com/moose51789/" target="_blank" aria-label="Instagram"
 					><img
 						src="https://cdn.itsmillertime.dev/6/instagram_a24a931e4d.svg"
 						alt="instagram icon"
+						width="50"
+						height="50"
+						decoding="async"
 					/></a
 				>
 				<a
@@ -123,6 +135,9 @@
 					><img
 						src="https://cdn.itsmillertime.dev/6/youtube_df6751d4bb.svg"
 						alt="youtube icon"
+						width="50"
+						height="50"
+						decoding="async"
 					/></a
 				>
 			</div>

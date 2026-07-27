@@ -5,7 +5,7 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 	const modelData = await getPayloadSDK(fetch, request).find({
 		collection: 'models',
-		depth: 1,
+		depth: 2,
 		where: {
 			slug: {
 				equals: params.slug

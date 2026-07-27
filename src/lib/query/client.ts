@@ -18,7 +18,7 @@ export function createQueryClient(): QueryClient {
 				staleTime: SWR_STALE_TIME_MS,
 				gcTime: SWR_GC_TIME_MS,
 				retry: 1,
-				refetchOnWindowFocus: true,
+				refetchOnWindowFocus: false,
 				refetchOnReconnect: true,
 				// Content already shown from cache should refetch on mount when stale.
 				refetchOnMount: true

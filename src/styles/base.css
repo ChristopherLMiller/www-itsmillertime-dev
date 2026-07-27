@@ -20,7 +20,7 @@
 
 	body {
 		font-size: var(--fs-base);
-		font-family: 'Special Elite', serif;
+		font-family: var(--font-special-elite);
 		color: light-dark(var(--color-tertiary-darkest), var(--color-tertiary-lightest));
 		min-height: 100%;
 		min-height: 100dvh;
@@ -52,7 +52,7 @@
 
 	a {
 		color: var(--color-primary-darker);
-		transform: all 0.5s ease-in-out;
+		transition: color 0.2s ease-in-out;
 
 		&:hover {
 			color: var(--color-secondary);
