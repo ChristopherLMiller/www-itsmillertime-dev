@@ -129,6 +129,7 @@ export function createIdbPersister(): Persister {
 	return createAsyncStoragePersister({
 		storage: browser ? idbStorage : noopStorage,
 		key: QUERY_CACHE_STORAGE_KEY,
-		throttleTime: 1000
+		// Avoid serializing the full cache on every rapid query update.
+		throttleTime: 2500
 	});
 }

@@ -4,7 +4,7 @@ import { QueryClient } from '@tanstack/svelte-query';
 export const SWR_STALE_TIME_MS = 5 * 60 * 1000; // 5 minutes
 
 /** How long an unused/persisted query is retained before garbage collection. */
-export const SWR_GC_TIME_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+export const SWR_GC_TIME_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * A fresh QueryClient per SSR request / browser session. Defaults implement the

@@ -8,10 +8,18 @@
 	let isVisible = $state(false);
 	let intervalId: ReturnType<typeof setInterval> | null = null;
 
+	function clearProgressInterval() {
+		if (intervalId !== null) {
+			clearInterval(intervalId);
+			intervalId = null;
+		}
+	}
+
 	beforeNavigate(() => {
 		// Don't show the loading bar for silent background refreshes.
 		if (get(isSilentRefresh)) return;
 
+		clearProgressInterval();
 		isVisible = true;
 		progress = 0;
 
@@ -24,6 +32,7 @@
 	});
 
 	afterNavigate(() => {
+		clearProgressInterval();
 		if (!isVisible) return;
 
 		progress = 100;
@@ -36,9 +45,7 @@
 
 	onMount(() => {
 		return () => {
-			if (intervalId) {
-				clearInterval(intervalId);
-			}
+			clearProgressInterval();
 		};
 	});
 </script>
