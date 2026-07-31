@@ -1,7 +1,7 @@
 import type { ArticlePageMeta, ArticleRelatedModel } from '$lib/cache/articleCache';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { Post } from '$lib/types/payload-types';
-import { toRelatedLinks } from '$lib/utils/relatedResources';
+import { mergeRelatedLinks, toRelatedLinks } from '$lib/utils/relatedResources';
 
 export type ArticlePageLoadOptions = {
 	/** When true, allow draft posts (admin preview). Requires auth cookies via fetch/request. */
@@ -40,7 +40,7 @@ async function fetchArticleByIdFromCMS(
 	});
 }
 
-/** Models that list this article under relatedResources.relatedPosts (CMS has no article→model field). */
+/** Models that list this article under top-level relatedPosts (editable from either side). */
 async function fetchModelsRelatedToArticle(
 	articleId: number | string,
 	options: ArticlePageLoadOptions = {}
@@ -57,7 +57,7 @@ async function fetchModelsRelatedToArticle(
 			slug: true
 		},
 		where: {
-			'relatedResources.relatedPosts': {
+			relatedPosts: {
 				equals: articleId
 			}
 		}
@@ -121,7 +121,10 @@ export async function loadArticlePageData(
 	const doc = await fetchArticleByIdFromCMS(articleId, options);
 	if (!isReadableArticle(doc, includeDrafts)) return null;
 
-	const relatedModels = await fetchModelsRelatedToArticle(articleId, options);
+	const relatedModels = mergeRelatedLinks(
+		toRelatedLinks(doc.relatedModels),
+		await fetchModelsRelatedToArticle(articleId, options)
+	);
 
 	return {
 		article: doc,

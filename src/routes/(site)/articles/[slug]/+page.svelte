@@ -14,21 +14,29 @@
 	const { data }: PageProps = $props();
 
 	const includeDrafts = $derived(
-		!!page.data.session?.user &&
-			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
+		data.includeDrafts ||
+			(!!page.data.session?.user &&
+				(page.data.session?.user?.role as string[] | undefined)?.includes('admin'))
 	);
 
-	const query = createQuery(() => articleQueryOptions(data.slug, includeDrafts));
+	const query = createQuery(() =>
+		articleQueryOptions(
+			data.slug,
+			includeDrafts,
+			includeDrafts === data.includeDrafts ? data.initialArticle : null
+		)
+	);
 
-	const article = $derived(query.data?.article);
-	const relatedModels = $derived(query.data?.relatedModels ?? []);
+	const articleData = $derived(query.data ?? data.initialArticle);
+	const article = $derived(articleData?.article);
+	const relatedModels = $derived(articleData?.relatedModels ?? []);
 
 	const categories: PostsCategory[] = [];
 	const tags: PostsTag[] = [];
 
 	// Publish the article's SEO meta so the shared <Meta> component uses it.
 	$effect(() => {
-		pageMetaOverride.set(query.data?.meta ?? null);
+		pageMetaOverride.set(articleData?.meta ?? null);
 		return () => pageMetaOverride.set(null);
 	});
 
@@ -68,8 +76,6 @@
 			<p class="state-message">
 				This article is not available offline yet. Open it once while online to cache it.
 			</p>
-		{:else}
-			<p class="state-message">Loading article…</p>
 		{/if}
 	</NewspaperLayout>
 </div>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { createQuery } from '@tanstack/svelte-query';
 	import ModelCard from '$lib/components/ModelCard';
 	import Paginator from '$lib/components/Paginator';
 	import {
@@ -8,15 +9,32 @@
 		MODEL_SORT_OPTIONS,
 		normalizeModelSort,
 		normalizeModelStatus
-	} from './filters';
+	} from '$lib/models/filters';
+	import { modelsListQueryOptions } from '$lib/query/queries';
+	import type { PageProps } from './$types';
 
-	const { data } = $props();
+	const { data }: PageProps = $props();
 
-	const models = $derived(data.models);
-	const meta = $derived(data.meta);
-	const manufacturers = $derived(data.manufacturers);
-	const scales = $derived(data.scales);
-	const tags = $derived(data.tags);
+	const includeNotStarted = $derived(
+		data.includeNotStarted ||
+			(!!page.data.session?.user &&
+				(page.data.session?.user?.role as string[] | undefined)?.includes('admin'))
+	);
+
+	const query = createQuery(() =>
+		modelsListQueryOptions(
+			data.query,
+			includeNotStarted,
+			includeNotStarted === data.includeNotStarted ? data.initialModels : null
+		)
+	);
+
+	const list = $derived(query.data ?? data.initialModels);
+	const models = $derived(list?.models ?? []);
+	const meta = $derived(list?.meta);
+	const manufacturers = $derived(list?.manufacturers ?? []);
+	const scales = $derived(list?.scales ?? []);
+	const tags = $derived(list?.tags ?? []);
 
 	const selectedManufacturer = $derived(page.url.searchParams.get('manufacturer') || '');
 	const selectedScale = $derived(page.url.searchParams.get('scale') || '');
@@ -40,7 +58,7 @@
 			{ value: 'NOT_STARTED', label: 'Not started' },
 			{ value: 'IN_PROGRESS', label: 'In progress' },
 			{ value: 'COMPLETED', label: 'Completed' }
-		].filter((option) => data.isAdmin || option.value !== 'NOT_STARTED')
+		].filter((option) => includeNotStarted || option.value !== 'NOT_STARTED')
 	);
 
 	async function updateParam(key: string, value: string, resetPage = true) {

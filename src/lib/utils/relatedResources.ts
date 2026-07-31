@@ -22,3 +22,19 @@ export function toRelatedLinks(
 	}
 	return links;
 }
+
+/** Merge related-link lists from both sides of a bidirectional relationship. */
+export function mergeRelatedLinks(
+	...lists: (RelatedResourceLink[] | null | undefined)[]
+): RelatedResourceLink[] {
+	const seen = new Set<number>();
+	const out: RelatedResourceLink[] = [];
+	for (const list of lists) {
+		for (const item of list ?? []) {
+			if (seen.has(item.id)) continue;
+			seen.add(item.id);
+			out.push(item);
+		}
+	}
+	return out;
+}

@@ -30,7 +30,7 @@ export type ArticleRelatedModel = {
 export interface ArticleCacheData {
 	article: Post;
 	meta: ArticlePageMeta;
-	/** Models that list this article under relatedResources.relatedPosts */
+	/** Models linked via post.relatedModels and/or model.relatedPosts */
 	relatedModels?: ArticleRelatedModel[];
 }
 
