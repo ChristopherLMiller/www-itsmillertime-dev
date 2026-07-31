@@ -13,7 +13,12 @@
 
 	const { data }: PageProps = $props();
 
-	const query = createQuery(() => articleQueryOptions(data.slug));
+	const includeDrafts = $derived(
+		!!page.data.session?.user &&
+			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
+	);
+
+	const query = createQuery(() => articleQueryOptions(data.slug, includeDrafts));
 
 	const article = $derived(query.data?.article);
 	const relatedModels = $derived(query.data?.relatedModels ?? []);

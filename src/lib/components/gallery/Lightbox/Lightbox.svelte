@@ -285,9 +285,9 @@
 				ontouchend={handleTouchEnd}
 			>
 				{#if content}
-					{#key currentIndex}
-						{@render content(contentArgs)}
-					{/key}
+					<!-- No {#key}: custom content (gallery) owns its own image transitions and must
+					     keep UI state (e.g. collapsed info panel) across next/prev. -->
+					{@render content(contentArgs)}
 				{:else}
 					{#key currentIndex}
 						{#if placeholderSrc && !isLoaded}

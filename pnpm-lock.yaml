@@ -41,6 +41,9 @@ importers:
       media-chrome:
         specifier: ^4.17.2
         version: 4.17.2(react@19.2.3)
+      photoswipe:
+        specifier: ^5.4.4
+        version: 5.4.4
       qs-esm:
         specifier: ^7.0.3
         version: 7.0.3
@@ -2664,6 +2667,10 @@ packages:
   peek-readable@5.4.2:
     resolution: {integrity: sha512-peBp3qZyuS6cNIJ2akRNG1uo1WJ1d0wTxg/fxMdZ0BqCVhx242bSFHM9eNqflfJVS9SsgkzgT/1UgnsurBOTMg==}
     engines: {node: '>=14.16'}
+
+  photoswipe@5.4.4:
+    resolution: {integrity: sha512-WNFHoKrkZNnvFFhbHL93WDkW3ifwVOXSW3w1UuZZelSmgXpIGiZSNlZJq37rR8YejqME2rHs9EhH9ZvlvFH2NA==}
+    engines: {node: '>= 0.12.0'}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -5835,6 +5842,8 @@ snapshots:
       resolve-protobuf-schema: 2.1.0
 
   peek-readable@5.4.2: {}
+
+  photoswipe@5.4.4: {}
 
   picocolors@1.1.1: {}
 

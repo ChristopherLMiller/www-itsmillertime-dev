@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { fade, scale, fly } from 'svelte/transition';
-	import { quintOut } from 'svelte/easing';
+	import { onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import type { Media } from '$lib/types/payload-types';
 	import Icon from '$lib/components/Icon';
 	import { getMediaUrl, isGifMedia } from '$lib/utils/media-url';
+	import { mediaToPhotoSwipeSlide } from '$lib/utils/photoswipe/media-to-slide';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
+	import type PhotoSwipe from 'photoswipe';
 
 	// All size keys to inspect — mimeType on each entry determines which <source> it belongs to
 	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
@@ -81,9 +82,8 @@
 	let nsfwRevealed = $state(false);
 	let isLoaded = $state(false);
 	let isLoadFailed = $state(false);
-	let lightboxDialog: HTMLDialogElement | undefined | null = $state(null);
-	let currentGalleryIndex = $state(0);
-	let imageTransitionDirection = $state<'left' | 'right'>('right');
+	let thumbImg: HTMLImageElement | null = $state(null);
+	let pswpInstance: PhotoSwipe | null = null;
 
 	const aspectRatioStyle = $derived.by(() => {
 		if (fixedAspectRatio != null) return String(fixedAspectRatio);
@@ -106,70 +106,55 @@
 	// Fallback src for the <img> tag — always the original JPEG
 	const src = $derived(image?.url ? getMediaUrl(image.url, useProxy) : '');
 
-	const currentLightboxImage = $derived(gallery ? gallery[currentGalleryIndex] : image);
-	const hasGallery = $derived(gallery != null && gallery.length > 1);
-	const canGoPrev = $derived(hasGallery && currentGalleryIndex > 0);
-	const canGoNext = $derived(hasGallery && currentGalleryIndex < (gallery?.length ?? 0) - 1);
+	async function openLightbox() {
+		const items = gallery && gallery.length > 0 ? gallery : [image];
+		const startIndex = gallery ? galleryIndex : 0;
+		const thumbCropped = objectFit === 'cover';
 
-	// Lightbox srcsets track the current gallery image (changes as user navigates)
-	const lightboxSrcsets = $derived(buildSrcsets(currentLightboxImage));
+		const dataSource = items.map((item, index) =>
+			mediaToPhotoSwipeSlide(item, {
+				useProxy,
+				element: index === startIndex ? thumbImg : null,
+				thumbCropped
+			})
+		);
 
-	function openLightbox() {
-		if (!lightboxDialog) return;
-		currentGalleryIndex = galleryIndex;
-		lightboxDialog.showModal();
-		document.body.style.overflow = 'hidden';
-	}
+		const [{ default: PhotoSwipe }] = await Promise.all([
+			import('photoswipe'),
+			import('photoswipe/style.css')
+		]);
 
-	function closeLightbox() {
-		if (!lightboxDialog) return;
-		lightboxDialog.close();
-		document.body.style.overflow = '';
-	}
+		pswpInstance?.destroy();
 
-	function goToPrevImage() {
-		if (canGoPrev) {
-			imageTransitionDirection = 'left';
-			currentGalleryIndex--;
+		const pswp = new PhotoSwipe({
+			dataSource,
+			index: startIndex,
+			bgOpacity: 0.95,
+			showHideAnimationType: 'zoom',
+			wheelToZoom: true,
+			pinchToClose: false,
+			// Keep UI chrome minimal; zoom/pan/pinch are the point.
+			padding: { top: 24, bottom: 24, left: 16, right: 16 }
+		});
+
+		if (disableContextMenu) {
+			pswp.on('contentActivate', ({ content }) => {
+				content.element?.addEventListener('contextmenu', preventContextMenu);
+			});
 		}
+
+		pswp.on('destroy', () => {
+			if (pswpInstance === pswp) pswpInstance = null;
+		});
+
+		pswpInstance = pswp;
+		pswp.init();
 	}
 
-	function goToNextImage() {
-		if (canGoNext) {
-			imageTransitionDirection = 'right';
-			currentGalleryIndex++;
-		}
-	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (!lightboxDialog?.open) return;
-		switch (e.key) {
-			case 'Escape':
-				closeLightbox();
-				break;
-			case 'ArrowLeft':
-				e.preventDefault();
-				goToPrevImage();
-				break;
-			case 'ArrowRight':
-				e.preventDefault();
-				goToNextImage();
-				break;
-		}
-	}
-
-	function fadeScale(
-		node: Element,
-		params?: { duration?: number; delay?: number; easing?: (t: number) => number }
-	) {
-		return {
-			css: (t: number, u: number) => {
-				const fadeRet = fade(node, params);
-				const scaleRet = scale(node, { ...params, start: 0.95 });
-				return (fadeRet.css?.(t, u) ?? '') + (scaleRet.css?.(t, u) ?? '');
-			}
-		};
-	}
+	onDestroy(() => {
+		pswpInstance?.destroy();
+		pswpInstance = null;
+	});
 </script>
 
 {#if !shouldHide}
@@ -217,6 +202,7 @@
 				<source type="image/avif" srcset={avifSrcset || undefined} {sizes} />
 				<source type="image/jpeg" srcset={jpegSrcset || undefined} {sizes} />
 				<img
+					bind:this={thumbImg}
 					{src}
 					alt={image.alt ?? ''}
 					width={image.width ?? undefined}
@@ -257,95 +243,6 @@
 			</div>
 		{/if}
 	</div>
-
-	{#if hasLightbox}
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-		<dialog
-			bind:this={lightboxDialog}
-			class="lightbox"
-			transition:fadeScale={{ duration: 400, easing: quintOut }}
-			onclick={(e) => {
-				if (e.target === lightboxDialog) closeLightbox();
-			}}
-			onkeydown={handleKeydown}
-		>
-			<button
-				class="close-button"
-				onclick={closeLightbox}
-				aria-label="Close lightbox"
-				type="button"
-			>
-				<Icon name="x" size={32} />
-			</button>
-
-			<div class="lightbox-contents">
-				<div class="image-wrapper">
-					{#key currentGalleryIndex}
-						<picture
-							class="lightbox-picture"
-							in:fly={{
-								x: imageTransitionDirection === 'right' ? 100 : -100,
-								duration: 300,
-								easing: quintOut
-							}}
-							out:fly={{
-								x: imageTransitionDirection === 'right' ? -100 : 100,
-								duration: 300,
-								easing: quintOut
-							}}
-						>
-							<source
-								type="image/avif"
-								srcset={lightboxSrcsets.avifSrcset || undefined}
-								sizes="100vw"
-							/>
-							<source
-								type="image/jpeg"
-								srcset={lightboxSrcsets.jpegSrcset || undefined}
-								sizes="100vw"
-							/>
-							<img
-								src={currentLightboxImage?.url
-									? getMediaUrl(currentLightboxImage.url, useProxy)
-									: ''}
-								alt={currentLightboxImage?.alt ?? ''}
-								class="lightbox-image"
-								oncontextmenu={disableContextMenu ? preventContextMenu : undefined}
-							/>
-						</picture>
-					{/key}
-				</div>
-
-				{#if hasGallery && gallery}
-					<div class="gallery-counter">
-						{currentGalleryIndex + 1} / {gallery.length}
-					</div>
-				{/if}
-			</div>
-
-			{#if canGoPrev}
-				<button
-					class="nav-button nav-button--prev"
-					onclick={goToPrevImage}
-					aria-label="Previous image"
-					type="button"
-				>
-					<Icon name="chevron-left" size={48} />
-				</button>
-			{/if}
-
-			{#if canGoNext}
-				<button
-					class="nav-button nav-button--next"
-					onclick={goToNextImage}
-					aria-label="Next image"
-					type="button"
-				>
-					<Icon name="chevron-right" size={48} />
-				</button>
-			{/if}
-		</dialog>
-	{/if}
 {/if}
 
 <style>
@@ -399,175 +296,5 @@
 
 	.error-overlay {
 		background: rgba(0, 0, 0, 0.6);
-	}
-
-	dialog {
-		&.lightbox {
-			box-sizing: border-box;
-			position: fixed;
-			inset: 0;
-			border: 0;
-			width: 100vw;
-			height: 100dvh;
-			max-width: 100vw;
-			max-height: 100dvh;
-			padding: 0;
-			margin: 0;
-			overflow: hidden;
-			overscroll-behavior: contain;
-			background: rgba(0, 0, 0, 0.95);
-		}
-
-		.lightbox-contents {
-			box-sizing: border-box;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			width: 100%;
-			height: 100%;
-			min-height: 0;
-			padding: 5rem;
-			position: relative;
-			overflow: hidden;
-		}
-
-		.image-wrapper {
-			position: relative;
-			width: 100%;
-			height: 100%;
-			min-width: 0;
-			min-height: 0;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			overflow: hidden;
-		}
-
-		.lightbox-picture {
-			position: absolute;
-			inset: 0;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			max-width: 100%;
-			max-height: 100%;
-		}
-
-		.lightbox-image {
-			display: block;
-			width: auto;
-			height: auto;
-			max-width: 100%;
-			max-height: 100%;
-			object-fit: contain;
-			cursor: default;
-		}
-	}
-
-	.close-button {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		z-index: 10;
-		background: rgba(255, 255, 255, 0.1);
-		border: 2px solid rgba(255, 255, 255, 0.3);
-		border-radius: 4px;
-		color: white;
-		padding: 0.5rem;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: all 0.2s ease;
-		backdrop-filter: blur(10px);
-	}
-
-	.close-button:hover {
-		background: rgba(255, 255, 255, 0.2);
-		border-color: rgba(255, 255, 255, 0.5);
-		transform: scale(1.05);
-	}
-
-	.close-button:active {
-		transform: scale(0.95);
-	}
-
-	.nav-button {
-		position: absolute;
-		top: 50%;
-		transform: translateY(-50%);
-		z-index: 10;
-		background: rgba(255, 255, 255, 0.1);
-		border: 2px solid rgba(255, 255, 255, 0.3);
-		border-radius: 4px;
-		color: white;
-		padding: 1rem;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: all 0.2s ease;
-		backdrop-filter: blur(10px);
-	}
-
-	.nav-button:hover {
-		background: rgba(255, 255, 255, 0.2);
-		border-color: rgba(255, 255, 255, 0.5);
-		transform: translateY(-50%) scale(1.05);
-	}
-
-	.nav-button:active {
-		transform: translateY(-50%) scale(0.95);
-	}
-
-	.nav-button--prev {
-		left: 1rem;
-	}
-
-	.nav-button--next {
-		right: 1rem;
-	}
-
-	.gallery-counter {
-		position: absolute;
-		bottom: 2rem;
-		left: 50%;
-		transform: translateX(-50%);
-		background: rgba(0, 0, 0, 0.7);
-		color: white;
-		padding: 0.5rem 1rem;
-		border-radius: 4px;
-		font-family: var(--font-oswald, sans-serif);
-		font-size: 0.875rem;
-		backdrop-filter: blur(10px);
-		border: 1px solid rgba(255, 255, 255, 0.2);
-	}
-
-	@media (max-width: 768px) {
-		.lightbox-contents {
-			padding: 3.5rem 1rem 3rem;
-		}
-
-		.nav-button {
-			padding: 0.75rem;
-		}
-
-		.nav-button--prev {
-			left: 0.5rem;
-		}
-
-		.nav-button--next {
-			right: 0.5rem;
-		}
-
-		.close-button {
-			top: 0.5rem;
-			right: 0.5rem;
-		}
-
-		.gallery-counter {
-			bottom: 1rem;
-			font-size: 0.75rem;
-		}
 	}
 </style>

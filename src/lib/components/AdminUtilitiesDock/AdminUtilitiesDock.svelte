@@ -33,6 +33,8 @@
 	let panelOpen = $state(false);
 	let activeTab = $state<AdminTab>('browser');
 	let rootEl: HTMLDivElement | undefined = $state();
+	/** True while a site lightbox / PhotoSwipe / modal dialog is open — hide the solo tab. */
+	let overlayActive = $state(false);
 
 	const cms = `${PUBLIC_PAYLOAD_URL}/admin`;
 	const cmsCollections = {
@@ -165,6 +167,36 @@
 		};
 	});
 
+	/** Hide the floating Admin tab while lightboxes/modals own the viewport. */
+	$effect(() => {
+		if (!browser) return;
+
+		function isOverlayPresent() {
+			return Boolean(
+				document.querySelector(
+					'.lightbox, .pswp, dialog[open], [aria-modal="true"]:not(.admin-dock-dialog)'
+				)
+			);
+		}
+
+		function syncOverlay() {
+			const next = isOverlayPresent();
+			if (next !== overlayActive) overlayActive = next;
+			// Don't leave the admin sheet open on top of a lightbox.
+			if (next && panelOpen) panelOpen = false;
+		}
+
+		syncOverlay();
+		const mo = new MutationObserver(syncOverlay);
+		mo.observe(document.documentElement, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['open', 'class', 'aria-modal']
+		});
+		return () => mo.disconnect();
+	});
+
 	function closePanel() {
 		panelOpen = false;
 	}
@@ -217,7 +249,7 @@
 
 {#if isAdmin}
 	<div class="admin-dock-root" bind:this={rootEl}>
-		{#if !panelOpen}
+		{#if !panelOpen && !overlayActive}
 			<button
 				type="button"
 				class="admin-dock-tab admin-dock-tab--solo"
@@ -231,7 +263,7 @@
 			>
 				<span class="admin-dock-label">Admin</span>
 			</button>
-		{:else}
+		{:else if panelOpen}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
@@ -551,13 +583,22 @@
 		text-orientation: mixed;
 	}
 
+	/* Bottom-right pill — mid-right vertical tab covered lightbox/nav controls. */
 	.admin-dock-tab--solo {
 		position: fixed;
-		right: max(0px, env(safe-area-inset-right, 0px));
-		top: 50%;
-		transform: translateY(-50%);
+		right: max(0.5rem, env(safe-area-inset-right, 0px));
+		bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+		top: auto;
 		z-index: 10003;
 		pointer-events: auto;
+		writing-mode: horizontal-tb;
+		text-orientation: mixed;
+		min-width: auto;
+		padding: 0.45rem 0.85rem;
+		border-radius: 999px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		font-size: var(--fs-xs);
 	}
 
 	.admin-dock-tab--attached {

@@ -3,8 +3,20 @@ import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { Post } from '$lib/types/payload-types';
 import { toRelatedLinks } from '$lib/utils/relatedResources';
 
-function isPublishedArticle(article: Post | null | undefined): article is Post {
-	return article?._status === 'published';
+export type ArticlePageLoadOptions = {
+	/** When true, allow draft posts (admin preview). Requires auth cookies via fetch/request. */
+	includeDrafts?: boolean;
+	fetch?: typeof globalThis.fetch;
+	request?: Request;
+};
+
+function isReadableArticle(
+	article: Post | null | undefined,
+	includeDrafts: boolean
+): article is Post {
+	if (!article) return false;
+	if (includeDrafts) return true;
+	return article._status === 'published';
 }
 
 export function buildArticlePageMeta(doc: Post, origin: string, slug: string): ArticlePageMeta {
@@ -13,21 +25,28 @@ export function buildArticlePageMeta(doc: Post, origin: string, slug: string): A
 		: { canonicalURL: `${origin}/articles/${slug}` };
 }
 
-async function fetchArticleByIdFromCMS(articleId: number | string): Promise<Post | null> {
-	const sdk = getPayloadSDK();
+async function fetchArticleByIdFromCMS(
+	articleId: number | string,
+	options: ArticlePageLoadOptions = {}
+): Promise<Post | null> {
+	const { includeDrafts = false, fetch, request } = options;
+	const sdk = getPayloadSDK(fetch, request);
 	return sdk.findByID({
 		collection: 'posts',
 		id: articleId,
 		depth: 1,
-		disableErrors: true
+		disableErrors: true,
+		...(includeDrafts ? { draft: true } : {})
 	});
 }
 
 /** Models that list this article under relatedResources.relatedPosts (CMS has no article→model field). */
 async function fetchModelsRelatedToArticle(
-	articleId: number | string
+	articleId: number | string,
+	options: ArticlePageLoadOptions = {}
 ): Promise<ArticleRelatedModel[]> {
-	const sdk = getPayloadSDK();
+	const { fetch, request } = options;
+	const sdk = getPayloadSDK(fetch, request);
 	const result = await sdk.find({
 		collection: 'models',
 		limit: 50,
@@ -47,20 +66,31 @@ async function fetchModelsRelatedToArticle(
 	return toRelatedLinks(result.docs);
 }
 
-async function resolvePublishedArticleId(slug: string): Promise<number | string | null> {
-	const sdk = getPayloadSDK();
+async function resolveArticleId(
+	slug: string,
+	options: ArticlePageLoadOptions = {}
+): Promise<number | string | null> {
+	const { includeDrafts = false, fetch, request } = options;
+	const sdk = getPayloadSDK(fetch, request);
 	const postLookup = await sdk.find({
 		collection: 'posts',
 		limit: 1,
 		select: {
 			id: true
 		},
+		...(includeDrafts ? { draft: true } : {}),
 		where: {
 			and: [
+				...(includeDrafts
+					? []
+					: [
+							{
+								_status: {
+									equals: 'published'
+								}
+							}
+						]),
 				{
-					_status: {
-						equals: 'published'
-					},
 					slug: {
 						equals: slug
 					}
@@ -81,15 +111,17 @@ export type ArticlePageDataResult = {
 
 export async function loadArticlePageData(
 	slug: string,
-	origin: string
+	origin: string,
+	options: ArticlePageLoadOptions = {}
 ): Promise<ArticlePageDataResult | null> {
-	const articleId = await resolvePublishedArticleId(slug);
+	const includeDrafts = options.includeDrafts === true;
+	const articleId = await resolveArticleId(slug, options);
 	if (articleId == null) return null;
 
-	const doc = await fetchArticleByIdFromCMS(articleId);
-	if (!isPublishedArticle(doc)) return null;
+	const doc = await fetchArticleByIdFromCMS(articleId, options);
+	if (!isReadableArticle(doc, includeDrafts)) return null;
 
-	const relatedModels = await fetchModelsRelatedToArticle(articleId);
+	const relatedModels = await fetchModelsRelatedToArticle(articleId, options);
 
 	return {
 		article: doc,

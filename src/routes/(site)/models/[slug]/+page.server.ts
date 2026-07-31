@@ -1,8 +1,10 @@
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
+export const load: PageServerLoad = async (event) => {
+	const { fetch, request, params, url } = event;
 	const modelData = await getPayloadSDK(fetch, request).find({
 		collection: 'models',
 		depth: 2,
@@ -28,6 +30,12 @@ export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 
 	const doc = modelData.docs[0];
 	if (!doc) {
+		throw error(404, 'Model not found');
+	}
+
+	const user = await getMergedSessionUser(event);
+	const isAdmin = isAdminRole(user);
+	if (!isAdmin && doc.model_meta?.status === 'NOT_STARTED') {
 		throw error(404, 'Model not found');
 	}
 

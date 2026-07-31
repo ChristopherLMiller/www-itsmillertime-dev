@@ -88,17 +88,19 @@
 		>
 			{article.title}
 		</h1>
-		{#if pubLabel || createdLabel || categoryTitle || cmsEditHref || share || article.tags?.length}
+		{#if pubLabel || createdLabel || article._status === 'draft' || categoryTitle || cmsEditHref || share || article.tags?.length}
 			<div
 				class="article-dateline"
 				style:view-transition-name={article.slug ? `article-dateline-${article.slug}` : undefined}
 			>
-				{#if pubLabel || createdLabel}
+				{#if pubLabel || createdLabel || article._status === 'draft'}
 					<div
 						class="article-meta article-meta--dates"
 						style:view-transition-name={`article-meta-${article.slug}`}
 					>
-						{#if pubLabel}
+						{#if article._status === 'draft'}
+							<span class="article-draft-badge">Draft</span>
+						{:else if pubLabel}
 							<span style:view-transition-name={`article-pub-date-${article.slug}`}>
 								Published on {pubLabel}
 							</span>
@@ -266,6 +268,16 @@
 		&:hover {
 			text-decoration: underline;
 		}
+	}
+
+	.article-draft-badge {
+		display: inline-block;
+		padding: 0.05rem 0.35rem;
+		margin-right: 0.15rem;
+		border: 1px solid #8b0000;
+		color: #8b0000;
+		font-weight: 700;
+		letter-spacing: 0.08em;
 	}
 
 	.article-share {
