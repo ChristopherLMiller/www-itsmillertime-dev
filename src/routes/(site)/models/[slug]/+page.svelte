@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { createQuery } from '@tanstack/svelte-query';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import ClockifyTimer from '$lib/components/ClockifyTimer';
 	import Image from '$lib/components/Image';
@@ -14,27 +15,46 @@
 	import Disqus from '$lib/components/Disqus';
 	import ShareButtons from '$lib/components/ShareButtons';
 	import VideoPlayer from '$lib/components/VideoPlayer';
+	import { modelQueryOptions } from '$lib/query/queries';
+	import { pageMetaOverride } from '$lib/stores/pageMeta';
+	import type { PageProps } from './$types';
 
 	type ClockifyProject = { duration: string };
 
 	let clockifyProject = $state<ClockifyProject | null>(null);
-	const { data } = $props();
+	const { data }: PageProps = $props();
+
+	const includeNotStarted = $derived(
+		data.includeNotStarted ||
+			(!!page.data.session?.user &&
+				(page.data.session?.user?.role as string[] | undefined)?.includes('admin'))
+	);
+
+	const query = createQuery(() =>
+		modelQueryOptions(
+			data.slug,
+			includeNotStarted,
+			includeNotStarted === data.includeNotStarted ? data.initialModel : null
+		)
+	);
+
+	const modelData = $derived(query.data ?? data.initialModel);
+	const model = $derived(modelData?.model);
 
 	// Derived values
-	const model = $derived(data.model);
 	const kit = $derived(
-		typeof model.model_meta.kit === 'object' && model.model_meta.kit != null
+		model && typeof model.model_meta.kit === 'object' && model.model_meta.kit != null
 			? (model.model_meta.kit as Kit)
 			: null
 	);
 	const modelGalleryImages = $derived(
-		(model.image ?? []).filter((img): img is Media => typeof img === 'object' && img !== null)
+		(model?.image ?? []).filter((img): img is Media => typeof img === 'object' && img !== null)
 	);
-	const status = $derived(model.model_meta.status);
+	const status = $derived(model?.model_meta.status ?? 'NOT_STARTED');
 	const statusDisplay = $derived(status.replace('_', ' ').toLowerCase());
 	const statusClass = $derived(status.toLowerCase());
 	const completionDate = $derived(
-		model.model_meta.completionDate ? convertDate(model.model_meta.completionDate) : null
+		model?.model_meta.completionDate ? convertDate(model.model_meta.completionDate) : null
 	);
 	const clockifyDuration = $derived(
 		clockifyProject ? makeClockifyDurationFriendly(clockifyProject.duration, false, true) : null
@@ -44,16 +64,16 @@
 			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
 	);
 	const cmsEditHref = $derived(
-		isAdmin && model.id != null
+		isAdmin && model?.id != null
 			? `${PUBLIC_PAYLOAD_URL}/admin/collections/models/${model.id}`
 			: null
 	);
-	const relatedPosts = $derived(toRelatedLinks(model.relatedResources?.relatedPosts));
-	const relatedModels = $derived(toRelatedLinks(model.relatedResources?.relatedModels));
+	const relatedPosts = $derived(toRelatedLinks(model?.relatedPosts));
+	const relatedModels = $derived(toRelatedLinks(model?.relatedResources?.relatedModels));
 	const hasRelatedResources = $derived(relatedPosts.length > 0 || relatedModels.length > 0);
 
 	async function refreshClockifyProject() {
-		if (!model.clockify_project) return;
+		if (!model?.clockify_project) return;
 		const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
 		if (response.ok) {
 			clockifyProject = await response.json();
@@ -61,11 +81,17 @@
 	}
 
 	$effect(() => {
-		if (!data.model.clockify_project) return;
+		pageMetaOverride.set(modelData?.meta ?? null);
+		return () => pageMetaOverride.set(null);
+	});
+
+	$effect(() => {
+		if (!model?.clockify_project) return;
 		refreshClockifyProject();
 	});
 </script>
 
+{#if model}
 <article style:view-transition-name={`model-${model.slug}`}>
 	<Panel hasBorder hasTexture={false}>
 		<!-- Hero Section -->
@@ -233,6 +259,7 @@
 		</section>
 	</Panel>
 </article>
+{/if}
 
 <style lang="postcss">
 	/* Hero Section */

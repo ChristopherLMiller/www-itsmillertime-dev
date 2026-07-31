@@ -293,7 +293,7 @@ export interface GalleryAlbum {
     totalImages?: number | null;
   };
   /**
-   * Articles that link to this photo gallery.
+   * Articles that link to this photo gallery. Add or remove links from the article sidebar.
    */
   relatedPosts?: {
     docs?: (number | Post)[];
@@ -433,7 +433,7 @@ export interface Post {
    */
   relatedModels?: (number | Model)[] | null;
   /**
-   * Link photo gallery albums to this article.
+   * Link photo gallery albums to this article. Shown on the album as Related Articles.
    */
   relatedAlbums?: (number | GalleryAlbum)[] | null;
   title: string;
@@ -521,11 +521,11 @@ export interface Model {
         }[]
       | null;
   };
+  /**
+   * Link articles from this model. Also editable from the article.
+   */
+  relatedPosts?: (number | Post)[] | null;
   relatedResources?: {
-    /**
-     * Link articles from this model. Also editable from the article.
-     */
-    relatedPosts?: (number | Post)[] | null;
     relatedModels?: (number | Model)[] | null;
   };
   buildLog?:
@@ -2437,10 +2437,10 @@ export interface ModelsSelect<T extends boolean = true> {
               id?: T;
             };
       };
+  relatedPosts?: T;
   relatedResources?:
     | T
     | {
-        relatedPosts?: T;
         relatedModels?: T;
       };
   buildLog?:

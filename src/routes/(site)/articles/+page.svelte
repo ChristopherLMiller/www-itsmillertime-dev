@@ -10,16 +10,24 @@
 	const { data }: PageProps = $props();
 
 	const includeDrafts = $derived(
-		!!page.data.session?.user &&
-			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
+		data.includeDrafts ||
+			(!!page.data.session?.user &&
+				(page.data.session?.user?.role as string[] | undefined)?.includes('admin'))
 	);
 
-	const query = createQuery(() => articlesListQueryOptions(data.query, includeDrafts));
+	const query = createQuery(() =>
+		articlesListQueryOptions(
+			data.query,
+			includeDrafts,
+			includeDrafts === data.includeDrafts ? data.initialArticles : null
+		)
+	);
 
-	const articles = $derived(query.data?.articles ?? []);
-	const categories = $derived(query.data?.categories ?? []);
-	const tags = $derived(query.data?.tags ?? []);
-	const pagination = $derived(query.data?.pagination ?? null);
+	const list = $derived(query.data ?? data.initialArticles);
+	const articles = $derived(list?.articles ?? []);
+	const categories = $derived(list?.categories ?? []);
+	const tags = $derived(list?.tags ?? []);
+	const pagination = $derived(list?.pagination ?? null);
 
 	$effect(() => {
 		if (!browser) return;
@@ -42,14 +50,12 @@
 </script>
 
 <div class="newspaper-page">
-	{#if query.data}
+	{#if list}
 		<Newspaper {...newspaper} />
 	{:else if query.isError}
 		<p class="state-message">
 			These articles are not available offline yet. Open this page once while online to cache it.
 		</p>
-	{:else}
-		<p class="state-message">Loading articles…</p>
 	{/if}
 </div>
 

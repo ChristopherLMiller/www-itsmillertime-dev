@@ -9,8 +9,10 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const query = createQuery(() => projectsQueryOptions(data.page, data.limit));
-	const projects = $derived(query.data?.projects ?? []);
+	const query = createQuery(() =>
+		projectsQueryOptions(data.page, data.limit, data.initialProjects)
+	);
+	const projects = $derived((query.data ?? data.initialProjects)?.projects ?? []);
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -89,9 +91,7 @@
 </script>
 
 <div class="project-grid">
-	{#if query.isPending && projects.length === 0}
-		<p class="state-message">Loading projects…</p>
-	{:else if query.isError && projects.length === 0}
+	{#if projects.length === 0 && query.isError}
 		<p class="state-message">
 			Projects are not available offline yet. Open this page once while online to cache it.
 		</p>
