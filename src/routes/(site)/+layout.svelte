@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onNavigate } from '$app/navigation';
 	import { PersistQueryClientProvider } from '@tanstack/svelte-query-persist-client';
-	import { createQueryClient, SWR_GC_TIME_MS } from '$lib/query/client';
+	import { createQueryClient, LAYOUT_GC_TIME_MS } from '$lib/query/client';
 	import { createIdbPersister } from '$lib/query/idbPersister';
 	import { shouldPersistQuery } from '$lib/query/shouldPersistQuery';
 	import SiteChrome from './SiteChrome.svelte';
@@ -35,7 +35,8 @@
 	client={queryClient}
 	persistOptions={{
 		persister,
-		maxAge: SWR_GC_TIME_MS,
+		// Must be >= layout gcTime so nav/siteMeta survive IndexedDB restores indefinitely.
+		maxAge: LAYOUT_GC_TIME_MS,
 		// Bust caches written before article-body exclusion / shorter maxAge.
 		buster: 'v2-no-article-bodies',
 		dehydrateOptions: {

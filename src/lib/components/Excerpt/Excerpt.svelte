@@ -20,7 +20,9 @@
 	>
 	<div class="meta">
 		<div class="pub-date" style:view-transition-name={`article-pub-date-${item.slug}`}>
-			{#if item.originalPublicationDate}
+			{#if item._status === 'draft'}
+				Draft
+			{:else if item.originalPublicationDate}
 				{new Date(item.originalPublicationDate).toLocaleDateString('en-US', {
 					year: 'numeric',
 					month: 'long',

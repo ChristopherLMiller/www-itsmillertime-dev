@@ -156,7 +156,17 @@
 						<div><strong>Year Released:</strong> {kit?.year_released}</div>
 						<div><strong>Kit Number:</strong> {kit?.kit_number}</div>
 						{#if kit?.scalemates}
-							<div><a href={kit.scalemates}>Scalemates Link</a></div>
+							<div>
+								<a
+									class="scalemates-link"
+									href={kit.scalemates}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Scalemates Link
+									<Icon name="external-link" size={12} />
+								</a>
+							</div>
 						{/if}
 						{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
 							<div>
@@ -362,6 +372,17 @@
 	.kit-note {
 		display: flex;
 		justify-content: center;
+	}
+
+	.scalemates-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3em;
+	}
+
+	.scalemates-link :global(.icon) {
+		flex-shrink: 0;
+		opacity: 0.75;
 	}
 
 	.related-section {

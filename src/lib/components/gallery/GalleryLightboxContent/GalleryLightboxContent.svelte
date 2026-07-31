@@ -52,6 +52,12 @@
 	type SidebarTab = 'information' | 'metrics' | 'shop';
 
 	let activeSidebarTab = $state<SidebarTab>('information');
+	/** When true, hide the details panel so the image fills the viewport. */
+	let infoCollapsed = $state(false);
+
+	function toggleInfoPanel() {
+		infoCollapsed = !infoCollapsed;
+	}
 
 	const sidebarTabs = $derived<SidebarTab[]>(
 		isAdmin ? ['information', 'metrics', 'shop'] : ['information', 'shop']
@@ -414,8 +420,11 @@
 </script>
 
 <div class="gallery-lightbox" style:--image-aspect-ratio={imageAspectRatio}>
-	<div class="gallery-lightbox__body">
-		<!-- Left 75%: image pane with arrows on edges, close in corner -->
+	<div
+		class="gallery-lightbox__body"
+		class:gallery-lightbox__body--info-collapsed={infoCollapsed}
+	>
+		<!-- Image pane: grows to fill when the info panel is collapsed -->
 		<div class="gallery-lightbox__image-pane">
 			<button
 				class="gallery-lightbox__backdrop"
@@ -570,8 +579,50 @@
 			<p class="gallery-lightbox__counter">{index + 1} / {total}</p>
 		</div>
 
-		<!-- Right 25%: tabbed info panel -->
-		<aside class="gallery-lightbox__info">
+		<!-- Seam handle between image and details -->
+		<button
+			class="gallery-lightbox__info-toggle"
+			class:gallery-lightbox__info-toggle--collapsed={infoCollapsed}
+			onclick={(e) => {
+				e.stopPropagation();
+				toggleInfoPanel();
+			}}
+			aria-label={infoCollapsed ? 'Show image details' : 'Hide image details'}
+			aria-expanded={!infoCollapsed}
+			aria-controls="gallery-lightbox-info"
+			type="button"
+			title={infoCollapsed ? 'Show details' : 'Hide details'}
+		>
+			<svg
+				class="gallery-lightbox__info-toggle-chevron"
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				{#if infoCollapsed}
+					<polyline points="15 18 9 12 15 6"></polyline>
+				{:else}
+					<polyline points="9 18 15 12 9 6"></polyline>
+				{/if}
+			</svg>
+			<span class="gallery-lightbox__info-toggle-label">
+				{infoCollapsed ? 'Details' : 'Hide details'}
+			</span>
+		</button>
+
+		<!-- Tabbed info panel (collapsible) -->
+		<aside
+			id="gallery-lightbox-info"
+			class="gallery-lightbox__info"
+			aria-hidden={infoCollapsed}
+			inert={infoCollapsed || undefined}
+		>
 			<div
 				class="gallery-lightbox__tabs"
 				role="tablist"
@@ -854,29 +905,10 @@
 
 	.gallery-lightbox__backdrop,
 	.gallery-lightbox__close,
+	.gallery-lightbox__info-toggle,
 	.gallery-lightbox__nav,
 	.gallery-lightbox__info {
 		pointer-events: auto;
-	}
-
-	/* Left 75%: image pane */
-	.gallery-lightbox__image-pane {
-		flex: 0 0 75%;
-		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 0;
-	}
-
-	.gallery-lightbox__backdrop {
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		background: transparent;
-		border: none;
-		cursor: pointer;
-		padding: 0;
 	}
 
 	.gallery-lightbox__close {
@@ -899,6 +931,78 @@
 
 	.gallery-lightbox__close:hover {
 		background: rgba(0, 0, 0, 0.6);
+	}
+
+	/* Drawer seam between image and details panel */
+	.gallery-lightbox__info-toggle {
+		flex: 0 0 2.4rem;
+		align-self: stretch;
+		z-index: 12;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.65rem;
+		margin: 0;
+		padding: 0.5rem 0;
+		border: none;
+		border-left: 1px solid var(--color-tertiary-lighter);
+		border-right: none;
+		background: var(--color-tertiary-darker);
+		color: var(--color-tertiary);
+		cursor: pointer;
+		transition:
+			background 160ms ease,
+			color 160ms ease,
+			flex-basis 220ms ease;
+	}
+
+	.gallery-lightbox__info-toggle:hover,
+	.gallery-lightbox__info-toggle:focus-visible {
+		background: color-mix(in oklch, var(--color-tertiary-darker) 80%, black);
+		color: var(--color-white-lightest);
+	}
+
+	.gallery-lightbox__info-toggle--collapsed {
+		flex-basis: 2.4rem;
+		border-left: 1px solid var(--color-tertiary-lighter);
+		color: var(--color-secondary);
+	}
+
+	.gallery-lightbox__info-toggle-chevron {
+		flex-shrink: 0;
+	}
+
+	.gallery-lightbox__info-toggle-label {
+		writing-mode: vertical-rl;
+		text-orientation: mixed;
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		line-height: 1;
+	}
+
+	/* Image pane grows when the info panel collapses */
+	.gallery-lightbox__image-pane {
+		flex: 1 1 0;
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		transition: flex-basis 220ms ease;
+	}
+
+	.gallery-lightbox__backdrop {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		padding: 0;
 	}
 
 	.gallery-lightbox__nav {
@@ -1057,12 +1161,29 @@
 		flex-direction: column;
 		gap: 0.625rem;
 		padding: 0.875rem 1rem;
+		overflow-x: hidden;
 		overflow-y: auto;
 		background: var(--color-tertiary-darker);
-		border-left: 1px solid var(--color-tertiary-lighter);
+		border-left: none;
 		color: var(--color-white-lightest);
 		font-family: var(--font-special-elite);
-		animation: infoPanelFade 180ms ease;
+		animation: infoPaneFade 180ms ease;
+		min-width: 0;
+		transition:
+			flex-basis 220ms ease,
+			padding 220ms ease,
+			opacity 180ms ease,
+			border-color 180ms ease;
+	}
+
+	.gallery-lightbox__body--info-collapsed .gallery-lightbox__info {
+		flex-basis: 0;
+		flex-grow: 0;
+		flex-shrink: 0;
+		padding-left: 0;
+		padding-right: 0;
+		opacity: 0;
+		pointer-events: none;
 	}
 
 	.gallery-lightbox__tabs {
@@ -1361,10 +1482,45 @@
 			min-height: 50vh;
 		}
 
-		.gallery-lightbox__info {
-			flex: 0 0 auto;
+		.gallery-lightbox__info-toggle {
+			flex: 0 0 2rem;
+			flex-direction: row;
+			gap: 0.45rem;
 			border-left: none;
 			border-top: 1px solid var(--color-tertiary-lighter);
+			padding: 0.35rem 0.75rem;
+		}
+
+		.gallery-lightbox__info-toggle--collapsed {
+			flex-basis: 2.5rem;
+		}
+
+		.gallery-lightbox__info-toggle-chevron {
+			transform: rotate(90deg);
+		}
+
+		.gallery-lightbox__info-toggle-label {
+			writing-mode: horizontal-tb;
+			letter-spacing: 0.06em;
+		}
+
+		.gallery-lightbox__info {
+			flex: 0 0 auto;
+			max-height: 45vh;
+			border-top: none;
+		}
+
+		.gallery-lightbox__body--info-collapsed .gallery-lightbox__image-pane {
+			min-height: 0;
+			flex: 1 1 100%;
+		}
+
+		.gallery-lightbox__body--info-collapsed .gallery-lightbox__info {
+			flex-basis: 0;
+			max-height: 0;
+			padding-top: 0;
+			padding-bottom: 0;
+			overflow: hidden;
 		}
 	}
 
@@ -1372,6 +1528,11 @@
 		.gallery-lightbox__spinner {
 			animation: none;
 			border-top-color: rgba(255, 255, 255, 0.6);
+		}
+
+		.gallery-lightbox__image-pane,
+		.gallery-lightbox__info {
+			transition: none;
 		}
 	}
 </style>

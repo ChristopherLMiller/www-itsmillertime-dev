@@ -35,11 +35,13 @@
 
 	const totalModels = $derived(meta?.totalDocs ?? models.length);
 
-	const statusOptions = [
-		{ value: 'NOT_STARTED', label: 'Not started' },
-		{ value: 'IN_PROGRESS', label: 'In progress' },
-		{ value: 'COMPLETED', label: 'Completed' }
-	] as const;
+	const statusOptions = $derived(
+		[
+			{ value: 'NOT_STARTED', label: 'Not started' },
+			{ value: 'IN_PROGRESS', label: 'In progress' },
+			{ value: 'COMPLETED', label: 'Completed' }
+		].filter((option) => data.isAdmin || option.value !== 'NOT_STARTED')
+	);
 
 	async function updateParam(key: string, value: string, resetPage = true) {
 		const url = new URL(page.url);

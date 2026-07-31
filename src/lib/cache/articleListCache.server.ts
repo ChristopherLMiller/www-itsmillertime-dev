@@ -7,16 +7,31 @@ import {
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { Post, PostsCategory, PostsTag } from '$lib/types/payload-types';
 
-async function fetchArticlesListFromCMS(query: ArticlesListQuery): Promise<ArticlesListCacheData> {
-	const sdk = getPayloadSDK();
+export type ArticlesListLoadOptions = {
+	/** When true, include draft posts (admin preview). Requires auth cookies via fetch/request. */
+	includeDrafts?: boolean;
+	fetch?: typeof globalThis.fetch;
+	request?: Request;
+};
+
+async function fetchArticlesListFromCMS(
+	query: ArticlesListQuery,
+	options: ArticlesListLoadOptions = {}
+): Promise<ArticlesListCacheData> {
+	const { includeDrafts = false, fetch, request } = options;
+	const sdk = getPayloadSDK(fetch, request);
 	const { page, limit, category, tag, sort } = query;
 
 	const andFilters = [
-		{
-			_status: {
-				not_equals: 'draft'
-			}
-		},
+		...(includeDrafts
+			? []
+			: [
+					{
+						_status: {
+							not_equals: 'draft'
+						}
+					}
+				]),
 		...(category ? [{ 'category.slug': { equals: category } }] : []),
 		...(tag ? [{ 'tags.slug': { equals: tag } }] : [])
 	];
@@ -27,6 +42,7 @@ async function fetchArticlesListFromCMS(query: ArticlesListQuery): Promise<Artic
 			limit,
 			page,
 			sort,
+			...(includeDrafts ? { draft: true } : {}),
 			select: {
 				publishedAt: true,
 				slug: true,
@@ -39,15 +55,20 @@ async function fetchArticlesListFromCMS(query: ArticlesListQuery): Promise<Artic
 				originalPublicationDate: true,
 				category: true,
 				tags: true,
+				_status: true,
 				meta: {
 					title: true,
 					description: true,
 					image: true
 				}
 			},
-			where: {
-				and: andFilters as never[]
-			}
+			...(andFilters.length > 0
+				? {
+						where: {
+							and: andFilters as never[]
+						}
+					}
+				: {})
 		}),
 		sdk.find({
 			collection: 'posts-categories',
@@ -77,8 +98,9 @@ export async function loadArticlesListPageData(
 	limitRaw: number,
 	categoryRaw?: string | null,
 	tagRaw?: string | null,
-	sortRaw?: string | null
+	sortRaw?: string | null,
+	options: ArticlesListLoadOptions = {}
 ): Promise<ArticlesListCacheData> {
 	const query = normalizeArticlesQuery(pageRaw, limitRaw, categoryRaw, tagRaw, sortRaw);
-	return fetchArticlesListFromCMS(query);
+	return fetchArticlesListFromCMS(query, options);
 }
