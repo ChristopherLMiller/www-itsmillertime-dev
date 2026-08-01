@@ -75,8 +75,9 @@ async function resolveArticleId(
 	const postLookup = await sdk.find({
 		collection: 'posts',
 		limit: 1,
+		// PostsSelect has no `id` field; Payload still returns document ids.
 		select: {
-			id: true
+			slug: true
 		},
 		...(includeDrafts ? { draft: true } : {}),
 		where: {

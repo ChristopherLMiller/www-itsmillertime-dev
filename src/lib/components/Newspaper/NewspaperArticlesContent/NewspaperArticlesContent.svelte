@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Image from '$lib/components/Image';
 	import type { Media, Post, PostsTag } from '$lib/types/payload-types';
+	import NewspaperDraftBadge from '../NewspaperDraftBadge/NewspaperDraftBadge.svelte';
 	import NewspaperLeadNoImage from '../NewspaperLeadNoImage/NewspaperLeadNoImage.svelte';
 	import NewspaperLeadWithImage from '../NewspaperLeadWithImage/NewspaperLeadWithImage.svelte';
 	import { getFirstParagraph } from '$lib/utils/getFirstParagraph';
@@ -45,10 +46,10 @@
 		});
 	}
 
-	function excerpt(post: Post, max = 220): string {
+	function excerpt(post: Post, max = 220): { text: string; truncated: boolean } {
 		const text = firstParagraphText(post);
-		if (text.length <= max) return text;
-		return `${text.slice(0, max).trimEnd()}…`;
+		if (text.length <= max) return { text, truncated: false };
+		return { text: text.slice(0, max).trimEnd(), truncated: true };
 	}
 
 	function tagLabel(tag: number | PostsTag): string {
@@ -59,6 +60,10 @@
 	function tagKey(tag: number | PostsTag, i: number): string | number {
 		if (typeof tag === 'object' && tag?.id != null) return tag.id;
 		return `${tag}-${i}`;
+	}
+
+	function categoryTitle(post: Post): string | null {
+		return typeof post.category === 'object' && post.category?.title ? post.category.title : null;
 	}
 </script>
 
@@ -78,6 +83,9 @@
 			<div class="secondary-headlines">
 				{#each secondaryArticles as article (article.id)}
 					{#if article.slug}
+						{@const dateStr = formatPostDate(article)}
+						{@const category = categoryTitle(article)}
+						{@const secondaryExcerpt = excerpt(article, 280)}
 						<a href={`/articles/${article.slug}`} class="secondary-article">
 							{#if mediaFromPost(article)}
 								<div class="secondary-article-image">
@@ -90,28 +98,37 @@
 								</div>
 							{/if}
 							<div class="secondary-article-body">
-								<div
-									class="article-meta"
-									style:view-transition-name={`article-meta-${article.slug}`}
-								>
-									<span style:view-transition-name={`article-category-${article.slug}`}>
-										{typeof article.category === 'object' && article.category?.title
-											? article.category.title
-											: '—'}
-									</span>
-								</div>
 								<h3
 									class="secondary-article-title"
 									style:view-transition-name={`article-headline-${article.slug}`}
 								>
 									{article.title}
 								</h3>
-								<p
-									class="article-excerpt"
-									style:view-transition-name={`article-content-${article.slug}`}
-								>
-									{excerpt(article, 280)}
-								</p>
+								{#if article._status === 'draft' || dateStr || category}
+									<div
+										class="article-meta"
+										style:view-transition-name={`article-meta-${article.slug}`}
+									>
+										{#if article._status === 'draft'}
+											<NewspaperDraftBadge />
+										{:else if dateStr}
+											<span style:view-transition-name={`article-pub-date-${article.slug}`}>
+												Published on {dateStr}
+											</span>
+										{/if}
+										{#if article._status !== 'draft' && dateStr && category}
+											<span class="article-meta-sep" aria-hidden="true">|</span>
+										{/if}
+										{#if category}
+											{#if article._status === 'draft'}
+												<span class="article-meta-sep" aria-hidden="true">|</span>
+											{/if}
+											<span style:view-transition-name={`article-category-${article.slug}`}>
+												Filed under {category}
+											</span>
+										{/if}
+									</div>
+								{/if}
 								{#if article.tags?.length}
 									<div
 										class="tags-inline"
@@ -122,6 +139,13 @@
 										{/each}
 									</div>
 								{/if}
+								<p
+									class="article-excerpt"
+									class:article-excerpt--continued={secondaryExcerpt.truncated}
+									style:view-transition-name={`article-content-${article.slug}`}
+								>
+									{secondaryExcerpt.text}
+								</p>
 							</div>
 						</a>
 					{/if}
@@ -134,6 +158,9 @@
 				{#each columnArticles as article, index (article.id)}
 					<div class="column">
 						{#if article.slug}
+							{@const dateStr = formatPostDate(article)}
+							{@const category = categoryTitle(article)}
+							{@const columnExcerpt = excerpt(article)}
 							<a href={`/articles/${article.slug}`} class="column-article-link">
 								{#if mediaFromPost(article)}
 									<div class="column-article-image">
@@ -145,32 +172,37 @@
 										/>
 									</div>
 								{/if}
-								<div
-									class="article-meta"
-									style:view-transition-name={`article-meta-${article.slug}`}
-								>
-									<span style:view-transition-name={`article-category-${article.slug}`}>
-										{typeof article.category === 'object' && article.category?.title
-											? article.category.title
-											: '—'}
-									</span>
-									<span aria-hidden="true"> • </span>
-									<span style:view-transition-name={`article-pub-date-${article.slug}`}>
-										{formatPostDate(article)}
-									</span>
-								</div>
 								<h3
 									class="column-article-title"
 									style:view-transition-name={`article-headline-${article.slug}`}
 								>
 									{article.title}
 								</h3>
-								<p
-									class="article-excerpt"
-									style:view-transition-name={`article-content-${article.slug}`}
-								>
-									{excerpt(article)}
-								</p>
+								{#if article._status === 'draft' || dateStr || category}
+									<div
+										class="article-meta"
+										style:view-transition-name={`article-meta-${article.slug}`}
+									>
+										{#if article._status === 'draft'}
+											<NewspaperDraftBadge />
+										{:else if dateStr}
+											<span style:view-transition-name={`article-pub-date-${article.slug}`}>
+												Published on {dateStr}
+											</span>
+										{/if}
+										{#if article._status !== 'draft' && dateStr && category}
+											<span class="article-meta-sep" aria-hidden="true">|</span>
+										{/if}
+										{#if category}
+											{#if article._status === 'draft'}
+												<span class="article-meta-sep" aria-hidden="true">|</span>
+											{/if}
+											<span style:view-transition-name={`article-category-${article.slug}`}>
+												Filed under {category}
+											</span>
+										{/if}
+									</div>
+								{/if}
 								{#if article.tags?.length}
 									<div
 										class="tags-inline"
@@ -181,6 +213,13 @@
 										{/each}
 									</div>
 								{/if}
+								<p
+									class="article-excerpt"
+									class:article-excerpt--continued={columnExcerpt.truncated}
+									style:view-transition-name={`article-content-${article.slug}`}
+								>
+									{columnExcerpt.text}
+								</p>
 							</a>
 						{/if}
 						{#if index < columnArticles.length - 1}
@@ -204,6 +243,9 @@
 										class="more-stories-title"
 										style:view-transition-name={`article-headline-${article.slug}`}
 									>
+										{#if article._status === 'draft'}
+											<NewspaperDraftBadge />
+										{/if}
 										{article.title}
 									</span>
 									{#if dateStr}
@@ -232,7 +274,7 @@
 <style lang="postcss">
 	/*
 	 * Shared typography for this page (also on .no-results so empty state matches).
-	 * Body: --fs-base + body lh; titles: --fs-base + title lh; labels/meta: --fs-xs + meta tracking.
+	 * Body: --fs-base + body lh; titles: --fs-s + title lh; labels/meta: --fs-xs + meta tracking.
 	 */
 	.newspaper-articles,
 	.no-results {
@@ -248,7 +290,7 @@
 		display: flex;
 		gap: 0.2rem;
 		flex-wrap: wrap;
-		margin-top: 0.35rem;
+		margin: 0.35rem 0 0.5rem;
 	}
 
 	.article-tag {
@@ -330,7 +372,7 @@
 
 	.secondary-article-title {
 		font-family: 'Times New Roman', Times, serif;
-		font-size: var(--fs-base);
+		font-size: var(--fs-s);
 		font-weight: 700;
 		color: #1a1a1a;
 		line-height: var(--newspaper-title-lh);
@@ -345,7 +387,20 @@
 		color: #888;
 		text-transform: uppercase;
 		letter-spacing: var(--newspaper-meta-ls);
-		margin-bottom: 0.35rem;
+		margin: 0.35rem 0;
+	}
+
+	.article-meta-sep {
+		color: #aaa;
+		font-weight: 400;
+	}
+
+	.article-meta :global(.article-draft-badge) {
+		margin-right: 0.15rem;
+	}
+
+	.more-stories-title :global(.article-draft-badge) {
+		margin-right: 0.35rem;
 	}
 
 	.article-excerpt {
@@ -355,6 +410,23 @@
 		color: #444;
 		text-align: justify;
 		margin: 0;
+	}
+
+	/* Match lead “Continued on…” (card is the <a>; click hits parent link) */
+	.article-excerpt--continued::after {
+		content: ' Continued on…';
+		font-style: italic;
+		font-weight: 500;
+		font-family: inherit;
+		font-size: inherit;
+		line-height: inherit;
+		letter-spacing: inherit;
+		color: #8b0000;
+	}
+
+	.secondary-article:hover .article-excerpt--continued::after,
+	.column-article-link:hover .article-excerpt--continued::after {
+		color: #5c0000;
 	}
 
 	.columns-section {
@@ -409,7 +481,7 @@
 
 	.column-article-title {
 		font-family: 'Times New Roman', Times, serif;
-		font-size: var(--fs-base);
+		font-size: var(--fs-s);
 		font-weight: 700;
 		color: #1a1a1a;
 		line-height: var(--newspaper-title-lh);

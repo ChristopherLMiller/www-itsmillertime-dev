@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import ClockifyTimer from '$lib/components/ClockifyTimer';
 	import Image from '$lib/components/Image';
@@ -15,7 +16,8 @@
 	import Disqus from '$lib/components/Disqus';
 	import ShareButtons from '$lib/components/ShareButtons';
 	import VideoPlayer from '$lib/components/VideoPlayer';
-	import { modelQueryOptions } from '$lib/query/queries';
+	import { modelQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import { pageMetaOverride } from '$lib/stores/pageMeta';
 	import type { PageProps } from './$types';
 
@@ -23,6 +25,7 @@
 
 	let clockifyProject = $state<ClockifyProject | null>(null);
 	const { data }: PageProps = $props();
+	const queryClient = useQueryClient();
 
 	const includeNotStarted = $derived(
 		data.includeNotStarted ||
@@ -38,7 +41,20 @@
 		)
 	);
 
-	const modelData = $derived(query.data ?? data.initialModel);
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		if (includeNotStarted !== data.includeNotStarted) return;
+		seedServerQueryData(
+			queryClient,
+			queryKeys.model(data.slug, includeNotStarted),
+			data.initialModel
+		);
+	});
+
+	const modelData = $derived(
+		query.isPlaceholderData ? data.initialModel : (query.data ?? data.initialModel)
+	);
 	const model = $derived(modelData?.model);
 
 	// Derived values

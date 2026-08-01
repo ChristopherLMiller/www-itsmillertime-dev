@@ -48,28 +48,19 @@ export const load: PageServerLoad = async ({ params, fetch, request, url, parent
 		limit: 1,
 		depth: 2,
 		select: {
-			id: true,
 			slug: true,
 			title: true,
 			settings: {
 				...albumSettingsSelect,
-				category: { title: true },
-				tags: { title: true }
+				// Generated select types only allow boolean for relations.
+				category: true,
+				tags: true
 			},
 			content: true,
 			meta: {
 				description: true,
 				title: true,
-				image: {
-					id: true,
-					url: true,
-					alt: true,
-					width: true,
-					height: true,
-					sizes: {
-						og: { url: true, width: true, height: true }
-					}
-				}
+				image: true
 			},
 			createdAt: true,
 			updatedAt: true

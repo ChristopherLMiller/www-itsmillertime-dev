@@ -7,6 +7,7 @@
 	import type { Media, Post, PostsTag } from '$lib/types/payload-types';
 	import { toRelatedLinks } from '$lib/utils/relatedResources';
 	import type { Snippet } from 'svelte';
+	import NewspaperDraftBadge from '../NewspaperDraftBadge/NewspaperDraftBadge.svelte';
 
 	interface Props {
 		article: Post;
@@ -99,7 +100,7 @@
 						style:view-transition-name={`article-meta-${article.slug}`}
 					>
 						{#if article._status === 'draft'}
-							<span class="article-draft-badge">Draft</span>
+							<NewspaperDraftBadge />
 						{:else if pubLabel}
 							<span style:view-transition-name={`article-pub-date-${article.slug}`}>
 								Published on {pubLabel}
@@ -270,14 +271,8 @@
 		}
 	}
 
-	.article-draft-badge {
-		display: inline-block;
-		padding: 0.05rem 0.35rem;
+	.article-meta--dates :global(.article-draft-badge) {
 		margin-right: 0.15rem;
-		border: 1px solid #8b0000;
-		color: #8b0000;
-		font-weight: 700;
-		letter-spacing: 0.08em;
 	}
 
 	.article-share {

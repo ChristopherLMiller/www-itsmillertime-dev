@@ -18,11 +18,31 @@ function articleDataPath(pathname: string): string {
 	return `${normalized}/__data.json`;
 }
 
+/** Listing API changes often — never serve/store it from the SW cache. */
+function isArticlesListApi(url: URL): boolean {
+	return url.pathname === '/api/articles-data';
+}
+
+/**
+ * Blog index document + SvelteKit data payload. Must not use SW cache fallback:
+ * during a Node restart the network fails and a stale cached index can show
+ * empty/partial article cards until a hard reload.
+ */
+function isArticlesIndexUrl(url: URL): boolean {
+	const { pathname } = url;
+	return (
+		pathname === '/articles' ||
+		pathname === '/articles/' ||
+		pathname === '/articles/__data.json' ||
+		pathname === '/articles/__data.json/'
+	);
+}
+
 function isArticleScopeUrl(url: URL): boolean {
 	const { pathname } = url;
-	if (pathname === '/articles' || pathname.startsWith('/articles/')) return true;
+	if (isArticlesListApi(url) || isArticlesIndexUrl(url)) return false;
+	if (pathname.startsWith('/articles/')) return true;
 	if (pathname.startsWith('/api/articles/')) return true;
-	if (pathname === '/api/articles-data') return true;
 	if (pathname === '/api/layout-data') return true;
 	return false;
 }
@@ -50,6 +70,9 @@ async function safeCachePut(
 
 async function fetchAndCache(url: string, cache: Cache): Promise<void> {
 	const request = new Request(url, { credentials: 'same-origin' });
+	const parsed = new URL(url);
+	// Never store the blog index in Cache Storage (stale fallback during restarts).
+	if (isArticlesIndexUrl(parsed) || isArticlesListApi(parsed)) return;
 	if (await cache.match(request)) return;
 
 	try {
@@ -91,8 +114,8 @@ async function precacheArticlePaths(paths: string[]): Promise<void> {
 		}
 
 		if (path === '/articles') {
+			// Index HTML/__data.json are intentionally not cached (see isArticlesIndexUrl).
 			await fetchAndCache(new URL('/api/layout-data', origin).href, cache);
-			await fetchAndCache(new URL('/api/articles-data?page=1&limit=25', origin).href, cache);
 		}
 	}
 }
@@ -109,6 +132,9 @@ sw.addEventListener('install', (event) => {
 					// One failed asset should not reject the whole install.
 				}
 			}
+
+			// Take over controlled pages on the next navigation without waiting.
+			await sw.skipWaiting();
 		})()
 	);
 });
@@ -119,6 +145,7 @@ sw.addEventListener('activate', (event) => {
 			for (const key of await caches.keys()) {
 				if (key !== CACHE) await caches.delete(key);
 			}
+			await sw.clients.claim();
 		})()
 	);
 });
@@ -143,6 +170,9 @@ sw.addEventListener('fetch', (event) => {
 	const url = new URL(event.request.url);
 	if (url.origin !== sw.location.origin) return;
 
+	// Blog index + list API: bypass SW entirely (no cache, no stale fallback).
+	if (isArticlesListApi(url) || isArticlesIndexUrl(url)) return;
+
 	const isAsset = ASSETS.includes(url.pathname);
 	const isArticle = isArticleScopeUrl(url);
 
@@ -152,12 +182,10 @@ sw.addEventListener('fetch', (event) => {
 	event.respondWith(
 		(async () => {
 			const cache = await caches.open(CACHE);
+			const cacheKey = isAsset ? url.pathname : event.request;
 
-			if (isAsset) {
-				const cached = await cache.match(url.pathname);
-				if (cached) return cached;
-			}
-
+			// Network-first for everything we intercept. Cache-first assets were
+			// hydrating an old client bundle over correct SSR HTML (correct → revert).
 			try {
 				const response = await fetch(event.request);
 
@@ -165,20 +193,12 @@ sw.addEventListener('fetch', (event) => {
 					throw new Error('invalid response from fetch');
 				}
 
-				const cacheKey = isAsset ? url.pathname : event.request;
 				await safeCachePut(cache, cacheKey, response);
 				return response;
-			} catch (err) {
-				const cacheKey = isAsset ? url.pathname : event.request;
+			} catch {
 				const cached = await cache.match(cacheKey);
 				if (cached) return cached;
-
-				if (isArticle && event.request.mode === 'navigate') {
-					const articlesIndex = await cache.match(new URL('/articles', url.origin).href);
-					if (articlesIndex) return articlesIndex;
-				}
-
-				throw err;
+				throw new Error(`Offline miss for ${url.pathname}`);
 			}
 		})()
 	);

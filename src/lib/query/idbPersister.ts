@@ -13,8 +13,12 @@ const DB_NAME = 'tanstack-query-cache';
 const STORE_NAME = 'query-cache';
 const IDB_VERSION = 1;
 
-/** Single record key inside the object store; also the persistOptions cache buster prefix. */
-export const QUERY_CACHE_STORAGE_KEY = 'itsmillertime-query-cache';
+/**
+ * Single record key inside the object store.
+ * Bump the suffix when persisted shape/policy changes so existing tabs drop stale blobs
+ * even if PersistQueryClient's in-band `buster` does not run first.
+ */
+export const QUERY_CACHE_STORAGE_KEY = 'itsmillertime-query-cache-v4';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -109,10 +113,33 @@ export async function readPersistedQueryCache(): Promise<unknown> {
 	}
 }
 
+/** Legacy keys from older persist policies — delete so stuck tabs cannot revive them. */
+const LEGACY_QUERY_CACHE_KEYS = [
+	'itsmillertime-query-cache',
+	'itsmillertime-query-cache-v2',
+	'itsmillertime-query-cache-v3'
+] as const;
+
 /** Delete the persisted query cache entirely (offline data reset). */
 export async function clearPersistedQueryCache(): Promise<void> {
 	if (!browser) return;
 	await idbDelete(QUERY_CACHE_STORAGE_KEY);
+	await Promise.all(LEGACY_QUERY_CACHE_KEYS.map((key) => idbDelete(key)));
+}
+
+/** Drop legacy IndexedDB blobs once per session (safe if already gone). */
+export async function purgeLegacyPersistedQueryCaches(): Promise<void> {
+	if (!browser) return;
+	await Promise.all(LEGACY_QUERY_CACHE_KEYS.map((key) => idbDelete(key)));
+}
+
+/** Clear Cache Storage entries used by the articles offline service worker. */
+export async function clearArticlesServiceWorkerCaches(): Promise<void> {
+	if (!browser || typeof caches === 'undefined') return;
+	const keys = await caches.keys();
+	await Promise.all(
+		keys.filter((key) => key.startsWith('articles-offline-')).map((key) => caches.delete(key))
+	);
 }
 
 /**

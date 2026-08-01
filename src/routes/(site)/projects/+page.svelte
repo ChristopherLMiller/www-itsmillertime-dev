@@ -1,18 +1,37 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import Lexical from '$lib/components/Lexical';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
-	import { projectsQueryOptions } from '$lib/query/queries';
+	import { projectsQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import type { PageData } from './$types';
 	import type { Project } from '$lib/types/payload-types';
 
 	let { data }: { data: PageData } = $props();
+	const queryClient = useQueryClient();
 
 	const query = createQuery(() =>
 		projectsQueryOptions(data.page, data.limit, data.initialProjects)
 	);
-	const projects = $derived((query.data ?? data.initialProjects)?.projects ?? []);
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(
+			queryClient,
+			queryKeys.projects(data.page, data.limit),
+			data.initialProjects
+		);
+	});
+
+	const projects = $derived(
+		(query.isPlaceholderData
+			? data.initialProjects
+			: (query.data ?? data.initialProjects)
+		)?.projects ?? []
+	);
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&

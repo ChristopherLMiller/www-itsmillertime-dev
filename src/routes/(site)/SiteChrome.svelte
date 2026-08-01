@@ -24,6 +24,7 @@
 	// Navigation + siteMeta come straight from Payload (cached in IndexedDB via the
 	// persisted QueryClient). SSR seeds `initialData`; the browser revalidates in
 	// the background and this updates reactively when the CMS changes.
+	// Unlike page lists, layout intentionally lets IDB win (refetchOnMount: false).
 	const layoutQuery = createQuery(() => layoutQueryOptions(data.initialLayout));
 
 	setSiteLayoutContext(() => ({

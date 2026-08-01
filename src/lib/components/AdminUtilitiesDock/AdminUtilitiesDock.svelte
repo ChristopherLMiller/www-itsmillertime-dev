@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
+		clearArticlesServiceWorkerCaches,
 		clearPersistedQueryCache,
 		QUERY_CACHE_DB_NAME,
 		QUERY_CACHE_STORE_NAME,
@@ -134,6 +135,7 @@
 		try {
 			queryClient.clear();
 			await clearPersistedQueryCache();
+			await clearArticlesServiceWorkerCaches();
 			await invalidateAll();
 			clearMsg = 'Offline cache cleared; data reloaded.';
 			await loadPersistedCache();
