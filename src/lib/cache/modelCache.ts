@@ -96,6 +96,18 @@ export function modelsListQueryFromUrl(url: URL): ModelsListQuery {
 	);
 }
 
+export function modelsListQueriesMatch(a: ModelsListQuery, b: ModelsListQuery): boolean {
+	return (
+		a.sort === b.sort &&
+		a.page === b.page &&
+		a.limit === b.limit &&
+		a.manufacturer === b.manufacturer &&
+		a.scale === b.scale &&
+		a.tag === b.tag &&
+		a.status === b.status
+	);
+}
+
 export function buildModelsDataUrl(query: ModelsListQuery): string {
 	const q = new URLSearchParams({
 		page: String(query.page),

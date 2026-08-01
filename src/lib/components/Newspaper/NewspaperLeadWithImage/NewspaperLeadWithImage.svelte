@@ -8,6 +8,7 @@
 		stripFirstCharacterFromParagraphNode
 	} from '$lib/utils/lexicalProcessNode';
 	import { getLexicalParagraphsUpToWords } from '$lib/utils/lexicalParagraphsUpToWords';
+	import NewspaperDraftBadge from '../NewspaperDraftBadge/NewspaperDraftBadge.svelte';
 	import { NEWSPAPER_LEAD_MAX_WORDS } from '../newspaperLeadConstants';
 
 	interface Props {
@@ -94,31 +95,37 @@
 					<div class="main-headline-body-column-flow">
 						<div
 							class="main-headline-dateline"
-							class:main-headline-dateline--empty={!leadPubLabel &&
+							class:main-headline-dateline--empty={article._status !== 'draft' &&
+								!leadPubLabel &&
 								!leadCreatedLabel &&
 								!leadCategoryTitle}
 							style:view-transition-name={article.slug
 								? `article-dateline-${article.slug}`
 								: undefined}
 						>
-							{#if leadPubLabel || leadCreatedLabel || leadCategoryTitle}
+							{#if article._status === 'draft' || leadPubLabel || leadCreatedLabel || leadCategoryTitle}
 								<div
 									class="main-headline-meta"
 									style:view-transition-name={`article-meta-${article.slug}`}
 								>
-									{#if leadPubLabel}
+									{#if article._status === 'draft'}
+										<NewspaperDraftBadge />
+									{:else if leadPubLabel}
 										<span style:view-transition-name={`article-pub-date-${article.slug}`}>
 											Published on {leadPubLabel}
 										</span>
 									{/if}
-									{#if leadPubLabel && leadCreatedLabel}
+									{#if article._status !== 'draft' && leadPubLabel && leadCreatedLabel}
 										<span class="main-headline-meta-sep" aria-hidden="true">|</span>
 									{/if}
 									{#if leadCreatedLabel}
+										{#if article._status === 'draft'}
+											<span class="main-headline-meta-sep" aria-hidden="true">|</span>
+										{/if}
 										<span>First written {leadCreatedLabel}</span>
 									{/if}
 									{#if leadCategoryTitle}
-										{#if leadPubLabel || leadCreatedLabel}
+										{#if article._status === 'draft' || leadPubLabel || leadCreatedLabel}
 											<span class="main-headline-meta-sep" aria-hidden="true">|</span>
 										{/if}
 										<span style:view-transition-name={`article-category-${article.slug}`}>
@@ -347,6 +354,10 @@
 		line-height: var(--newspaper-body-lh);
 		text-align: start;
 		margin: 0;
+	}
+
+	.main-headline-meta :global(.article-draft-badge) {
+		margin-right: 0.15rem;
 	}
 
 	.main-headline-meta-sep {

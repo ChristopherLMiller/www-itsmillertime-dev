@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import Disqus from '$lib/components/Disqus';
 	import { NewspaperArticleContent, NewspaperLayout } from '$lib/components/Newspaper';
 	import ShareButtons from '$lib/components/ShareButtons';
-	import { articleQueryOptions } from '$lib/query/queries';
+	import { articleQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import { pageMetaOverride } from '$lib/stores/pageMeta';
 	import { precacheArticleContext } from '$lib/pwa/articleOfflineSync';
 	import type { PostsCategory, PostsTag } from '$lib/types/payload-types';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();
+	const queryClient = useQueryClient();
 
 	const includeDrafts = $derived(
 		data.includeDrafts ||
@@ -27,7 +29,20 @@
 		)
 	);
 
-	const articleData = $derived(query.data ?? data.initialArticle);
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		if (includeDrafts !== data.includeDrafts) return;
+		seedServerQueryData(
+			queryClient,
+			queryKeys.article(data.slug, includeDrafts),
+			data.initialArticle
+		);
+	});
+
+	const articleData = $derived(
+		query.isPlaceholderData ? data.initialArticle : (query.data ?? data.initialArticle)
+	);
 	const article = $derived(articleData?.article);
 	const relatedModels = $derived(articleData?.relatedModels ?? []);
 

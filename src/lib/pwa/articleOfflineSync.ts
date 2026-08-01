@@ -22,22 +22,26 @@ export function precacheArticleSlugs(slugs: Iterable<string | null | undefined>)
 	postToServiceWorker({ type: SW_PRECACHE_ARTICLES, slugs: unique });
 }
 
-/** Ask the service worker to cache listing/index documents and their data payloads. */
+/** Ask the service worker to cache article detail documents (not the blog index). */
 export function precacheArticlePaths(paths: Iterable<string>): void {
-	const unique = [...new Set([...paths].filter((path) => path.startsWith('/articles')))];
+	const unique = [
+		...new Set(
+			[...paths].filter(
+				(path) => path.startsWith('/articles/') && path !== '/articles/'
+			)
+		)
+	];
 	if (unique.length === 0) return;
 	postToServiceWorker({ type: SW_PRECACHE_PATHS, paths: unique });
 }
 
-/** Precache listing page plus every article linked from it. */
+/** Precache article bodies linked from the listing (never the index document). */
 export function precacheArticlesListing(slugs: Iterable<string | null | undefined>): void {
-	precacheArticlePaths(['/articles']);
 	precacheArticleSlugs(slugs);
 }
 
-/** Precache the open article and the listing for back-navigation while offline. */
+/** Precache the open article for offline reading. */
 export function precacheArticleContext(slug: string | null | undefined): void {
 	if (!slug) return;
-	precacheArticlePaths(['/articles']);
 	precacheArticleSlugs([slug]);
 }

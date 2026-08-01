@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { onNavigate } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { PersistQueryClientProvider } from '@tanstack/svelte-query-persist-client';
 	import { createQueryClient, LAYOUT_GC_TIME_MS } from '$lib/query/client';
-	import { createIdbPersister } from '$lib/query/idbPersister';
+	import { createIdbPersister, purgeLegacyPersistedQueryCaches } from '$lib/query/idbPersister';
+	import { purgeCachedArticlesListing } from '$lib/pwa/resetStaleServiceWorker';
+	import { queryPersistRestored } from '$lib/query/seedServerQuery';
 	import { shouldPersistQuery } from '$lib/query/shouldPersistQuery';
 	import SiteChrome from './SiteChrome.svelte';
 	import type { LayoutProps } from './$types';
@@ -12,6 +15,15 @@
 
 	const queryClient = createQueryClient();
 	const persister = createIdbPersister();
+
+	if (browser) {
+		void purgeLegacyPersistedQueryCaches();
+		void purgeCachedArticlesListing();
+	}
+
+	function markPersistSettled() {
+		queryPersistRestored.set(true);
+	}
 
 	onNavigate(async (navigation) => {
 		if (!document.startViewTransition) return;
@@ -37,12 +49,14 @@
 		persister,
 		// Must be >= layout gcTime so nav/siteMeta survive IndexedDB restores indefinitely.
 		maxAge: LAYOUT_GC_TIME_MS,
-		// Bust caches written before article-body exclusion / shorter maxAge.
-		buster: 'v2-no-article-bodies',
+		// Bust caches written before article-list persistence was removed.
+		buster: 'v4-no-article-list-persist',
 		dehydrateOptions: {
 			shouldDehydrateQuery: shouldPersistQuery
 		}
 	}}
+	onSuccess={markPersistSettled}
+	onError={markPersistSettled}
 >
 	<SiteChrome {data}>
 		{@render children?.()}

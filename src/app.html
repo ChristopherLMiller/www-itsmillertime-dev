@@ -21,6 +21,40 @@
 		></script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<!--
+			Must stay inline in HTML (not a module): an old service worker was cache-firsting
+			client bundles, so SSR painted the correct blog list and then stale JS hydrated
+			over it. This runs before %sveltekit.body% modules and clears that once.
+		-->
+		<script>
+			(function () {
+				try {
+					var flag = 'itsmillertime-sw-reset-v5-articles-ssr-only';
+					if (localStorage.getItem(flag)) return;
+					if (!('serviceWorker' in navigator) && typeof caches === 'undefined') {
+						localStorage.setItem(flag, '1');
+						return;
+					}
+					Promise.all([
+						'serviceWorker' in navigator
+							? navigator.serviceWorker.getRegistrations()
+							: Promise.resolve([]),
+						typeof caches !== 'undefined' ? caches.keys() : Promise.resolve([])
+					]).then(function (results) {
+						var regs = results[0];
+						var keys = results[1];
+						localStorage.setItem(flag, '1');
+						if (!regs.length && !keys.length) return;
+						return Promise.all([
+							Promise.all(regs.map(function (reg) { return reg.unregister(); })),
+							Promise.all(keys.map(function (key) { return caches.delete(key); }))
+						]).then(function () {
+							location.reload();
+						});
+					});
+				} catch (e) {}
+			})();
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

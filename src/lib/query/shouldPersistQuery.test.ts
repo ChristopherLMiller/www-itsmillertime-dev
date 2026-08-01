@@ -18,13 +18,13 @@ function fakeQuery(queryKey: unknown[], status: Query['state']['status'] = 'succ
 }
 
 describe('shouldPersistQuery', () => {
-	it('persists layout, article lists, and projects', () => {
+	it('persists layout and projects only', () => {
 		expect(shouldPersistQuery(fakeQuery(['layout']))).toBe(true);
-		expect(shouldPersistQuery(fakeQuery(['articles', 'list', {}]))).toBe(true);
 		expect(shouldPersistQuery(fakeQuery(['projects', 1, 10]))).toBe(true);
 	});
 
-	it('skips full article bodies', () => {
+	it('skips article lists and full article bodies', () => {
+		expect(shouldPersistQuery(fakeQuery(['articles', 'list', {}]))).toBe(false);
 		expect(shouldPersistQuery(fakeQuery(['article', 'my-slug']))).toBe(false);
 	});
 

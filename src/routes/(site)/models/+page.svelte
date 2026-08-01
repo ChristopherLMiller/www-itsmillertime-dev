@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { modelsListQueriesMatch } from '$lib/cache/modelCache';
 	import ModelCard from '$lib/components/ModelCard';
 	import Paginator from '$lib/components/Paginator';
 	import {
@@ -10,10 +12,12 @@
 		normalizeModelSort,
 		normalizeModelStatus
 	} from '$lib/models/filters';
-	import { modelsListQueryOptions } from '$lib/query/queries';
+	import { modelsListQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();
+	const queryClient = useQueryClient();
 
 	const includeNotStarted = $derived(
 		data.includeNotStarted ||
@@ -29,7 +33,23 @@
 		)
 	);
 
-	const list = $derived(query.data ?? data.initialModels);
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		if (includeNotStarted !== data.includeNotStarted) return;
+		seedServerQueryData(
+			queryClient,
+			queryKeys.modelsList(data.query, includeNotStarted),
+			data.initialModels
+		);
+	});
+
+	const list = $derived.by(() => {
+		const cached = query.data;
+		if (query.isPlaceholderData) return data.initialModels;
+		if (cached && modelsListQueriesMatch(cached.query, data.query)) return cached;
+		return data.initialModels;
+	});
 	const models = $derived(list?.models ?? []);
 	const meta = $derived(list?.meta);
 	const manufacturers = $derived(list?.manufacturers ?? []);

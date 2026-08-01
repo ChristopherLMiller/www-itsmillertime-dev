@@ -12,7 +12,6 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 			page: Number(url.searchParams.get('page')) || 1,
 			depth: 1,
 			select: {
-				id: true,
 				slug: true,
 				title: true,
 				settings: {
@@ -21,8 +20,9 @@ export const load: PageServerLoad = async ({ fetch, request, url }) => {
 				},
 				meta: {
 					description: true,
-					// Cover id + dimensions for layout/aspect before client preview fetch
-					image: { id: true, width: true, height: true, blurhash: true }
+					// Cover fields for layout/aspect before client preview fetch.
+					// Payload's generated select types only allow `image: true`.
+					image: true
 				}
 			},
 			where: {
