@@ -372,16 +372,30 @@
 	}
 
 	.cms-edit-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.35rem 0.75rem;
+		border: 1px solid var(--color-primary-darker);
+		border-radius: 4px;
+		background: transparent;
 		font-family: var(--font-oswald);
 		font-size: var(--fs-xs);
 		font-weight: 600;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		text-decoration: underline;
+		text-decoration: none;
 		color: var(--color-primary-darker);
+		transition:
+			background 0.15s ease,
+			border-color 0.15s ease,
+			color 0.15s ease;
 
-		&:hover {
-			color: var(--color-secondary);
+		&:hover,
+		&:focus-visible {
+			background: var(--color-primary-darker);
+			border-color: var(--color-primary-darker);
+			color: var(--color-white-lightest, #fff);
 		}
 	}
 

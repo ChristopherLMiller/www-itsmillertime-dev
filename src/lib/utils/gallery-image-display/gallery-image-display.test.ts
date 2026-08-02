@@ -55,11 +55,34 @@ describe('galleryImageDocToDisplayMedia', () => {
 		expect(m?.url).toBe('/file.jpg');
 		expect(m?.galleryImageId).toBe(10);
 		expect(m?.isNsfw).toBe(false);
+		expect(m?.needsProxy).toBe(false);
 	});
 
 	it('respects album NSFW flag', () => {
 		const doc = { id: 1, url: '/x', alt: '', width: 1, height: 1, updatedAt: '', createdAt: '' };
-		expect(galleryImageDocToDisplayMedia(doc, true)?.isNsfw).toBe(true);
+		const m = galleryImageDocToDisplayMedia(doc, true);
+		expect(m?.isNsfw).toBe(true);
+		expect(m?.needsProxy).toBe(true);
+	});
+
+	it('sets needsProxy for privileged image settings in a public album', () => {
+		const doc = {
+			id: 3,
+			url: '/secret.jpg',
+			alt: '',
+			width: 1,
+			height: 1,
+			updatedAt: '',
+			createdAt: '',
+			settings: {
+				visibility: 'PRIVILEGED' as const,
+				permittedRoles: ['family' as const],
+				isNsfw: false
+			}
+		};
+		const m = galleryImageDocToDisplayMedia(doc, false);
+		expect(m?.needsProxy).toBe(true);
+		expect(m?.isNsfw).toBe(false);
 	});
 
 	it('extracts nested image media', () => {
@@ -78,5 +101,6 @@ describe('galleryImageDocToDisplayMedia', () => {
 		const m = galleryImageDocToDisplayMedia(doc, false);
 		expect(m?.url).toBe('/nested.jpg');
 		expect(m?.galleryImageId).toBe(5);
+		expect(m?.needsProxy).toBe(false);
 	});
 });

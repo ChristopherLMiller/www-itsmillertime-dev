@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Masonry from 'svelte-bricks';
 	import Panel from '$lib/components/Panel';
 	import GalleryAlbumHeader from '$lib/components/gallery/GalleryAlbumHeader';
@@ -26,6 +27,15 @@
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
 	const isDirectLinkEntry = $derived(data.selectedGalleryImageId != null);
+	const isAdmin = $derived(
+		!!page.data.session?.user &&
+			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
+	);
+	const albumCmsEditHref = $derived(
+		isAdmin && data.gallery.id != null
+			? `${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-albums/${data.gallery.id}`
+			: null
+	);
 
 	type ImageSlot = {
 		id: number;
@@ -223,6 +233,31 @@
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 	}
 
+	/** While lightbox is open, resolve ±1 slot media so next/prev are in `galleryImages` and can preload. */
+	$effect(() => {
+		if (!browser || !lightboxOpen || pinnedLightboxFileMediaId == null) return;
+
+		const currentId = pinnedLightboxFileMediaId;
+		const slotIdx = visibleSlots.findIndex((s) => s.id === currentId);
+		if (slotIdx === -1) return;
+
+		const neighborIds = [visibleSlots[slotIdx - 1]?.id, visibleSlots[slotIdx + 1]?.id].filter(
+			(id): id is number => typeof id === 'number'
+		);
+
+		for (const id of neighborIds) {
+			if (slotMedia[id]) continue;
+			void fetchGalleryImageFullForPolaroid(id, albumIsNsfw).then((media) => {
+				if (media) injectResolvedMedia(media);
+			});
+		}
+
+		// Approaching the end of known slots — page in more ids for continuous next.
+		if (hasNextPage && !isLoadingMore && slotIdx >= visibleSlots.length - 2) {
+			void loadNextImagePage();
+		}
+	});
+
 	// Seed first page from server when the album changes only. Do not clear slotMedia on
 	// arbitrary data refreshes or Masonry-driven rerenders — that was wiping resolved polaroids.
 	$effect(() => {
@@ -308,6 +343,7 @@
 		<GalleryAlbumHeader
 			gallery={data.gallery as unknown as GalleryAlbum}
 			imageCount={totalImageCount}
+			cmsEditHref={albumCmsEditHref}
 		/>
 
 		<div class="gallery-grid">

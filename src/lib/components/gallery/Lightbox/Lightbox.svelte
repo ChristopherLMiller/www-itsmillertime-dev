@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Media } from '$lib/types/payload-types';
-	import { getMediaUrl } from '$lib/utils/media-url';
+	import { getMediaUrl, isGifMedia, isVideoMedia } from '$lib/utils/media-url';
 
 	export type LightboxContentArgs = {
 		image: Media | undefined;
@@ -22,7 +22,7 @@
 	};
 
 	type LightboxProps = {
-		images: (Media & { galleryImageId?: number })[];
+		images: (Media & { galleryImageId?: number; needsProxy?: boolean })[];
 		totalCount?: number;
 		initialIndex?: number;
 		open?: boolean;
@@ -54,14 +54,24 @@
 	let isRequestingMore = $state(false);
 
 	const SWIPE_THRESHOLD = 50;
+	const SIZE_KEYS = ['xlarge', 'large', 'medium', 'small', 'thumbnail'] as const;
 
 	const currentImage = $derived(images[currentIndex]);
 	const hasPrevious = $derived(currentIndex > 0);
 	const hasNext = $derived(currentIndex < images.length - 1 || canLoadMore);
+	const imageUsesProxy = $derived(
+		useProxy ||
+			Boolean(
+				currentImage &&
+					typeof currentImage === 'object' &&
+					'needsProxy' in currentImage &&
+					(currentImage as { needsProxy?: boolean }).needsProxy === true
+			)
+	);
 
 	// Use original image URL to avoid AVIF/WebP artifacting in lightbox
 	const imageSrc = $derived(currentImage?.url ?? null);
-	const resolvedImageSrc = $derived(imageSrc ? getMediaUrl(imageSrc, useProxy) : null);
+	const resolvedImageSrc = $derived(imageSrc ? getMediaUrl(imageSrc, imageUsesProxy) : null);
 	const placeholderSrc = $derived(currentImage?.blurhash ?? null);
 
 	const displayTotal = $derived(totalCount ?? images.length);
@@ -73,7 +83,7 @@
 		imageSrc: resolvedImageSrc,
 		isLoaded,
 		placeholderSrc,
-		getMediaUrl: (path: string, proxy?: boolean) => getMediaUrl(path, proxy ?? useProxy),
+		getMediaUrl: (path: string, proxy?: boolean) => getMediaUrl(path, proxy ?? imageUsesProxy),
 		onImageLoad: () => (isLoaded = true),
 		onClose: close,
 		onPrevious: previous,
@@ -82,7 +92,7 @@
 		hasNext,
 		galleryImageId:
 			currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined,
-		useProxy
+		useProxy: imageUsesProxy
 	});
 
 	const aspectRatio = $derived(
@@ -181,12 +191,64 @@
 		}
 	}
 
+	function mediaNeedsProxy(image: (Media & { needsProxy?: boolean }) | undefined): boolean {
+		return (
+			useProxy ||
+			Boolean(image && typeof image === 'object' && image.needsProxy === true)
+		);
+	}
+
+	/** Largest derivative URL for a mime (matches lightbox `<picture>` preference). */
+	function largestDerivativeUrl(image: Media, mimePrefix?: string): string | null {
+		const sizes = image.sizes;
+		if (!sizes) return null;
+		for (const key of SIZE_KEYS) {
+			const size = sizes[key];
+			if (!size?.url) continue;
+			if (mimePrefix && !(size.mimeType ?? '').startsWith(mimePrefix)) continue;
+			return size.url;
+		}
+		return null;
+	}
+
+	/**
+	 * Warm the URLs the lightbox will actually paint (srcset candidates + src),
+	 * not only the original `url` (which often misses the AVIF/JPEG cache entry).
+	 */
+	function preloadUrlsForImage(image: Media & { needsProxy?: boolean }): string[] {
+		if (isVideoMedia(image)) return [];
+
+		const proxy = mediaNeedsProxy(image);
+		const urls = new Set<string>();
+		const add = (path: string | null | undefined) => {
+			if (!path) return;
+			const resolved = getMediaUrl(path, proxy);
+			if (resolved) urls.add(resolved);
+		};
+
+		// GIFs must use the original file (derivatives are often filmstrips).
+		if (isGifMedia(image)) {
+			add(image.url);
+			return [...urls];
+		}
+
+		add(largestDerivativeUrl(image, 'image/avif'));
+		add(largestDerivativeUrl(image, 'image/jpeg'));
+		add(largestDerivativeUrl(image, 'image/webp'));
+		// Fallback when mime metadata is missing on sizes
+		add(largestDerivativeUrl(image));
+		add(image.url);
+		return [...urls];
+	}
+
 	function preloadByIndex(index: number) {
 		const image = images[index];
-		const src = image?.url;
-		if (!src) return;
-		const img = new Image();
-		img.src = getMediaUrl(src, useProxy);
+		if (!image) return;
+		for (const src of preloadUrlsForImage(image)) {
+			const img = new Image();
+			img.decoding = 'async';
+			img.src = src;
+		}
 	}
 
 	// Only preload when lightbox is open: current image + immediate neighbors.

@@ -261,13 +261,28 @@
 	}
 
 	.article-cms-edit-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid #8b0000;
+		border-radius: 3px;
+		background: transparent;
 		color: #8b0000;
 		text-decoration: none;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
+		font-size: inherit;
+		line-height: 1.2;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease;
 
-		&:hover {
-			text-decoration: underline;
+		&:hover,
+		&:focus-visible {
+			background: #8b0000;
+			color: #f5f0e6;
+			text-decoration: none;
 		}
 	}
 

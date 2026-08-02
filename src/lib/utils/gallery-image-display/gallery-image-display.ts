@@ -1,4 +1,5 @@
 import type { GalleryImage, Media } from '$lib/types/payload-types';
+import { mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
 
 /**
  * Commerce data attached to a sellable gallery image. Resolved server-side from
@@ -14,6 +15,11 @@ export type GalleryCommerce = {
 
 export type GalleryGridMedia = Media & {
 	isNsfw: boolean;
+	/**
+	 * When true, load bytes through `/api/media-proxy` even if the parent album is public
+	 * (per-image NSFW / AUTHENTICATED / PRIVILEGED settings).
+	 */
+	needsProxy: boolean;
 	galleryImageId?: number;
 	commerce?: GalleryCommerce | null;
 };
@@ -35,6 +41,7 @@ export function buildPlaceholderGalleryMedia(options: {
 	height?: number | null;
 	aspectRatioFallback?: number;
 	isNsfw?: boolean;
+	needsProxy?: boolean;
 }): GalleryGridMedia {
 	const ar = options.aspectRatioFallback ?? 3 / 4;
 	let w = typeof options.width === 'number' && options.width > 0 ? options.width : 0;
@@ -54,6 +61,7 @@ export function buildPlaceholderGalleryMedia(options: {
 		updatedAt: PLACEHOLDER_DATE,
 		createdAt: PLACEHOLDER_DATE,
 		isNsfw: options.isNsfw ?? false,
+		needsProxy: options.needsProxy ?? false,
 		galleryImageId: options.galleryImageId
 	};
 }
@@ -70,12 +78,14 @@ export function galleryImageDocToDisplayMedia(
 
 	const imageDoc = doc as Partial<GalleryImage>;
 	const docIsNsfw = imageDoc.settings?.isNsfw === true || albumIsNsfw;
+	const needsProxy = mediaRequiresAuthProxy(imageDoc.settings) || albumIsNsfw;
 	const galleryImageId = imageDoc.id;
 
 	if ('url' in imageDoc && 'id' in imageDoc) {
 		return {
 			...(imageDoc as Media),
 			isNsfw: docIsNsfw,
+			needsProxy,
 			galleryImageId,
 			commerce: readCommerce(imageDoc)
 		};
@@ -87,6 +97,7 @@ export function galleryImageDocToDisplayMedia(
 			return {
 				...(candidate as Media),
 				isNsfw: docIsNsfw,
+				needsProxy,
 				galleryImageId,
 				commerce: readCommerce(imageDoc)
 			};
