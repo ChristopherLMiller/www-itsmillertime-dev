@@ -179,6 +179,7 @@
 
 	function isImageNsfw(doc: unknown): boolean {
 		if (typeof doc !== 'object' || doc === null) return false;
+		if ('isNsfw' in doc && (doc as { isNsfw?: boolean }).isNsfw === true) return true;
 		const settings = (doc as { settings?: { isNsfw?: boolean } }).settings;
 		return settings?.isNsfw === true;
 	}

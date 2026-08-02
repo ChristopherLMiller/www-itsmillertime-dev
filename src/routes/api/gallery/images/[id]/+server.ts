@@ -2,7 +2,7 @@ import { getMergedSessionUser } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import type { GalleryImage } from '$lib/types/payload-types';
-import { canAccessGallerySettings } from '$lib/utils/gallery-access';
+import { canAccessGallerySettings, mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -84,6 +84,9 @@ export const GET: RequestHandler = async (event) => {
 		width: isGif ? (doc.width ?? null) : (doc.sizes?.thumbnail?.width ?? doc.width ?? null),
 		height: isGif ? (doc.height ?? null) : (doc.sizes?.thumbnail?.height ?? doc.height ?? null),
 		url: previewUrl,
+		/** Client uses this to route restricted bytes through `/api/media-proxy`. */
+		needsProxy: mediaRequiresAuthProxy(doc.settings),
+		isNsfw: doc.settings?.isNsfw === true,
 		sizes: isGif
 			? {}
 			: {

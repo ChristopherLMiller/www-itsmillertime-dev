@@ -61,14 +61,23 @@ export const GET: RequestHandler = async (event) => {
 						width: true,
 						height: true,
 						blurhash: true,
-						settings: { isNsfw: true }
+						settings: {
+							isNsfw: true,
+							visibility: true,
+							permittedRoles: true,
+							allowedUsers: true
+						}
 					}
 				}
 			: {})
 	});
 
+	const docs = (imagesResult.docs ?? []).filter((doc) =>
+		canAccessGallerySettings(doc.settings, user)
+	);
+
 	return json({
-		docs: imagesResult.docs ?? [],
+		docs,
 		page: imagesResult.page,
 		nextPage: imagesResult.nextPage,
 		hasNextPage: imagesResult.hasNextPage,

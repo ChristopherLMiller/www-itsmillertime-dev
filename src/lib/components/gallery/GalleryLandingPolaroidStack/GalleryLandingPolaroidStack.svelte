@@ -109,7 +109,16 @@
 	<div class="gallery-landing-polaroid__error" role="status">{loadError}</div>
 {:else}
 	{@const cover = primaryForStack}
-	{#key `${cover.id}-${cover.url ?? ''}`}
+	{@const coverNeedsProxy =
+		useProxy ||
+		Boolean(
+			cover &&
+				typeof cover === 'object' &&
+				'needsProxy' in cover &&
+				(cover as { needsProxy?: boolean }).needsProxy === true
+		)
+	}
+	{#key `${cover.id}-${cover.url ?? ''}-${coverNeedsProxy ? 'p' : 'd'}`}
 		<PolaroidStack
 			primary={cover}
 			images={[cover, ...extraImages.filter((m) => m.id !== cover.id)]}
@@ -119,7 +128,7 @@
 			{hoverFlip}
 			albumTitle={caption}
 			{albumDescription}
-			{useProxy}
+			useProxy={coverNeedsProxy}
 			{isNsfw}
 			{nsfwImageIds}
 			{albumId}

@@ -2,7 +2,16 @@
 	import Lexical from '$lib/components/Lexical';
 	import type { GalleryAlbum, GalleryCategory, GalleryTag } from '$lib/types/payload-types';
 
-	let { gallery, imageCount }: { gallery: GalleryAlbum; imageCount: number } = $props();
+	let {
+		gallery,
+		imageCount,
+		cmsEditHref = null
+	}: {
+		gallery: GalleryAlbum;
+		imageCount: number;
+		/** Admin-only Payload edit URL; omit for non-admins / Storybook. */
+		cmsEditHref?: string | null;
+	} = $props();
 
 	const category = $derived(
 		typeof gallery.settings?.category === 'object' && gallery.settings?.category !== null
@@ -89,6 +98,18 @@
 					<span class="album-header__meta-label">Date</span>
 					<span class="album-header__meta-value">{dateFormatted}</span>
 				</div>
+			{/if}
+
+			{#if cmsEditHref}
+				<a
+					href={cmsEditHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="album-header__cms-edit"
+					aria-label="Edit this album in the CMS (opens in a new tab)"
+				>
+					Edit in CMS
+				</a>
 			{/if}
 
 			{#if tags.length > 0}
@@ -219,6 +240,33 @@
 		color: #333;
 		font-family: var(--font-special-elite);
 		font-size: 0.95rem;
+	}
+
+	.album-header__cms-edit {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.4rem 0.85rem;
+		border: 1px solid rgba(0, 0, 0, 0.2);
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.06);
+		font-family: var(--font-special-elite);
+		font-size: 0.75rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-primary-darker);
+		text-decoration: none;
+		transition:
+			background 0.15s ease,
+			border-color 0.15s ease,
+			color 0.15s ease;
+	}
+
+	.album-header__cms-edit:hover,
+	.album-header__cms-edit:focus-visible {
+		background: rgba(0, 0, 0, 0.1);
+		border-color: rgba(0, 0, 0, 0.35);
+		color: #1a1a1a;
 	}
 
 	.album-header__tags {

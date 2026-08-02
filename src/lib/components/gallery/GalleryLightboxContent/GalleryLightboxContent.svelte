@@ -17,6 +17,7 @@
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 	import { getMediaUrl, isGifMedia, isVideoMedia } from '$lib/utils/media-url';
+	import { imageZoomPan, type ImageZoomPanHandle } from '$lib/utils/image-zoom-pan';
 	import ExifIcon from '$lib/components/ExifIcon';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
@@ -49,18 +50,39 @@
 			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
 	);
 
-	type SidebarTab = 'information' | 'metrics' | 'shop';
+	type SidebarTab = 'information' | 'admin' | 'shop';
+
+	const INFO_COLLAPSED_KEY = 'gallery-lightbox-info-collapsed';
+
+	function readInfoCollapsedPref(): boolean {
+		if (!browser) return false;
+		try {
+			return localStorage.getItem(INFO_COLLAPSED_KEY) === '1';
+		} catch {
+			return false;
+		}
+	}
+
+	function writeInfoCollapsedPref(collapsed: boolean) {
+		if (!browser) return;
+		try {
+			localStorage.setItem(INFO_COLLAPSED_KEY, collapsed ? '1' : '0');
+		} catch {
+			/* ignore quota / private mode */
+		}
+	}
 
 	let activeSidebarTab = $state<SidebarTab>('information');
 	/** When true, hide the details panel so the image fills the viewport. */
-	let infoCollapsed = $state(false);
+	let infoCollapsed = $state(readInfoCollapsedPref());
 
 	function toggleInfoPanel() {
 		infoCollapsed = !infoCollapsed;
+		writeInfoCollapsedPref(infoCollapsed);
 	}
 
 	const sidebarTabs = $derived<SidebarTab[]>(
-		isAdmin ? ['information', 'metrics', 'shop'] : ['information', 'shop']
+		isAdmin ? ['information', 'admin', 'shop'] : ['information', 'shop']
 	);
 
 	let {
@@ -97,11 +119,27 @@
 		useProxy?: boolean;
 	} = $props();
 
+	const cmsImageEditHref = $derived(
+		isAdmin && galleryImageId != null
+			? `${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-images/${galleryImageId}`
+			: null
+	);
+
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
+	const zoomHandle: ImageZoomPanHandle = {
+		reset: () => {},
+		isZoomed: () => false
+	};
+	let imageZoomed = $state(false);
+
 	const resolvedImageSrc = $derived(
 		imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
 	);
 	const lightboxSrcsets = $derived(buildSrcsets(image, useProxy ?? false));
+	/** Prefer largest derivative so wheel-zoom stays sharp. */
+	const lightboxSizes = $derived(
+		image?.width != null && image.width > 0 ? `${image.width}px` : '100vw'
+	);
 
 	/** Blurhash (or parent-passed placeholder string) for underlay while full image loads */
 	const blurPlaceholder = $derived.by(() => {
@@ -142,6 +180,13 @@
 		void index;
 		void resolvedImageSrc;
 		mainImgReadyNotified = false;
+	});
+
+	$effect(() => {
+		void index;
+		void resolvedImageSrc;
+		zoomHandle.reset();
+		imageZoomed = false;
 	});
 
 	/**
@@ -520,32 +565,46 @@
 					{/if}
 					{#if resolvedImageSrc}
 						{#key index}
-							<picture class="gallery-lightbox__picture">
-								<source
-									type="image/avif"
-									srcset={lightboxSrcsets.avifSrcset || undefined}
-									sizes="100vw"
-								/>
-								<source
-									type="image/jpeg"
-									srcset={lightboxSrcsets.jpegSrcset || undefined}
-									sizes="100vw"
-								/>
-								<img
-									class="gallery-lightbox__image"
-									use:mainLightboxImage
-									src={resolvedImageSrc ?? ''}
-									alt={image?.alt ?? ''}
-									width={image?.width}
-									height={image?.height}
-									fetchpriority="high"
-									decoding="async"
-									style:opacity={mainImageLoaded ? 1 : 0}
-									onload={markMainImageReady}
-									onerror={markMainImageReady}
-									oncontextmenu={preventContextMenu}
-								/>
-							</picture>
+							<div
+								class="gallery-lightbox__zoom-layer"
+								class:gallery-lightbox__zoom-layer--zoomed={imageZoomed}
+								use:imageZoomPan={{
+									handle: zoomHandle,
+									maxScale: 5,
+									clickZoomScale: 2.5,
+									onZoomChange: (z) => {
+										imageZoomed = z;
+									}
+								}}
+							>
+								<picture class="gallery-lightbox__picture">
+									<source
+										type="image/avif"
+										srcset={lightboxSrcsets.avifSrcset || undefined}
+										sizes={lightboxSizes}
+									/>
+									<source
+										type="image/jpeg"
+										srcset={lightboxSrcsets.jpegSrcset || undefined}
+										sizes={lightboxSizes}
+									/>
+									<img
+										class="gallery-lightbox__image"
+										use:mainLightboxImage
+										src={resolvedImageSrc ?? ''}
+										alt={image?.alt ?? ''}
+										width={image?.width}
+										height={image?.height}
+										draggable="false"
+										fetchpriority="high"
+										decoding="async"
+										style:opacity={mainImageLoaded ? 1 : 0}
+										onload={markMainImageReady}
+										onerror={markMainImageReady}
+										oncontextmenu={preventContextMenu}
+									/>
+								</picture>
+							</div>
 						{/key}
 					{/if}
 				{/if}
@@ -647,15 +706,15 @@
 					<button
 						type="button"
 						class="gallery-lightbox__tab"
-						class:gallery-lightbox__tab--active={activeSidebarTab === 'metrics'}
+						class:gallery-lightbox__tab--active={activeSidebarTab === 'admin'}
 						role="tab"
-						id="gallery-lightbox-tab-metrics"
-						aria-selected={activeSidebarTab === 'metrics'}
-						aria-controls="gallery-lightbox-panel-metrics"
-						tabindex={activeSidebarTab === 'metrics' ? 0 : -1}
-						onclick={() => setSidebarTab('metrics')}
+						id="gallery-lightbox-tab-admin"
+						aria-selected={activeSidebarTab === 'admin'}
+						aria-controls="gallery-lightbox-panel-admin"
+						tabindex={activeSidebarTab === 'admin' ? 0 : -1}
+						onclick={() => setSidebarTab('admin')}
 					>
-						Metrics
+						Admin
 					</button>
 				{/if}
 				<button
@@ -739,14 +798,15 @@
 								/>
 							{/if}
 
-							{#if isAdmin && galleryImageId}
+							{#if cmsImageEditHref}
 								<span class="gallery-lightbox__toolbar-divider" aria-hidden="true"></span>
 								<a
-									href={`${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-images/${galleryImageId}`}
+									href={cmsImageEditHref}
 									target="_blank"
 									rel="noopener noreferrer"
 									class="gallery-lightbox__edit-btn"
-									aria-label="Edit image in CMS"
+									aria-label="Edit image in CMS (opens in a new tab)"
+									title="Edit in CMS"
 								>
 									<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
 										<path
@@ -831,12 +891,26 @@
 
 				{#if isAdmin}
 					<div
-						id="gallery-lightbox-panel-metrics"
+						id="gallery-lightbox-panel-admin"
 						class="gallery-lightbox__tab-panel"
 						role="tabpanel"
-						aria-labelledby="gallery-lightbox-tab-metrics"
-						hidden={activeSidebarTab !== 'metrics'}
+						aria-labelledby="gallery-lightbox-tab-admin"
+						hidden={activeSidebarTab !== 'admin'}
 					>
+						{#if cmsImageEditHref}
+							<section class="gallery-lightbox__section">
+								<h3 class="gallery-lightbox__section-title">CMS</h3>
+								<a
+									href={cmsImageEditHref}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="gallery-lightbox__cms-edit-link"
+									aria-label="Edit this image in the CMS (opens in a new tab)"
+								>
+									Edit in CMS
+								</a>
+							</section>
+						{/if}
 						<section class="gallery-lightbox__section">
 							<h3 class="gallery-lightbox__section-title">Engagement</h3>
 							<dl class="gallery-lightbox__metrics">
@@ -1052,7 +1126,7 @@
 	}
 
 	.gallery-lightbox__image-frame :global(.gallery-media-player),
-	.gallery-lightbox__image-frame .gallery-lightbox__image,
+	.gallery-lightbox__image-frame .gallery-lightbox__zoom-layer,
 	.gallery-lightbox__image-frame .gallery-lightbox__placeholder {
 		pointer-events: auto;
 	}
@@ -1128,13 +1202,34 @@
 		}
 	}
 
+	.gallery-lightbox__zoom-layer {
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		display: block;
+		width: 100%;
+		height: 100%;
+		cursor: zoom-in;
+		touch-action: none;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	.gallery-lightbox__zoom-layer--zoomed {
+		cursor: grab;
+	}
+
+	.gallery-lightbox__zoom-layer--zoomed:active {
+		cursor: grabbing;
+	}
+
 	.gallery-lightbox__picture {
 		position: absolute;
 		inset: 0;
 		display: block;
 		width: 100%;
 		height: 100%;
-		z-index: 3;
+		pointer-events: none;
 		animation: imageFadeIn 180ms ease;
 	}
 
@@ -1144,6 +1239,7 @@
 		height: 100%;
 		object-fit: contain;
 		object-position: center;
+		pointer-events: none;
 		transition: opacity 300ms ease;
 	}
 
@@ -1298,6 +1394,34 @@
 		border-color: rgba(255, 255, 255, 0.28);
 		background: rgba(255, 255, 255, 0.12);
 		color: var(--color-secondary);
+	}
+
+	.gallery-lightbox__cms-edit-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.45rem 0.9rem;
+		border: 1px solid rgba(255, 255, 255, 0.22);
+		border-radius: 4px;
+		background: rgba(255, 255, 255, 0.06);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-secondary);
+		text-decoration: none;
+		transition:
+			border-color 150ms ease,
+			background 150ms ease,
+			color 150ms ease;
+	}
+
+	.gallery-lightbox__cms-edit-link:hover,
+	.gallery-lightbox__cms-edit-link:focus-visible {
+		border-color: rgba(255, 255, 255, 0.35);
+		background: rgba(255, 255, 255, 0.12);
+		color: var(--color-white-lightest);
 	}
 
 	.gallery-lightbox__section-text {

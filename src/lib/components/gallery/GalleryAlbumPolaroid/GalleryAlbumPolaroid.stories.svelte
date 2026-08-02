@@ -7,6 +7,7 @@
 	const cachedMedia: GalleryGridMedia = {
 		...storybookImageMedia,
 		isNsfw: false,
+		needsProxy: false,
 		galleryImageId: 1
 	};
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canAccessGallerySettings } from './gallery-access.server';
+import { canAccessGallerySettings, mediaRequiresAuthProxy } from './gallery-access';
 
 describe('canAccessGallerySettings', () => {
 	it('allows public albums for anonymous users', () => {
@@ -32,5 +32,26 @@ describe('canAccessGallerySettings', () => {
 				{ id: 1, role: ['user'] }
 			)
 		).toBe(false);
+	});
+
+	it('allows admins for privileged albums', () => {
+		expect(
+			canAccessGallerySettings(
+				{ visibility: 'PRIVILEGED', permittedRoles: ['family'], isNsfw: false },
+				{ id: 1, role: ['admin'] }
+			)
+		).toBe(true);
+	});
+});
+
+describe('mediaRequiresAuthProxy', () => {
+	it('is false for public non-NSFW media', () => {
+		expect(mediaRequiresAuthProxy({ visibility: 'ALL', isNsfw: false })).toBe(false);
+	});
+
+	it('is true for NSFW, authenticated, or privileged media', () => {
+		expect(mediaRequiresAuthProxy({ visibility: 'ALL', isNsfw: true })).toBe(true);
+		expect(mediaRequiresAuthProxy({ visibility: 'AUTHENTICATED', isNsfw: false })).toBe(true);
+		expect(mediaRequiresAuthProxy({ visibility: 'PRIVILEGED', isNsfw: false })).toBe(true);
 	});
 });

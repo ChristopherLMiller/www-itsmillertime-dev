@@ -109,7 +109,7 @@
 			if (media) onClick?.(media);
 		}}
 	>
-		{#key `${displayMedia.id}-${displayMedia.url ?? ''}`}
+		{#key `${displayMedia.id}-${displayMedia.url ?? ''}-${displayMedia.needsProxy ? 'p' : 'd'}`}
 			<Polaroid
 				media={displayMedia}
 				caption={displayMedia.caption
@@ -119,7 +119,7 @@
 				clickable={false}
 				enableViewTransition={false}
 				adaptiveHeight={true}
-				{useProxy}
+				useProxy={useProxy || displayMedia.needsProxy}
 				isNsfw={displayMedia.isNsfw}
 				{priority}
 				{responsiveSizes}

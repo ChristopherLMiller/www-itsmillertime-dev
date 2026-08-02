@@ -1,6 +1,6 @@
 import { getMergedSessionUser } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
-import { canAccessGallerySettings } from '$lib/utils/gallery-access';
+import { canAccessGallerySettings, mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -49,21 +49,26 @@ export const GET: RequestHandler = async (event) => {
 		depth: 0
 	});
 
-	const docs = (imagesResult.docs ?? []).map((doc) => ({
-		thumbnailURL: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
-		id: doc.id,
-		blurhash: doc.blurhash ?? null,
-		width: doc.sizes?.thumbnail?.width ?? doc.width ?? null,
-		height: doc.sizes?.thumbnail?.height ?? doc.height ?? null,
-		url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '',
-		sizes: {
-			thumbnail: {
-				url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
-				width: doc.sizes?.thumbnail?.width ?? null,
-				height: doc.sizes?.thumbnail?.height ?? null
+	const albumIsNsfw = album.settings?.isNsfw === true;
+	const docs = (imagesResult.docs ?? [])
+		.filter((doc) => canAccessGallerySettings(doc.settings, user))
+		.map((doc) => ({
+			thumbnailURL: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
+			id: doc.id,
+			blurhash: doc.blurhash ?? null,
+			width: doc.sizes?.thumbnail?.width ?? doc.width ?? null,
+			height: doc.sizes?.thumbnail?.height ?? doc.height ?? null,
+			url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '',
+			needsProxy: mediaRequiresAuthProxy(doc.settings) || albumIsNsfw,
+			isNsfw: doc.settings?.isNsfw === true || albumIsNsfw,
+			sizes: {
+				thumbnail: {
+					url: doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null,
+					width: doc.sizes?.thumbnail?.width ?? null,
+					height: doc.sizes?.thumbnail?.height ?? null
+				}
 			}
-		}
-	}));
+		}));
 
 	return json({
 		docs,
