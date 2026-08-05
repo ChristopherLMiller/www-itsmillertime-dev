@@ -255,6 +255,15 @@
 
 	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
 
+	const dimensionsLabel = $derived.by(() => {
+		const w = image?.width;
+		const h = image?.height;
+		if (w == null || h == null || w <= 0 || h <= 0) return null;
+		const mp = (w * h) / 1_000_000;
+		const mpLabel = mp >= 10 ? mp.toFixed(0) : mp.toFixed(1);
+		return `${w.toLocaleString()} × ${h.toLocaleString()} px (${mpLabel} MP)`;
+	});
+
 	// EXIF metadata: split into camera settings vs date/location
 	type ExifItem = {
 		label: string;
@@ -828,6 +837,25 @@
 						<p class="gallery-lightbox__section-text gallery-lightbox__caption">
 							{displayCaption || '—'}
 						</p>
+					</section>
+
+					<section class="gallery-lightbox__section">
+						<h3 class="gallery-lightbox__section-title">Image</h3>
+						{#if dimensionsLabel}
+							<div class="gallery-lightbox__meta-grid gallery-lightbox__meta-grid--single">
+								<div class="gallery-lightbox__meta-item">
+									<div class="gallery-lightbox__meta-icon">
+										<ExifIcon icon="dimensions" />
+									</div>
+									<div class="gallery-lightbox__meta-content">
+										<span class="gallery-lightbox__meta-label">Dimensions</span>
+										<span class="gallery-lightbox__meta-value">{dimensionsLabel}</span>
+									</div>
+								</div>
+							</div>
+						{:else}
+							<p class="gallery-lightbox__section-text">—</p>
+						{/if}
 					</section>
 
 					<section class="gallery-lightbox__section">

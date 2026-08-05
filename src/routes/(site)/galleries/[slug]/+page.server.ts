@@ -7,12 +7,13 @@ import type { PageServerLoad } from './$types';
 const IMAGE_BATCH_SIZE = 30;
 const GALLERY_LANDING = '/galleries';
 
-const albumSettingsSelect = {
-	isNsfw: true,
-	visibility: true,
-	permittedRoles: true,
-	allowedUsers: true
-} as const;
+	const albumSettingsSelect = {
+		isNsfw: true,
+		visibility: true,
+		permittedRoles: true,
+		allowedUsers: true,
+		defaultSort: true
+	} as const;
 
 function redirectToGalleryLanding(): never {
 	throw redirect(303, GALLERY_LANDING);
@@ -127,6 +128,7 @@ export const load: PageServerLoad = async ({ params, fetch, request, url, parent
 	}
 
 	// First page: ids (+ per-image NSFW for client filtering); each grid cell fetches full row via API.
+	const imageSort = gallery.settings?.defaultSort ?? '-createdAt';
 	const imagesData = await sdk.find({
 		collection: 'gallery-images',
 		where: {
@@ -134,6 +136,7 @@ export const load: PageServerLoad = async ({ params, fetch, request, url, parent
 				contains: gallery.id
 			}
 		},
+		sort: imageSort,
 		limit: IMAGE_BATCH_SIZE,
 		page: 1,
 		depth: 0,

@@ -12,7 +12,8 @@
 		| 'metering'
 		| 'flash'
 		| 'calendar'
-		| 'location';
+		| 'location'
+		| 'dimensions';
 
 	let { icon }: { icon: IconKey } = $props();
 </script>
@@ -92,5 +93,8 @@
 	{:else if icon === 'location'}
 		<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
 		<circle cx="12" cy="10" r="3" />
+	{:else if icon === 'dimensions'}
+		<path d="M21 3H3v18h18V3z" />
+		<path d="M3 9h18M9 3v18" />
 	{/if}
 </svg>

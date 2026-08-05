@@ -26,7 +26,8 @@ export const GET: RequestHandler = async (event) => {
 				isNsfw: true,
 				visibility: true,
 				permittedRoles: true,
-				allowedUsers: true
+				allowedUsers: true,
+				defaultSort: true
 			}
 		},
 		disableErrors: true
@@ -43,7 +44,7 @@ export const GET: RequestHandler = async (event) => {
 				contains: albumId
 			}
 		},
-		sort: '-createdAt',
+		sort: album.settings?.defaultSort ?? '-createdAt',
 		limit: 10,
 		page: 1,
 		depth: 0
