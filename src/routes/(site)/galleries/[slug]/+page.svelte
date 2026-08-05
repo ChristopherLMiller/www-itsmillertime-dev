@@ -130,6 +130,7 @@
 	}
 
 	function closeLightbox() {
+		lightboxOpen = false;
 		pinnedLightboxFileMediaId = null;
 		directLinkDismissed = true;
 		setSelectedUrl(null);
@@ -207,10 +208,19 @@
 		}
 	}
 
-	// Open lightbox on load when ?selected=<gallery-image id> is present
+	// Open lightbox when ?selected= is in the URL. Use page.url (not load data) so
+	// replaceState on close clears the param and scroll/polaroid resolves cannot reopen it.
 	$effect(() => {
-		const selectedId = data.selectedGalleryImageId;
-		if (!browser || selectedId == null) return;
+		if (!browser) return;
+
+		const raw = page.url.searchParams.get('selected');
+		if (raw == null) return;
+
+		const selectedId = Number(raw);
+		if (!Number.isFinite(selectedId) || selectedId <= 0) return;
+
+		// Already showing this image — don't fight index/pin updates.
+		if (lightboxOpen && pinnedLightboxFileMediaId === selectedId) return;
 
 		const idx = findGalleryImageIndex(selectedId);
 		if (idx !== -1) {
@@ -220,7 +230,7 @@
 			return;
 		}
 
-		if (directLinkResolving || directLinkFailed) return;
+		if (directLinkDismissed || directLinkResolving || directLinkFailed) return;
 
 		void resolveDirectLink(selectedId);
 	});

@@ -26,7 +26,8 @@ export const GET: RequestHandler = async (event) => {
 				isNsfw: true,
 				visibility: true,
 				permittedRoles: true,
-				allowedUsers: true
+				allowedUsers: true,
+				defaultSort: true
 			}
 		},
 		disableErrors: true
@@ -43,6 +44,7 @@ export const GET: RequestHandler = async (event) => {
 		Math.max(1, requestedLimit || DEFAULT_IMAGE_BATCH_SIZE)
 	);
 	const idsOnly = url.searchParams.get('idsOnly') === '1';
+	const imageSort = album.settings?.defaultSort ?? '-createdAt';
 
 	const imagesResult = await sdk.find({
 		collection: 'gallery-images',
@@ -51,6 +53,7 @@ export const GET: RequestHandler = async (event) => {
 				contains: albumId
 			}
 		},
+		sort: imageSort,
 		limit,
 		page,
 		depth: idsOnly ? 0 : 1,
