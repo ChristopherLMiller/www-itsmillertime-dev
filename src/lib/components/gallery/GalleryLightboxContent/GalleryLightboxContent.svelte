@@ -16,34 +16,12 @@
 	} from '$lib/utils/gallery-image-tracking/types';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
-	import { getMediaUrl, isGifMedia, isVideoMedia } from '$lib/utils/media-url';
+	import { getMediaUrl, isVideoMedia } from '$lib/utils/media-url';
 	import { imageZoomPan, type ImageZoomPanHandle } from '$lib/utils/image-zoom-pan';
 	import ExifIcon from '$lib/components/ExifIcon';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
 	import type { GalleryCommerce } from '$lib/utils/gallery-image-display';
-
-	const ALL_SIZE_KEYS = ['thumbnail', 'small', 'medium', 'large', 'xlarge'] as const;
-	function buildSrcsets(img: Media | undefined, proxy: boolean) {
-		// Payload AVIF/JPEG derivatives of animated GIFs are often vertical frame strips.
-		if (isGifMedia(img ?? null)) {
-			return { avifSrcset: '', jpegSrcset: '' };
-		}
-		const s = img?.sizes;
-		const avif: string[] = [];
-		const jpeg: string[] = [];
-		for (const key of ALL_SIZE_KEYS) {
-			const size = s?.[key];
-			if (!size?.url || size.width == null) continue;
-			const entry = `${getMediaUrl(size.url, proxy)} ${size.width}w`;
-			if (size.mimeType === 'image/avif') {
-				avif.push(entry);
-			} else {
-				jpeg.push(entry);
-			}
-		}
-		return { avifSrcset: avif.join(', '), jpegSrcset: jpeg.join(', ') };
-	}
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -126,20 +104,54 @@
 	);
 
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
+	const resolvedImageSrc = $derived(
+		imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
+	);
 	const zoomHandle: ImageZoomPanHandle = {
 		reset: () => {},
 		isZoomed: () => false
 	};
 	let imageZoomed = $state(false);
+	let imagePaneEl = $state<HTMLDivElement | null>(null);
+	let imageFrameEl = $state<HTMLDivElement | null>(null);
+	/** Scale needed for the image frame to cover the full image pane (fills letterbox bars). */
+	let coverScale = $state(1);
 
-	const resolvedImageSrc = $derived(
-		imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
-	);
-	const lightboxSrcsets = $derived(buildSrcsets(image, useProxy ?? false));
-	/** Prefer largest derivative so wheel-zoom stays sharp. */
-	const lightboxSizes = $derived(
-		image?.width != null && image.width > 0 ? `${image.width}px` : '100vw'
-	);
+	function measureCoverScale() {
+		const pane = imagePaneEl;
+		const frame = imageFrameEl;
+		if (!pane || !frame) return;
+		const paneW = pane.clientWidth;
+		const paneH = pane.clientHeight;
+		const frameW = frame.clientWidth;
+		const frameH = frame.clientHeight;
+		if (paneW <= 0 || paneH <= 0 || frameW <= 0 || frameH <= 0) return;
+		coverScale = Math.max(1, paneW / frameW, paneH / frameH);
+	}
+
+	$effect(() => {
+		if (!browser) return;
+		void index;
+		void infoCollapsed;
+		void resolvedImageSrc;
+		measureCoverScale();
+		const pane = imagePaneEl;
+		const frame = imageFrameEl;
+		if (!pane || !frame) return;
+		const ro = new ResizeObserver(() => measureCoverScale());
+		ro.observe(pane);
+		ro.observe(frame);
+		return () => ro.disconnect();
+	});
+
+	const imageZoomPanOptions = $derived({
+		handle: zoomHandle,
+		maxScale: Math.max(coverScale * 4, 8),
+		clickZoomScale: coverScale > 1.01 ? coverScale : 2.5,
+		onZoomChange: (z: boolean) => {
+			imageZoomed = z;
+		}
+	});
 
 	/** Blurhash (or parent-passed placeholder string) for underlay while full image loads */
 	const blurPlaceholder = $derived.by(() => {
@@ -156,7 +168,7 @@
 		return fallbackSize ? getMediaUrl(fallbackSize, useProxy ?? false) : null;
 	});
 
-	/** Load state for the main <img> (picture/srcset); do not trust parent isLoaded — it probes src only */
+	/** Load state for the main <img>; parent isLoaded probes src only and is not used here */
 	let mainImageLoaded = $state(false);
 
 	$effect(() => {
@@ -479,7 +491,7 @@
 		class:gallery-lightbox__body--info-collapsed={infoCollapsed}
 	>
 		<!-- Image pane: grows to fill when the info panel is collapsed -->
-		<div class="gallery-lightbox__image-pane">
+		<div class="gallery-lightbox__image-pane" bind:this={imagePaneEl}>
 			<button
 				class="gallery-lightbox__backdrop"
 				onclick={onClose}
@@ -536,18 +548,27 @@
 				</svg>
 			</button>
 
-			<div
-				class="gallery-lightbox__image-frame"
-				style:aspect-ratio={imageAspectRatio}
-				role="presentation"
-			>
-				{#if isVideo && image}
+			{#if isVideo && image}
+				<div
+					class="gallery-lightbox__image-frame"
+					style:aspect-ratio={imageAspectRatio}
+					role="presentation"
+				>
 					<GalleryMediaPlayer
 						media={image}
 						useProxy={useProxy ?? false}
 						className="gallery-lightbox__video"
 					/>
-				{:else}
+				</div>
+			{:else}
+				<div
+					class="gallery-lightbox__image-frame gallery-lightbox__image-frame--zoomable"
+					class:gallery-lightbox__image-frame--zoomed={imageZoomed}
+					bind:this={imageFrameEl}
+					style:aspect-ratio={imageAspectRatio}
+					role="presentation"
+					use:imageZoomPan={imageZoomPanOptions}
+				>
 					{#if showImageLoadingUi}
 						<div
 							class="gallery-lightbox__loading-overlay"
@@ -574,50 +595,25 @@
 					{/if}
 					{#if resolvedImageSrc}
 						{#key index}
-							<div
-								class="gallery-lightbox__zoom-layer"
-								class:gallery-lightbox__zoom-layer--zoomed={imageZoomed}
-								use:imageZoomPan={{
-									handle: zoomHandle,
-									maxScale: 5,
-									clickZoomScale: 2.5,
-									onZoomChange: (z) => {
-										imageZoomed = z;
-									}
-								}}
-							>
-								<picture class="gallery-lightbox__picture">
-									<source
-										type="image/avif"
-										srcset={lightboxSrcsets.avifSrcset || undefined}
-										sizes={lightboxSizes}
-									/>
-									<source
-										type="image/jpeg"
-										srcset={lightboxSrcsets.jpegSrcset || undefined}
-										sizes={lightboxSizes}
-									/>
-									<img
-										class="gallery-lightbox__image"
-										use:mainLightboxImage
-										src={resolvedImageSrc ?? ''}
-										alt={image?.alt ?? ''}
-										width={image?.width}
-										height={image?.height}
-										draggable="false"
-										fetchpriority="high"
-										decoding="async"
-										style:opacity={mainImageLoaded ? 1 : 0}
-										onload={markMainImageReady}
-										onerror={markMainImageReady}
-										oncontextmenu={preventContextMenu}
-									/>
-								</picture>
-							</div>
+							<img
+								class="gallery-lightbox__image"
+								use:mainLightboxImage
+								src={resolvedImageSrc ?? ''}
+								alt={image?.alt ?? ''}
+								width={image?.width}
+								height={image?.height}
+								draggable="false"
+								fetchpriority="high"
+								decoding="async"
+								style:opacity={mainImageLoaded ? 1 : 0}
+								onload={markMainImageReady}
+								onerror={markMainImageReady}
+								oncontextmenu={preventContextMenu}
+							/>
 						{/key}
 					{/if}
-				{/if}
-			</div>
+				</div>
+			{/if}
 
 			<button
 				class="gallery-lightbox__nav gallery-lightbox__nav--next"
@@ -1094,6 +1090,7 @@
 		align-items: center;
 		justify-content: center;
 		min-width: 0;
+		overflow: hidden;
 		transition: flex-basis 220ms ease;
 	}
 
@@ -1151,10 +1148,21 @@
 		overflow: hidden;
 		z-index: 1;
 		pointer-events: none;
+		flex-shrink: 0;
+	}
+
+	.gallery-lightbox__image-frame--zoomable {
+		pointer-events: auto;
+		touch-action: none;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	.gallery-lightbox__image-frame--zoomed {
+		z-index: 2;
 	}
 
 	.gallery-lightbox__image-frame :global(.gallery-media-player),
-	.gallery-lightbox__image-frame .gallery-lightbox__zoom-layer,
 	.gallery-lightbox__image-frame .gallery-lightbox__placeholder {
 		pointer-events: auto;
 	}
@@ -1230,38 +1238,9 @@
 		}
 	}
 
-	.gallery-lightbox__zoom-layer {
-		position: absolute;
-		inset: 0;
-		z-index: 3;
-		display: block;
-		width: 100%;
-		height: 100%;
-		cursor: zoom-in;
-		touch-action: none;
-		user-select: none;
-		-webkit-user-drag: none;
-	}
-
-	.gallery-lightbox__zoom-layer--zoomed {
-		cursor: grab;
-	}
-
-	.gallery-lightbox__zoom-layer--zoomed:active {
-		cursor: grabbing;
-	}
-
-	.gallery-lightbox__picture {
-		position: absolute;
-		inset: 0;
-		display: block;
-		width: 100%;
-		height: 100%;
-		pointer-events: none;
-		animation: imageFadeIn 180ms ease;
-	}
-
 	.gallery-lightbox__image {
+		position: absolute;
+		inset: 0;
 		display: block;
 		width: 100%;
 		height: 100%;
@@ -1269,6 +1248,7 @@
 		object-position: center;
 		pointer-events: none;
 		transition: opacity 300ms ease;
+		animation: imageFadeIn 180ms ease;
 	}
 
 	.gallery-lightbox__image-frame :global(.gallery-lightbox__video) {

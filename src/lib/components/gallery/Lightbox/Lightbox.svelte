@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Media } from '$lib/types/payload-types';
-	import { getMediaUrl, isGifMedia, isVideoMedia } from '$lib/utils/media-url';
+	import { getMediaUrl, isVideoMedia } from '$lib/utils/media-url';
 
 	export type LightboxContentArgs = {
 		image: Media | undefined;
@@ -54,7 +54,6 @@
 	let isRequestingMore = $state(false);
 
 	const SWIPE_THRESHOLD = 50;
-	const SIZE_KEYS = ['xlarge', 'large', 'medium', 'small', 'thumbnail'] as const;
 
 	const currentImage = $derived(images[currentIndex]);
 	const hasPrevious = $derived(currentIndex > 0);
@@ -198,60 +197,15 @@
 		);
 	}
 
-	/** Largest derivative URL for a mime (matches lightbox `<picture>` preference). */
-	function largestDerivativeUrl(image: Media, mimePrefix?: string): string | null {
-		const sizes = image.sizes;
-		if (!sizes) return null;
-		for (const key of SIZE_KEYS) {
-			const size = sizes[key];
-			if (!size?.url) continue;
-			if (mimePrefix && !(size.mimeType ?? '').startsWith(mimePrefix)) continue;
-			return size.url;
-		}
-		return null;
-	}
-
-	/**
-	 * Warm the URLs the lightbox will actually paint (srcset candidates + src),
-	 * not only the original `url` (which often misses the AVIF/JPEG cache entry).
-	 */
-	function preloadUrlsForImage(image: Media & { needsProxy?: boolean }): string[] {
-		if (isVideoMedia(image)) return [];
-
-		const proxy = mediaNeedsProxy(image);
-		const urls = new Set<string>();
-		const add = (path: string | null | undefined) => {
-			if (!path) return;
-			const resolved = getMediaUrl(path, proxy);
-			if (resolved) urls.add(resolved);
-		};
-
-		// GIFs must use the original file (derivatives are often filmstrips).
-		if (isGifMedia(image)) {
-			add(image.url);
-			return [...urls];
-		}
-
-		add(largestDerivativeUrl(image, 'image/avif'));
-		add(largestDerivativeUrl(image, 'image/jpeg'));
-		add(largestDerivativeUrl(image, 'image/webp'));
-		// Fallback when mime metadata is missing on sizes
-		add(largestDerivativeUrl(image));
-		add(image.url);
-		return [...urls];
-	}
-
 	function preloadByIndex(index: number) {
 		const image = images[index];
-		if (!image) return;
-		for (const src of preloadUrlsForImage(image)) {
-			const img = new Image();
-			img.decoding = 'async';
-			img.src = src;
-		}
+		if (!image?.url || isVideoMedia(image)) return;
+		const img = new Image();
+		img.decoding = 'async';
+		img.src = getMediaUrl(image.url, mediaNeedsProxy(image));
 	}
 
-	// Only preload when lightbox is open: current image + immediate neighbors.
+	// Only preload when lightbox is open: current image + immediate neighbors (full originals for zoom).
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		if (!open) return;
@@ -273,9 +227,7 @@
 		isLoaded = false;
 	});
 
-	// Default lightbox only: probe cache for src= URL. Skip when using custom content — those
-	// layouts often use <picture srcset>; a probe on src alone can mismatch the chosen resource
-	// and leave isLoaded false while the real image is already visible (blank flash).
+	// Default lightbox only: probe cache for the original src URL.
 	$effect(() => {
 		if (!open) {
 			isLoaded = false;
