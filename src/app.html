@@ -24,7 +24,7 @@
 		<!--
 			Must stay inline in HTML (not a module): an old service worker was cache-firsting
 			client bundles, so SSR painted the correct blog list and then stale JS hydrated
-			over it. This runs before %sveltekit.body% modules and clears that once.
+			over it. This runs before the SvelteKit body mount and clears that once.
 		-->
 		<script>
 			(function () {

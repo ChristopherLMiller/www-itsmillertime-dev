@@ -3,6 +3,12 @@ export type ImageZoomPanHandle = {
 	isZoomed: () => boolean;
 };
 
+export type ImageZoomPanTransform = {
+	scale: number;
+	tx: number;
+	ty: number;
+};
+
 export type ImageZoomPanOptions = {
 	minScale?: number;
 	maxScale?: number;
@@ -12,6 +18,13 @@ export type ImageZoomPanOptions = {
 	handle?: ImageZoomPanHandle;
 	/** Fired when zoomed-in state toggles (scale > 1). */
 	onZoomChange?: (zoomed: boolean) => void;
+	/** Fired whenever scale/translate are applied (including identity). */
+	onTransform?: (t: ImageZoomPanTransform) => void;
+	/**
+	 * When false, skip writing CSS transform on the node (canvas owns pixels).
+	 * Hit-testing still uses the node; keep true if the node must grow with scale.
+	 */
+	applyCssTransform?: boolean;
 };
 
 type Point = { x: number; y: number };
@@ -27,6 +40,8 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	let maxScale = options.maxScale ?? 5;
 	let clickZoomScale = options.clickZoomScale ?? 2.5;
 	let onZoomChange = options.onZoomChange;
+	let onTransform = options.onTransform;
+	let applyCssTransform = options.applyCssTransform ?? true;
 	let handle = options.handle;
 
 	let scale = 1;
@@ -59,10 +74,16 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 
 	function apply() {
 		node.style.transformOrigin = 'center center';
-		node.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
-		node.style.willChange = scale > 1 || tx !== 0 || ty !== 0 ? 'transform' : 'auto';
+		if (applyCssTransform) {
+			node.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
+			node.style.willChange = scale > 1 || tx !== 0 || ty !== 0 ? 'transform' : 'auto';
+		} else {
+			node.style.transform = '';
+			node.style.willChange = 'auto';
+		}
 		node.style.cursor = scale > 1.001 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in';
 		setZoomed(scale > 1.001);
+		onTransform?.({ scale, tx, ty });
 	}
 
 	function clampPan() {
@@ -343,11 +364,17 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 			maxScale = next.maxScale ?? 5;
 			clickZoomScale = next.clickZoomScale ?? 2.5;
 			onZoomChange = next.onZoomChange;
+			onTransform = next.onTransform;
+			const nextApplyCss = next.applyCssTransform ?? true;
+			const cssModeChanged = nextApplyCss !== applyCssTransform;
+			applyCssTransform = nextApplyCss;
 			handle = next.handle;
 			bindHandle();
 			if (scale < minScale || scale > maxScale) {
 				scale = Math.min(maxScale, Math.max(minScale, scale));
 				clampPan();
+				apply();
+			} else if (cssModeChanged) {
 				apply();
 			}
 		},
