@@ -1,4 +1,3 @@
-import { browser } from '$app/environment';
 import { loadSession } from '$lib/auth/loadSession';
 import type { LayoutCacheData } from '$lib/cache/layoutCache';
 import type { LayoutLoad } from './$types';
@@ -14,13 +13,10 @@ export const load: LayoutLoad = async (event) => {
 	};
 	const request = 'request' in event ? (event.request as Request) : undefined;
 
-	// Client: always refresh session (e.g. after login). SSR: reuse server layout.
-	const session = browser
-		? await loadSession(event.fetch, request)
-		: (parentData.session ?? (await loadSession(event.fetch, request)));
-
-	// SSR seed comes from +layout.server.ts (fetched in parallel with session).
-	const initialLayout = browser ? null : (parentData.initialLayout ?? null);
+	// Prefer SSR-serialized values so the client universal load matches server HTML during hydration.
+	// (Re-fetching session / nulling layout on browser caused root hydration_mismatch in SiteChrome.)
+	const session = parentData.session ?? (await loadSession(event.fetch, request));
+	const initialLayout = parentData.initialLayout ?? null;
 
 	return { session, initialLayout };
 };

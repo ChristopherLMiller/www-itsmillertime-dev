@@ -17,7 +17,12 @@
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 	import { getMediaUrl, isVideoMedia } from '$lib/utils/media-url';
-	import { imageZoomPan, type ImageZoomPanHandle } from '$lib/utils/image-zoom-pan';
+	import { imageZoomPan, type ImageZoomPanHandle, type ImageZoomPanTransform } from '$lib/utils/image-zoom-pan';
+	import {
+		createLightboxZoomCanvasController,
+		type LightboxZoomCanvasPaintInput
+	} from '$lib/utils/lightbox-zoom-canvas';
+	import { disposeZoomBitmap, loadZoomBitmap } from '$lib/utils/lightbox-zoom-source';
 	import ExifIcon from '$lib/components/ExifIcon';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
@@ -52,7 +57,12 @@
 
 	let activeSidebarTab = $state<SidebarTab>('information');
 	/** When true, hide the details panel so the image fills the viewport. */
-	let infoCollapsed = $state(readInfoCollapsedPref());
+	let infoCollapsed = $state(false);
+
+	$effect(() => {
+		if (!browser) return;
+		infoCollapsed = readInfoCollapsedPref();
+	});
 
 	function toggleInfoPanel() {
 		infoCollapsed = !infoCollapsed;
@@ -114,8 +124,27 @@
 	let imageZoomed = $state(false);
 	let imagePaneEl = $state<HTMLDivElement | null>(null);
 	let imageFrameEl = $state<HTMLDivElement | null>(null);
+	let zoomCanvasEl = $state<HTMLCanvasElement | null>(null);
+	let mainImageEl = $state<HTMLImageElement | null>(null);
 	/** Scale needed for the image frame to cover the full image pane (fills letterbox bars). */
 	let coverScale = $state(1);
+	let zoomTransform = $state<ImageZoomPanTransform>({ scale: 1, tx: 0, ty: 0 });
+	let zoomBitmap = $state<ImageBitmap | null>(null);
+	let zoomBitmapLoading = $state(false);
+	let zoomBitmapFailed = $state(false);
+	let heldZoomBitmap: ImageBitmap | null = null;
+	let zoomCanvasController: ReturnType<typeof createLightboxZoomCanvasController> | null = null;
+
+	/** Canvas owns pixels once bitmap is ready and user is zoomed; CSS transform remains for hit-testing. */
+	const sharpZoomActive = $derived(imageZoomed && zoomBitmap != null);
+
+	function setZoomBitmap(next: ImageBitmap | null) {
+		if (heldZoomBitmap && heldZoomBitmap !== next) {
+			disposeZoomBitmap(heldZoomBitmap);
+		}
+		heldZoomBitmap = next;
+		zoomBitmap = next;
+	}
 
 	function measureCoverScale() {
 		const pane = imagePaneEl;
@@ -129,6 +158,40 @@
 		coverScale = Math.max(1, paneW / frameW, paneH / frameH);
 	}
 
+	function ensureZoomBitmap() {
+		if (!browser || !resolvedImageSrc || zoomBitmap || zoomBitmapLoading || zoomBitmapFailed) return;
+		const src = resolvedImageSrc;
+		const imgEl = mainImageEl;
+		zoomBitmapLoading = true;
+		void loadZoomBitmap(src, imgEl)
+			.then((bitmap) => {
+				if (resolvedImageSrc !== src) {
+					disposeZoomBitmap(bitmap);
+					return;
+				}
+				setZoomBitmap(bitmap);
+				zoomBitmapFailed = false;
+				zoomCanvasController?.schedule();
+			})
+			.catch(() => {
+				if (resolvedImageSrc === src) zoomBitmapFailed = true;
+			})
+			.finally(() => {
+				if (resolvedImageSrc === src) zoomBitmapLoading = false;
+			});
+	}
+
+	function onZoomChange(z: boolean) {
+		imageZoomed = z;
+		if (z) ensureZoomBitmap();
+	}
+
+	function onZoomTransform(t: ImageZoomPanTransform) {
+		zoomTransform = t;
+		if (t.scale > 1.001) ensureZoomBitmap();
+		zoomCanvasController?.schedule();
+	}
+
 	$effect(() => {
 		if (!browser) return;
 		void index;
@@ -138,7 +201,10 @@
 		const pane = imagePaneEl;
 		const frame = imageFrameEl;
 		if (!pane || !frame) return;
-		const ro = new ResizeObserver(() => measureCoverScale());
+		const ro = new ResizeObserver(() => {
+			measureCoverScale();
+			zoomCanvasController?.schedule();
+		});
 		ro.observe(pane);
 		ro.observe(frame);
 		return () => ro.disconnect();
@@ -147,10 +213,50 @@
 	const imageZoomPanOptions = $derived({
 		handle: zoomHandle,
 		maxScale: Math.max(coverScale * 4, 8),
-		clickZoomScale: coverScale > 1.01 ? coverScale : 2.5,
-		onZoomChange: (z: boolean) => {
-			imageZoomed = z;
-		}
+		// Progressive zoom — do not snap to coverScale (that felt like a horizontal stretch
+		// when details are collapsed and side letterbars are large). Bars still fill as scale grows.
+		clickZoomScale: 2.5,
+		// Keep CSS transform so the frame's hit region scales with zoom; canvas paints sharp pixels on top.
+		applyCssTransform: true,
+		onZoomChange,
+		onTransform: onZoomTransform
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		zoomCanvasController = createLightboxZoomCanvasController(() => {
+			const canvas = zoomCanvasEl;
+			const pane = imagePaneEl;
+			const frame = imageFrameEl;
+			const bitmap = zoomBitmap;
+			if (!canvas || !pane || !frame || !bitmap) return null;
+			if (zoomTransform.scale <= 1.001) return null;
+			const input: LightboxZoomCanvasPaintInput = {
+				canvas,
+				pane,
+				frame,
+				bitmap,
+				transform: zoomTransform
+			};
+			return input;
+		});
+		return () => {
+			zoomCanvasController?.destroy();
+			zoomCanvasController = null;
+		};
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		void index;
+		void resolvedImageSrc;
+		setZoomBitmap(null);
+		zoomBitmapLoading = false;
+		zoomBitmapFailed = false;
+		zoomTransform = { scale: 1, tx: 0, ty: 0 };
+		return () => {
+			setZoomBitmap(null);
+		};
 	});
 
 	/** Blurhash (or parent-passed placeholder string) for underlay while full image loads */
@@ -199,6 +305,28 @@
 		void resolvedImageSrc;
 		zoomHandle.reset();
 		imageZoomed = false;
+	});
+
+	/** Idle-prefetch bitmap after the lightbox img is ready. */
+	$effect(() => {
+		if (!browser || !mainImageLoaded || !resolvedImageSrc || zoomBitmap || zoomBitmapFailed) return;
+		const src = resolvedImageSrc;
+		const ric = window.requestIdleCallback?.bind(window);
+		if (ric) {
+			const id = ric(() => {
+				if (resolvedImageSrc === src) ensureZoomBitmap();
+			}, { timeout: 1500 });
+			return () => window.cancelIdleCallback?.(id);
+		}
+		const t = setTimeout(() => {
+			if (resolvedImageSrc === src) ensureZoomBitmap();
+		}, 400);
+		return () => clearTimeout(t);
+	});
+
+	$effect(() => {
+		if (!sharpZoomActive) return;
+		zoomCanvasController?.schedule();
 	});
 
 	/**
@@ -499,6 +627,13 @@
 				type="button"
 			></button>
 
+			<canvas
+				class="gallery-lightbox__zoom-canvas"
+				class:gallery-lightbox__zoom-canvas--active={sharpZoomActive}
+				bind:this={zoomCanvasEl}
+				aria-hidden="true"
+			></canvas>
+
 			<button
 				class="gallery-lightbox__close"
 				onclick={(e) => {
@@ -597,6 +732,8 @@
 						{#key index}
 							<img
 								class="gallery-lightbox__image"
+								class:gallery-lightbox__image--sharp-hidden={sharpZoomActive}
+								bind:this={mainImageEl}
 								use:mainLightboxImage
 								src={resolvedImageSrc ?? ''}
 								alt={image?.alt ?? ''}
@@ -1091,7 +1228,22 @@
 		justify-content: center;
 		min-width: 0;
 		overflow: hidden;
+		container-type: size;
 		transition: flex-basis 220ms ease;
+	}
+
+	.gallery-lightbox__zoom-canvas {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		opacity: 0;
+	}
+
+	.gallery-lightbox__zoom-canvas--active {
+		opacity: 1;
 	}
 
 	.gallery-lightbox__backdrop {
@@ -1142,11 +1294,15 @@
 
 	.gallery-lightbox__image-frame {
 		position: relative;
-		width: 100%;
+		/* Explicit contain-fit in the pane so the box always matches image aspect
+		   (width:100% / height:100% alone distort when the other axis clamps). */
+		--_ar: var(--image-aspect-ratio, 1);
+		width: min(100cqw, calc(100cqh * var(--_ar)));
+		height: min(100cqh, calc(100cqw / var(--_ar)));
 		max-width: 100%;
 		max-height: 100%;
 		overflow: hidden;
-		z-index: 1;
+		z-index: 2;
 		pointer-events: none;
 		flex-shrink: 0;
 	}
@@ -1249,6 +1405,10 @@
 		pointer-events: none;
 		transition: opacity 300ms ease;
 		animation: imageFadeIn 180ms ease;
+	}
+
+	.gallery-lightbox__image--sharp-hidden {
+		visibility: hidden;
 	}
 
 	.gallery-lightbox__image-frame :global(.gallery-lightbox__video) {
