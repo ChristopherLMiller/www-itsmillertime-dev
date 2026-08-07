@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { untrack } from 'svelte';
 	import type { Media } from '$lib/types/payload-types';
-	import { getMediaUrl, isVideoMedia } from '$lib/utils/media-url';
+	import { getMediaUrl, getLightboxPaintUrl, isVideoMedia } from '$lib/utils/media-url';
 
 	export type LightboxContentArgs = {
 		image: Media | undefined;
@@ -52,8 +53,19 @@
 	let isLoaded = $state(false);
 	let touchStartX = $state(0);
 	let isRequestingMore = $state(false);
+	/** Sticky photo id so densifying `images` (polaroids resolving) does not show the wrong slide. */
+	let viewedGalleryImageId = $state<number | null>(null);
 
 	const SWIPE_THRESHOLD = 50;
+
+	function imageLinkId(
+		image: (Media & { galleryImageId?: number }) | undefined | null
+	): number | null {
+		if (!image) return null;
+		if (typeof image.galleryImageId === 'number') return image.galleryImageId;
+		if (typeof image.id === 'number') return image.id;
+		return null;
+	}
 
 	const currentImage = $derived(images[currentIndex]);
 	const hasPrevious = $derived(currentIndex > 0);
@@ -89,8 +101,7 @@
 		onNext: next,
 		hasPrevious,
 		hasNext,
-		galleryImageId:
-			currentImage && 'galleryImageId' in currentImage ? currentImage.galleryImageId : undefined,
+		galleryImageId: imageLinkId(currentImage) ?? undefined,
 		useProxy: imageUsesProxy
 	});
 
@@ -127,6 +138,8 @@
 		if (hasPrevious) {
 			currentIndex--;
 			isLoaded = false;
+			const id = imageLinkId(images[currentIndex]);
+			if (id != null) viewedGalleryImageId = id;
 			onIndexChange?.(currentIndex);
 		}
 	}
@@ -135,6 +148,8 @@
 		if (currentIndex < images.length - 1) {
 			currentIndex++;
 			isLoaded = false;
+			const id = imageLinkId(images[currentIndex]);
+			if (id != null) viewedGalleryImageId = id;
 			onIndexChange?.(currentIndex);
 			return;
 		}
@@ -153,6 +168,8 @@
 		if (images.length > previousLength && currentIndex < images.length - 1) {
 			currentIndex++;
 			isLoaded = false;
+			const id = imageLinkId(images[currentIndex]);
+			if (id != null) viewedGalleryImageId = id;
 			onIndexChange?.(currentIndex);
 		}
 	}
@@ -200,9 +217,11 @@
 	function preloadByIndex(index: number) {
 		const image = images[index];
 		if (!image?.url || isVideoMedia(image)) return;
+		const src = getLightboxPaintUrl(image, mediaNeedsProxy(image));
+		if (!src) return;
 		const img = new Image();
 		img.decoding = 'async';
-		img.src = getMediaUrl(image.url, mediaNeedsProxy(image));
+		img.src = src;
 	}
 
 	// Only preload when lightbox is open: current image + immediate neighbors (full originals for zoom).
@@ -215,15 +234,35 @@
 		if (currentIndex < images.length - 1) preloadByIndex(currentIndex + 1);
 	});
 
-	// Reset to initial index when initialIndex changes
+	// Seed / follow parent index on open and when parent changes initialIndex.
+	// Do not subscribe to `images` here — densify is handled by the reconcile effect below.
 	$effect(() => {
-		currentIndex = initialIndex;
+		if (!open) {
+			viewedGalleryImageId = null;
+			return;
+		}
+		const idx = initialIndex;
+		currentIndex = idx;
+		const id = untrack(() => imageLinkId(images[idx]));
+		if (id != null) viewedGalleryImageId = id;
 	});
 
-	// Re-seed the displayed index on each open so reopening never sticks to the prior image.
+	// Keep the same photo when polaroids resolve and the sparse `images` array densifies.
 	$effect(() => {
-		if (!open) return;
-		currentIndex = initialIndex;
+		const list = images;
+		if (!open || viewedGalleryImageId == null) return;
+		const idx = list.findIndex((m) => imageLinkId(m) === viewedGalleryImageId);
+		if (idx !== -1 && idx !== currentIndex) {
+			currentIndex = idx;
+		}
+	});
+
+	// Clear loaded flag when the lightbox opens (not on densify / index-only sync).
+	$effect(() => {
+		if (!open) {
+			isLoaded = false;
+			return;
+		}
 		isLoaded = false;
 	});
 

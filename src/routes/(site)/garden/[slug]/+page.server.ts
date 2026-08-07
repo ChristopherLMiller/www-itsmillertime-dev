@@ -7,6 +7,14 @@ export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 	const segment = params.slug;
 	const isNumeric = /^\d+$/.test(segment);
 
+	const gardenSelect = {
+		name: true,
+		slug: true,
+		featuredImage: true,
+		content: true,
+		meta: true
+	} as const;
+
 	let result = await sdk.find({
 		collection: 'gardens',
 		where: {
@@ -15,7 +23,8 @@ export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 			}
 		},
 		limit: 1,
-		depth: 2
+		depth: 1,
+		select: gardenSelect
 	});
 
 	if (result.totalDocs === 0 && isNumeric) {
@@ -27,7 +36,8 @@ export const load: PageServerLoad = async ({ fetch, request, params, url }) => {
 				}
 			},
 			limit: 1,
-			depth: 2
+			depth: 1,
+			select: gardenSelect
 		});
 	}
 

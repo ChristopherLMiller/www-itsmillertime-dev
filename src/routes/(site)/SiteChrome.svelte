@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { createQuery } from '@tanstack/svelte-query';
+	import { browser } from '$app/environment';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import NavigationProgress from '$lib/components/NavigationProgress';
 	import LastFmNowPlayingLazy from '$lib/components/LastFmNowPlaying/LastFmNowPlayingLazy.svelte';
 	import Footer from '$lib/components/Footer';
@@ -9,8 +10,10 @@
 	import GrungeOverlay from '$lib/components/GrungeOverlay';
 	import AdminUtilitiesDockLazy from '$lib/components/AdminUtilitiesDock/AdminUtilitiesDockLazy.svelte';
 	import TopBar from '$lib/components/TopBar';
+	import ScrollToTop from '$lib/components/ScrollToTop';
 	import type { LayoutCacheData } from '$lib/cache/layoutCache';
-	import { layoutQueryOptions } from '$lib/query/queries';
+	import { layoutQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import { setSiteLayoutContext } from '$lib/query/siteLayoutContext';
 	import type { Snippet } from 'svelte';
 
@@ -21,11 +24,18 @@
 
 	let { data, children }: Props = $props();
 
-	// Navigation + siteMeta come straight from Payload (cached in IndexedDB via the
-	// persisted QueryClient). SSR seeds `initialData`; the browser revalidates in
-	// the background and this updates reactively when the CMS changes.
-	// Unlike page lists, layout intentionally lets IDB win (refetchOnMount: false).
+	const queryClient = useQueryClient();
+
+	// Navigation + siteMeta: SSR + IndexedDB. refetchOnMount stays false so chrome
+	// does not refetch on every remount; after IDB restore we re-seed SSR so this
+	// navigation's layout is not stuck behind a stale persisted cache.
 	const layoutQuery = createQuery(() => layoutQueryOptions(data.initialLayout));
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(queryClient, queryKeys.layout, data.initialLayout);
+	});
 
 	setSiteLayoutContext(() => ({
 		navigation: layoutQuery.data?.navigation ?? data.initialLayout?.navigation,
@@ -48,6 +58,7 @@
 		</div>
 		<Footer />
 		<LastFmNowPlayingLazy />
+		<ScrollToTop />
 		<AdminUtilitiesDockLazy />
 	</div>
 </div>

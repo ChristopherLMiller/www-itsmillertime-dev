@@ -37,3 +37,38 @@ export function isGifMedia(
 	const name = (media.filename ?? media.url ?? '').toLowerCase();
 	return name.endsWith('.gif') || name.includes('.gif?');
 }
+
+type SizedMedia = {
+	url?: string | null;
+	mimeType?: string | null;
+	filename?: string | null;
+	sizes?: {
+		xlarge?: { url?: string | null } | null;
+		large?: { url?: string | null } | null;
+	} | null;
+};
+
+/**
+ * Lightbox paint URL: prefer a large derivative so first paint stays light.
+ * GIFs/videos always use the original.
+ */
+export function getLightboxPaintUrl(
+	media: SizedMedia | null | undefined,
+	proxy = false
+): string | null {
+	if (!media) return null;
+	if (isGifMedia(media) || isVideoMedia(media)) {
+		return media.url ? getMediaUrl(media.url, proxy) : null;
+	}
+	const path = media.sizes?.xlarge?.url ?? media.sizes?.large?.url ?? media.url;
+	return path ? getMediaUrl(path, proxy) : null;
+}
+
+/** Full original for sharp zoom bitmap / pinch detail. */
+export function getLightboxZoomUrl(
+	media: SizedMedia | null | undefined,
+	proxy = false
+): string | null {
+	if (!media?.url) return null;
+	return getMediaUrl(media.url, proxy);
+}

@@ -1,7 +1,7 @@
 {
 	"name": "www-itsmillertime-dev",
 	"private": true,
-	"version": "0.25.0",
+	"version": "0.26.0",
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm run fetch-payload-types && vite dev",
@@ -58,7 +58,6 @@
 	"packageManager": "pnpm@11.18.0",
 	"dependencies": {
 		"@better-auth/passkey": "^1.6.25",
-		"@fortawesome/fontawesome-free": "^7.3.1",
 		"@js-temporal/polyfill": "^0.5.1",
 		"@payloadcms/sdk": "^3.87.0",
 		"@tanstack/query-async-storage-persister": "^5.101.4",
@@ -71,8 +70,6 @@
 		"photoswipe": "^5.4.4",
 		"qs-esm": "^8.0.1",
 		"satori": "^0.29.0",
-		"sharp": "^0.35.3",
-		"video.js": "^8.23.9",
-		"videojs-youtube": "^3.0.1"
+		"sharp": "^0.35.3"
 	}
 }

@@ -113,6 +113,8 @@
 	}
 </script>
 
+<!-- Spacer + fixed bar: sticky nudges on Chrome Android (esp. gallery transforms / overscroll). -->
+<div class="top-bar-spacer" aria-hidden="true"></div>
 <div class="top-bar-element">
 	<a class="top-bar-element__brand" href="/"
 		><strong>I</strong>ts<strong>M</strong>iller<strong>T</strong>ime</a
@@ -134,13 +136,24 @@
 		<dialog
 			bind:this={menuDialog}
 			class="menu-dialog"
-			aria-label="Site menu"
+			aria-labelledby="menu-dialog-title"
 			onclick={handleDialogClick}
 			onclose={handleDialogClose}
 			oncancel={handleDialogClose}
 		>
 			<div class="menu-dialog__panel">
-				<nav class="menu-dialog__nav">
+				<div class="menu-dialog__header">
+					<h2 class="menu-dialog__title" id="menu-dialog-title">Menu</h2>
+					<button
+						type="button"
+						class="menu-dialog__close"
+						onclick={() => navStore.close()}
+						aria-label="Close menu"
+					>
+						Close
+					</button>
+				</div>
+				<nav class="menu-dialog__nav" aria-labelledby="menu-dialog-title">
 					{#if browseLinks.length > 0}
 						<section class="menu-dialog__section hide-on-desktop" aria-label="Site navigation">
 							<h2 class="menu-dialog__section-title">Browse</h2>
@@ -223,16 +236,23 @@
 </div>
 
 <style lang="postcss">
+	.top-bar-spacer {
+		height: var(--top-bar-offset);
+		width: 100%;
+		pointer-events: none;
+	}
+
 	.top-bar-element {
 		--menu-tab-overhang: 0.5rem;
 
 		background: var(--color-tertiary-darker);
 		padding-inline: 1vw;
-		position: sticky;
-		width: 100%;
-		height: var(--top-bar-height);
-		offset: 0;
+		padding-top: env(safe-area-inset-top, 0px);
+		position: fixed;
+		inset-inline: 0;
 		top: 0;
+		width: 100%;
+		height: var(--top-bar-offset);
 		z-index: 9999;
 		display: flex;
 		justify-content: space-between;
@@ -335,6 +355,56 @@
 		}
 	}
 
+	.menu-dialog__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin: -0.25rem -0.25rem 1rem;
+		padding: 0 0 0.85rem;
+		border-bottom: 2px solid color-mix(in oklch, var(--color-primary-darker) 35%, transparent);
+	}
+
+	.menu-dialog__title {
+		margin: 0;
+		font-family: var(--font-oswald);
+		font-size: var(--fs-base);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--color-primary-darker);
+	}
+
+	.menu-dialog__close {
+		flex-shrink: 0;
+		margin: 0;
+		padding: 0.45rem 0.85rem;
+		border: none;
+		border-radius: 0;
+		background: var(--color-tertiary-lighter);
+		color: var(--color-tertiary-darkest);
+		font-family: var(--font-oswald);
+		font-size: var(--fs-base);
+		font-weight: 400;
+		letter-spacing: 0.06em;
+		line-height: 1;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition:
+			background 150ms ease,
+			color 150ms ease;
+	}
+
+	.menu-dialog__close:hover {
+		background: var(--color-secondary-darker);
+		color: var(--color-white-lighter);
+	}
+
+	.menu-dialog__close:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+
 	.menu-dialog__nav {
 		display: flex;
 		flex-direction: column;
@@ -344,6 +414,16 @@
 	@media screen and (max-width: 767px) {
 		.menu-dialog__nav {
 			gap: 1.75rem;
+		}
+
+		.menu-dialog__header {
+			margin-bottom: 1.25rem;
+			padding-bottom: 1rem;
+		}
+
+		.menu-dialog__close {
+			padding: 0.65rem 1rem;
+			font-size: var(--fs-m);
 		}
 
 		.menu-dialog__links {

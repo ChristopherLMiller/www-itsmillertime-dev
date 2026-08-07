@@ -24,8 +24,9 @@ export function createQueryClient(): QueryClient {
 				staleTime: SWR_STALE_TIME_MS,
 				gcTime: SWR_GC_TIME_MS,
 				retry: 1,
-				// Always revalidate on tab focus (ignore staleTime) so CMS edits show up on return.
-				refetchOnWindowFocus: 'always',
+				// Revalidate on tab focus only when stale (see SWR_STALE_TIME_MS).
+				// 'always' stacked with gallery invalidate and hammered Payload on every focus.
+				refetchOnWindowFocus: true,
 				refetchOnReconnect: true,
 				// Content already shown from cache should refetch on mount when stale.
 				refetchOnMount: true

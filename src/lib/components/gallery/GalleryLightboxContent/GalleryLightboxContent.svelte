@@ -5,7 +5,7 @@
 	import ShareButtons from '$lib/components/ShareButtons';
 	import type { GalleryAlbum, Media } from '$lib/types/payload-types';
 	import {
-		fetchGalleryImageTrackingClient,
+		ensureGalleryImageTrackingOnOpen,
 		getStoredGalleryImageVote,
 		recordGalleryImageTracking,
 		type GalleryImageVote
@@ -15,8 +15,10 @@
 		type GalleryImageTrackingCounts
 	} from '$lib/utils/gallery-image-tracking/types';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
-	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
-	import { getMediaUrl, isVideoMedia } from '$lib/utils/media-url';
+	import { lexicalToPlainText, plainTextToLexical } from '$lib/utils/lexical-to-text';
+	import { getMediaUrl, getLightboxPaintUrl, getLightboxZoomUrl, isVideoMedia } from '$lib/utils/media-url';
+	import Lexical from '$lib/components/Lexical';
+	import type { GalleryImage } from '$lib/types/payload-types';
 	import { imageZoomPan, type ImageZoomPanHandle, type ImageZoomPanTransform } from '$lib/utils/image-zoom-pan';
 	import {
 		createLightboxZoomCanvasController,
@@ -27,6 +29,12 @@
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
 	import type { GalleryCommerce } from '$lib/utils/gallery-image-display';
+	import { displayableImageTitle } from '$lib/utils/gallery-image-display';
+	import { cubicOut } from 'svelte/easing';
+	import { fade } from 'svelte/transition';
+
+	/** Crossfade duration: blurhash/placeholder out ↔ full image in */
+	const IMAGE_REVEAL_MS = 320;
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -88,7 +96,8 @@
 		hasNext,
 		gallery,
 		galleryImageId,
-		useProxy
+		useProxy,
+		onMediaMetaUpdated
 	}: {
 		image: Media | undefined;
 		index: number;
@@ -105,6 +114,10 @@
 		gallery: GalleryAlbum;
 		galleryImageId?: number;
 		useProxy?: boolean;
+		onMediaMetaUpdated?: (patch: {
+			alt: string;
+			caption: GalleryImage['caption'] | null;
+		}) => void;
 	} = $props();
 
 	const cmsImageEditHref = $derived(
@@ -114,9 +127,23 @@
 	);
 
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
+	/** Prefer xlarge/large for paint; fall back to parent imageSrc / original. */
 	const resolvedImageSrc = $derived(
-		imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
+		getLightboxPaintUrl(image, useProxy ?? false) ??
+			imageSrc ??
+			(image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
 	);
+	/** Full original for sharp zoom bitmap. */
+	const zoomSourceSrc = $derived(
+		getLightboxZoomUrl(image, useProxy ?? false) ?? resolvedImageSrc
+	);
+	/**
+	 * Stable per-photo identity. Lightbox `index` shifts as polaroids resolve into the images
+	 * array — resetting on index caused blur→loaded→blur pulsing for the same photo.
+	 */
+	const slideIdentity = $derived(galleryImageId ?? image?.id ?? null);
+	/** Last identity we reset reveal UI for — ignore transient nulls and same-id churn. */
+	let lastRevealIdentity: number | null = null;
 	const zoomHandle: ImageZoomPanHandle = {
 		reset: () => {},
 		isZoomed: () => false
@@ -159,13 +186,13 @@
 	}
 
 	function ensureZoomBitmap() {
-		if (!browser || !resolvedImageSrc || zoomBitmap || zoomBitmapLoading || zoomBitmapFailed) return;
-		const src = resolvedImageSrc;
+		if (!browser || !zoomSourceSrc || zoomBitmap || zoomBitmapLoading || zoomBitmapFailed) return;
+		const src = zoomSourceSrc;
 		const imgEl = mainImageEl;
 		zoomBitmapLoading = true;
 		void loadZoomBitmap(src, imgEl)
 			.then((bitmap) => {
-				if (resolvedImageSrc !== src) {
+				if (zoomSourceSrc !== src) {
 					disposeZoomBitmap(bitmap);
 					return;
 				}
@@ -174,10 +201,10 @@
 				zoomCanvasController?.schedule();
 			})
 			.catch(() => {
-				if (resolvedImageSrc === src) zoomBitmapFailed = true;
+				if (zoomSourceSrc === src) zoomBitmapFailed = true;
 			})
 			.finally(() => {
-				if (resolvedImageSrc === src) zoomBitmapLoading = false;
+				if (zoomSourceSrc === src) zoomBitmapLoading = false;
 			});
 	}
 
@@ -246,14 +273,20 @@
 		};
 	});
 
+	/**
+	 * Reset zoom + load UI only when the photo identity changes (not lightbox index).
+	 * Index shifts as the sparse galleryImages array densifies and must not re-flash blur.
+	 */
 	$effect(() => {
 		if (!browser) return;
-		void index;
-		void resolvedImageSrc;
+		const id = slideIdentity;
+		if (id == null) return;
 		setZoomBitmap(null);
 		zoomBitmapLoading = false;
 		zoomBitmapFailed = false;
 		zoomTransform = { scale: 1, tx: 0, ty: 0 };
+		zoomHandle.reset();
+		imageZoomed = false;
 		return () => {
 			setZoomBitmap(null);
 		};
@@ -276,50 +309,93 @@
 
 	/** Load state for the main <img>; parent isLoaded probes src only and is not used here */
 	let mainImageLoaded = $state(false);
+	let mainImgReadyNotified = false;
+	/**
+	 * Placeholder layer stays mounted until reveal so `out:fade` can crossfade with the image.
+	 * Reset on slide change; cleared in markMainImageReady once the full bitmap is decoded.
+	 */
+	let showPlaceholderOverlay = $state(true);
+
+	/**
+	 * Src painted in the <img>. Survives basic→full URL upgrades: we keep the current frame
+	 * visible and swap only after the next URL is decoded (no spinner flash).
+	 */
+	let paintedImageSrc = $state<string | null>(null);
 
 	$effect(() => {
-		void index;
-		void resolvedImageSrc;
+		const id = slideIdentity;
+		if (id == null) return;
+		if (id === lastRevealIdentity) return;
+		lastRevealIdentity = id;
 		mainImageLoaded = false;
+		paintedImageSrc = null;
+		mainImgReadyNotified = false;
+		showPlaceholderOverlay = true;
 	});
 
-	const showImageLoadingUi = $derived(!isVideo && !!resolvedImageSrc && !mainImageLoaded);
+	$effect(() => {
+		const next = resolvedImageSrc;
+		// Keep the last painted frame across transient gaps (images array reshuffle).
+		if (!next) return;
+		if (!paintedImageSrc) {
+			paintedImageSrc = next;
+			return;
+		}
+		if (next === paintedImageSrc) return;
 
-	let mainImgReadyNotified = false;
+		// Same slide, upgraded URL — preload then swap; keep reveal state so overlay stays off.
+		let cancelled = false;
+		const img = new Image();
+		img.onload = () => {
+			if (cancelled) return;
+			void img
+				.decode()
+				.catch(() => {})
+				.finally(() => {
+					if (cancelled) return;
+					paintedImageSrc = next;
+					// Drop any zoom bitmap decoded from the previous URL so idle prefetch can rebuild.
+					setZoomBitmap(null);
+					zoomBitmapFailed = false;
+					// Already revealed: do not re-open the placeholder overlay.
+					if (!mainImgReadyNotified) markMainImageReady();
+				});
+		};
+		img.onerror = () => {
+			if (cancelled) return;
+			paintedImageSrc = next;
+			if (!mainImgReadyNotified) markMainImageReady();
+		};
+		img.src = next;
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	const showImageLoadingUi = $derived(!isVideo && showPlaceholderOverlay);
 
 	function markMainImageReady() {
 		if (mainImgReadyNotified) return;
 		mainImgReadyNotified = true;
 		mainImageLoaded = true;
+		// Trigger placeholder outro (fade) while the full image fades in.
+		showPlaceholderOverlay = false;
 		onImageLoad();
 	}
 
+	/** Idle-prefetch zoom bitmap from the original after the lightbox img is ready. */
 	$effect(() => {
-		void index;
-		void resolvedImageSrc;
-		mainImgReadyNotified = false;
-	});
-
-	$effect(() => {
-		void index;
-		void resolvedImageSrc;
-		zoomHandle.reset();
-		imageZoomed = false;
-	});
-
-	/** Idle-prefetch bitmap after the lightbox img is ready. */
-	$effect(() => {
-		if (!browser || !mainImageLoaded || !resolvedImageSrc || zoomBitmap || zoomBitmapFailed) return;
-		const src = resolvedImageSrc;
+		if (!browser || !mainImageLoaded || !zoomSourceSrc || zoomBitmap || zoomBitmapFailed) return;
+		const src = zoomSourceSrc;
 		const ric = window.requestIdleCallback?.bind(window);
 		if (ric) {
 			const id = ric(() => {
-				if (resolvedImageSrc === src) ensureZoomBitmap();
+				if (zoomSourceSrc === src) ensureZoomBitmap();
 			}, { timeout: 1500 });
 			return () => window.cancelIdleCallback?.(id);
 		}
 		const t = setTimeout(() => {
-			if (resolvedImageSrc === src) ensureZoomBitmap();
+			if (zoomSourceSrc === src) ensureZoomBitmap();
 		}, 400);
 		return () => clearTimeout(t);
 	});
@@ -330,60 +406,116 @@
 	});
 
 	/**
-	 * Cached / 304 responses often leave the img complete before `load` fires (or skip it).
-	 * Poll naturalWidth + decode() so the overlay does not stick forever.
+	 * Reveal only after the full file is fetched and decoded.
+	 * Progressive JPEGs expose naturalWidth after the first scan — do not treat that as ready
+	 * (that caused visible scan-line painting over the blurhash).
 	 */
 	function mainLightboxImage(node: HTMLImageElement) {
 		let cleared = false;
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
-		let raf2 = 0;
+		let settling = false;
 
-		const maybeReady = () => {
+		const settle = async () => {
+			if (cleared || !node.isConnected || settling || mainImgReadyNotified) return;
+			// complete === full download; naturalWidth alone is too early for progressive JPEG
+			if (!node.complete || node.naturalWidth === 0) return;
+			settling = true;
+			try {
+				if (typeof node.decode === 'function') {
+					await node.decode();
+				}
+			} catch {
+				/* decode can reject; still reveal if the file finished loading */
+			}
+			settling = false;
 			if (cleared || !node.isConnected) return;
-			if (node.naturalWidth > 0) {
-				markMainImageReady();
-				return;
-			}
-			if (node.complete && node.currentSrc) {
+			if (node.complete && node.naturalWidth > 0) {
 				markMainImageReady();
 			}
 		};
 
-		const tryDecode = () => {
-			if (cleared || typeof node.decode !== 'function') return;
-			node.decode().then(maybeReady).catch(maybeReady);
-		};
+		const onLoad = () => void settle();
+		node.addEventListener('load', onLoad);
+		queueMicrotask(() => void settle());
 
-		queueMicrotask(maybeReady);
-		tryDecode();
-
-		const raf1 = requestAnimationFrame(() => {
-			maybeReady();
-			raf2 = requestAnimationFrame(maybeReady);
-		});
-
-		for (const ms of [0, 32, 100, 400]) {
-			timeouts.push(
-				setTimeout(() => {
-					maybeReady();
-					if (ms === 400) tryDecode();
-				}, ms)
-			);
+		// Cached / 304 responses may skip `load`; poll briefly for complete+decode.
+		for (const ms of [0, 50, 200, 500, 1200]) {
+			timeouts.push(setTimeout(() => void settle(), ms));
 		}
 
 		return {
 			destroy() {
 				cleared = true;
-				cancelAnimationFrame(raf1);
-				cancelAnimationFrame(raf2);
+				node.removeEventListener('load', onLoad);
 				for (const t of timeouts) clearTimeout(t);
 			}
 		};
 	}
 
-	// Caption (Lexical) or alt as fallback
+	// Alt = image title; Lexical caption = description. Shown separately (not as fallbacks).
+	// Filename-default alts are skipped — they aren't real titles.
+	const imageTitle = $derived(displayableImageTitle(image?.alt, image?.filename));
 	const captionText = $derived(image?.caption ? lexicalToPlainText(image.caption) : null);
-	const displayCaption = $derived((captionText && captionText.trim()) || image?.alt || '');
+	const hasLexicalCaption = $derived(Boolean(captionText && captionText.trim()));
+	const shareTitle = $derived(imageTitle || captionText?.trim() || gallery.title || 'Gallery image');
+
+	let editingMeta = $state(false);
+	let draftAlt = $state('');
+	let draftCaption = $state('');
+	let metaSaveError = $state<string | null>(null);
+	let metaSaving = $state(false);
+
+	$effect(() => {
+		void slideIdentity;
+		editingMeta = false;
+		metaSaveError = null;
+		metaSaving = false;
+	});
+
+	function startEditingMeta() {
+		draftAlt = image?.alt ?? '';
+		draftCaption = captionText ?? '';
+		metaSaveError = null;
+		editingMeta = true;
+	}
+
+	function cancelEditingMeta() {
+		editingMeta = false;
+		metaSaveError = null;
+	}
+
+	async function saveMediaMeta() {
+		if (!isAdmin || galleryImageId == null || metaSaving) return;
+		metaSaving = true;
+		metaSaveError = null;
+		const caption = plainTextToLexical(draftCaption) as GalleryImage['caption'] | null;
+		const alt = draftAlt.trim();
+		try {
+			const res = await fetch(`/api/gallery/images/${galleryImageId}`, {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ alt, caption })
+			});
+			const payload = (await res.json().catch(() => null)) as {
+				alt?: string;
+				caption?: GalleryImage['caption'] | null;
+				error?: string;
+			} | null;
+			if (!res.ok) {
+				metaSaveError = payload?.error ?? `Save failed (${res.status})`;
+				return;
+			}
+			onMediaMetaUpdated?.({
+				alt: payload?.alt ?? alt,
+				caption: payload?.caption ?? caption
+			});
+			editingMeta = false;
+		} catch {
+			metaSaveError = 'Could not save changes';
+		} finally {
+			metaSaving = false;
+		}
+	}
 
 	// Commerce: Medusa is the source of truth. A for-sale image carries a live
 	// Medusa variant id (resolved server-side) we can add to the cart.
@@ -520,8 +652,6 @@
 		return url.toString();
 	});
 
-	const shareTitle = $derived(displayCaption || gallery.title || 'Gallery image');
-
 	const metricItems = $derived([
 		{ label: 'Views', value: tracking.views },
 		{ label: 'Downloads', value: tracking.downloads },
@@ -552,12 +682,6 @@
 
 	function applyTracking(next: GalleryImageTrackingCounts) {
 		tracking = next;
-	}
-
-	async function refreshTrackingCounts() {
-		if (galleryImageId == null) return;
-		const counts = await fetchGalleryImageTrackingClient(galleryImageId);
-		if (counts) applyTracking(counts);
 	}
 
 	async function trackEvent(event: Parameters<typeof recordGalleryImageTracking>[1]) {
@@ -602,14 +726,14 @@
 		userVote = id != null ? getStoredGalleryImageVote(id) : null;
 		if (!browser || id == null) return;
 
-		void (async () => {
-			const fromView = await recordGalleryImageTracking(id, 'view');
-			if (fromView) {
-				applyTracking(fromView);
-				return;
-			}
-			await refreshTrackingCounts();
-		})();
+		let cancelled = false;
+		void ensureGalleryImageTrackingOnOpen(id).then((counts) => {
+			if (!cancelled && counts) applyTracking(counts);
+		});
+
+		return () => {
+			cancelled = true;
+		};
 	});
 </script>
 
@@ -707,8 +831,9 @@
 					{#if showImageLoadingUi}
 						<div
 							class="gallery-lightbox__loading-overlay"
-							aria-busy="true"
-							aria-label="Loading image"
+							out:fade={{ duration: IMAGE_REVEAL_MS, easing: cubicOut }}
+							aria-busy={!mainImageLoaded}
+							aria-label={mainImageLoaded ? undefined : 'Loading image'}
 						>
 							{#if blurPlaceholder}
 								<img
@@ -725,29 +850,28 @@
 							{:else}
 								<div class="gallery-lightbox__loading-backdrop" aria-hidden="true"></div>
 							{/if}
-							<div class="gallery-lightbox__spinner" aria-hidden="true"></div>
+							{#if !mainImageLoaded}
+								<div class="gallery-lightbox__spinner" aria-hidden="true"></div>
+							{/if}
 						</div>
 					{/if}
-					{#if resolvedImageSrc}
-						{#key index}
-							<img
-								class="gallery-lightbox__image"
-								class:gallery-lightbox__image--sharp-hidden={sharpZoomActive}
-								bind:this={mainImageEl}
-								use:mainLightboxImage
-								src={resolvedImageSrc ?? ''}
-								alt={image?.alt ?? ''}
-								width={image?.width}
-								height={image?.height}
-								draggable="false"
-								fetchpriority="high"
-								decoding="async"
-								style:opacity={mainImageLoaded ? 1 : 0}
-								onload={markMainImageReady}
-								onerror={markMainImageReady}
-								oncontextmenu={preventContextMenu}
-							/>
-						{/key}
+					{#if paintedImageSrc}
+						<img
+							class="gallery-lightbox__image"
+							class:gallery-lightbox__image--revealed={mainImageLoaded}
+							class:gallery-lightbox__image--sharp-hidden={sharpZoomActive}
+							bind:this={mainImageEl}
+							use:mainLightboxImage
+							src={paintedImageSrc}
+							alt={image?.alt ?? ''}
+							width={image?.width}
+							height={image?.height}
+							draggable="false"
+							fetchpriority="high"
+							decoding="async"
+							onerror={markMainImageReady}
+							oncontextmenu={preventContextMenu}
+						/>
 					{/if}
 				</div>
 			{/if}
@@ -965,11 +1089,92 @@
 						</section>
 					{/if}
 
-					<section class="gallery-lightbox__section">
-						<h3 class="gallery-lightbox__section-title">Caption</h3>
-						<p class="gallery-lightbox__section-text gallery-lightbox__caption">
-							{displayCaption || '—'}
-						</p>
+					<section class="gallery-lightbox__section gallery-lightbox__section--about">
+						<div class="gallery-lightbox__section-heading">
+							<h3 class="gallery-lightbox__section-title">About</h3>
+							{#if isAdmin && galleryImageId != null && !editingMeta}
+								<button
+									type="button"
+									class="gallery-lightbox__meta-edit-btn"
+									onclick={(e) => {
+										e.stopPropagation();
+										startEditingMeta();
+									}}
+								>
+									Edit
+								</button>
+							{/if}
+						</div>
+
+						{#if isAdmin && editingMeta}
+							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+							<form
+								class="gallery-lightbox__meta-form"
+								onsubmit={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									void saveMediaMeta();
+								}}
+								onclick={(e) => e.stopPropagation()}
+								onkeydown={(e) => e.stopPropagation()}
+							>
+								<label class="gallery-lightbox__meta-field">
+									<span class="gallery-lightbox__meta-field-label">Title</span>
+									<input
+										class="gallery-lightbox__meta-input"
+										type="text"
+										bind:value={draftAlt}
+										disabled={metaSaving}
+										autocomplete="off"
+										placeholder="Short title for this image"
+									/>
+									<span class="gallery-lightbox__meta-hint">Stored as the image alt text</span>
+								</label>
+								<label class="gallery-lightbox__meta-field">
+									<span class="gallery-lightbox__meta-field-label">Description</span>
+									<textarea
+										class="gallery-lightbox__meta-textarea"
+										rows="4"
+										bind:value={draftCaption}
+										disabled={metaSaving}
+										placeholder="Optional longer description"
+									></textarea>
+								</label>
+								{#if metaSaveError}
+									<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>
+								{/if}
+								<div class="gallery-lightbox__meta-actions">
+									<button
+										type="submit"
+										class="gallery-lightbox__meta-save"
+										disabled={metaSaving}
+									>
+										{metaSaving ? 'Saving…' : 'Save'}
+									</button>
+									<button
+										type="button"
+										class="gallery-lightbox__meta-cancel"
+										disabled={metaSaving}
+										onclick={cancelEditingMeta}
+									>
+										Cancel
+									</button>
+								</div>
+							</form>
+						{:else if imageTitle || hasLexicalCaption}
+							<div class="gallery-lightbox__about">
+								{#if imageTitle}
+									<p class="gallery-lightbox__image-title">{imageTitle}</p>
+								{/if}
+								{#if hasLexicalCaption && image?.caption}
+									<blockquote class="gallery-lightbox__image-description">
+										<Lexical data={image.caption} />
+									</blockquote>
+								{/if}
+							</div>
+						{:else}
+							<p class="gallery-lightbox__section-text">—</p>
+						{/if}
 					</section>
 
 					<section class="gallery-lightbox__section">
@@ -1102,7 +1307,7 @@
 							<BuyButton
 								variantId={buyVariantId}
 								priceUSD={buyPrice}
-								title={displayCaption}
+								title={shareTitle}
 							/>
 						{:else}
 							<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
@@ -1192,10 +1397,20 @@
 			flex-basis 220ms ease;
 	}
 
-	.gallery-lightbox__info-toggle:hover,
+	.gallery-lightbox__info-toggle:hover {
+		background: color-mix(in oklch, var(--color-tertiary-darker) 80%, black);
+		color: var(--color-white-lightest);
+	}
+
+	.gallery-lightbox__info-toggle:focus {
+		outline: none;
+	}
+
 	.gallery-lightbox__info-toggle:focus-visible {
 		background: color-mix(in oklch, var(--color-tertiary-darker) 80%, black);
 		color: var(--color-white-lightest);
+		outline: 2px solid var(--color-secondary);
+		outline-offset: -2px;
 	}
 
 	.gallery-lightbox__info-toggle--collapsed {
@@ -1403,12 +1618,22 @@
 		object-fit: contain;
 		object-position: center;
 		pointer-events: none;
-		transition: opacity 300ms ease;
-		animation: imageFadeIn 180ms ease;
+		opacity: 0;
+		transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.gallery-lightbox__image--revealed {
+		opacity: 1;
 	}
 
 	.gallery-lightbox__image--sharp-hidden {
 		visibility: hidden;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gallery-lightbox__image {
+			transition-duration: 1ms;
+		}
 	}
 
 	.gallery-lightbox__image-frame :global(.gallery-lightbox__video) {
@@ -1514,14 +1739,6 @@
 		}
 	}
 
-	@keyframes imageFadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
 
 	.gallery-lightbox__section {
 		display: flex;
@@ -1536,6 +1753,179 @@
 		color: var(--color-secondary);
 		padding-bottom: 0.375rem;
 		border-bottom: 1px solid var(--color-tertiary-lighter);
+	}
+
+	.gallery-lightbox__section-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.gallery-lightbox__section-heading .gallery-lightbox__section-title {
+		flex: 1;
+		margin: 0;
+	}
+
+	.gallery-lightbox__meta-edit-btn {
+		flex-shrink: 0;
+		margin: 0;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid rgba(255, 255, 255, 0.22);
+		border-radius: 4px;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--color-secondary);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+
+	.gallery-lightbox__meta-edit-btn:hover,
+	.gallery-lightbox__meta-edit-btn:focus-visible {
+		outline: none;
+		border-color: var(--color-secondary);
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.gallery-lightbox__meta-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.gallery-lightbox__meta-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.gallery-lightbox__meta-field-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-tertiary);
+	}
+
+	.gallery-lightbox__meta-hint {
+		font-size: 0.6875rem;
+		line-height: 1.35;
+		color: rgba(255, 255, 255, 0.45);
+	}
+
+	.gallery-lightbox__about {
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+	}
+
+	.gallery-lightbox__image-title {
+		margin: 0;
+		font-family: var(--font-permanent-marker), cursive;
+		font-size: var(--fs-xs);
+		font-weight: 400;
+		font-style: normal;
+		letter-spacing: 0.02em;
+		line-height: 1.35;
+		color: rgba(255, 255, 255, 0.72);
+		text-wrap: pretty;
+	}
+
+	.gallery-lightbox__image-description {
+		margin: 0;
+		padding: 0.55rem 0.7rem 0.55rem 0.85rem;
+		border-left: 2px solid var(--color-secondary);
+		background: rgba(0, 0, 0, 0.28);
+		box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+		border-radius: 0 4px 4px 0;
+		font-family: var(--font-crimson-text, Georgia, serif);
+		font-size: var(--fs-xs);
+		font-style: italic;
+		line-height: 1.45;
+		color: rgba(255, 255, 255, 0.85);
+	}
+
+	.gallery-lightbox__image-description :global(p) {
+		margin: 0 0 0.5rem;
+		line-height: 1.45;
+		color: inherit;
+		font: inherit;
+	}
+
+	.gallery-lightbox__image-description :global(p:last-child) {
+		margin-bottom: 0;
+	}
+
+	.gallery-lightbox__meta-input,
+	.gallery-lightbox__meta-textarea {
+		width: 100%;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0.5rem 0.65rem;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.35);
+		color: var(--color-white-lightest);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.875rem;
+		line-height: 1.4;
+	}
+
+	.gallery-lightbox__meta-textarea {
+		resize: vertical;
+		min-height: 5.5rem;
+		font-family: var(--font-crimson-text, Georgia, serif);
+	}
+
+	.gallery-lightbox__meta-input:focus-visible,
+	.gallery-lightbox__meta-textarea:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 1px;
+	}
+
+	.gallery-lightbox__meta-error {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: #f0a0a0;
+	}
+
+	.gallery-lightbox__meta-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.gallery-lightbox__meta-save,
+	.gallery-lightbox__meta-cancel {
+		margin: 0;
+		padding: 0.4rem 0.85rem;
+		border-radius: 4px;
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.gallery-lightbox__meta-save {
+		border: 1px solid var(--color-secondary);
+		background: color-mix(in oklch, var(--color-secondary) 28%, transparent);
+		color: var(--color-secondary);
+	}
+
+	.gallery-lightbox__meta-cancel {
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		background: transparent;
+		color: var(--color-white-lightest);
+	}
+
+	.gallery-lightbox__meta-save:disabled,
+	.gallery-lightbox__meta-cancel:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
 	}
 
 	.gallery-lightbox__edit-btn {
@@ -1597,11 +1987,6 @@
 		line-height: 1.35;
 		margin: 0;
 		color: var(--color-white-lightest);
-	}
-
-	.gallery-lightbox__caption {
-		font-family: var(--font-crimson-text);
-		font-style: italic;
 	}
 
 	.gallery-lightbox__meta-grid {

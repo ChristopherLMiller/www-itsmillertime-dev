@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { invalidateAll, replaceState } from '$app/navigation';
+	import { invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Masonry from 'svelte-bricks';
@@ -10,7 +10,10 @@
 	import Lightbox from '$lib/components/gallery/Lightbox';
 	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
 	import type { GalleryGridMedia } from '$lib/utils/gallery-image-display';
-	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
+	import {
+		fetchGalleryImageFullForLightbox,
+		fetchGalleryImageFullForPolaroid
+	} from '$lib/utils/gallery-image-full-fetch';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 
@@ -188,7 +191,7 @@
 		directLinkFailed = false;
 
 		try {
-			const media = await fetchGalleryImageFullForPolaroid(selectedId, albumIsNsfw);
+			const media = await fetchGalleryImageFullForLightbox(selectedId, albumIsNsfw);
 			if (!media) {
 				directLinkFailed = true;
 				directLinkDismissed = true;
@@ -243,7 +246,7 @@
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 	}
 
-	/** While lightbox is open, resolve ±1 slot media so next/prev are in `galleryImages` and can preload. */
+	/** While lightbox is open, upgrade current ±1 to full docs (commerce/exif) and keep next/prev ready. */
 	$effect(() => {
 		if (!browser || !lightboxOpen || pinnedLightboxFileMediaId == null) return;
 
@@ -255,9 +258,8 @@
 			(id): id is number => typeof id === 'number'
 		);
 
-		for (const id of neighborIds) {
-			if (slotMedia[id]) continue;
-			void fetchGalleryImageFullForPolaroid(id, albumIsNsfw).then((media) => {
+		for (const id of [currentId, ...neighborIds]) {
+			void fetchGalleryImageFullForLightbox(id, albumIsNsfw).then((media) => {
 				if (media) injectResolvedMedia(media);
 			});
 		}
@@ -301,18 +303,31 @@
 		infiniteLoadError = null;
 	});
 
-	// Refresh data when returning to the tab (e.g. after uploading elsewhere)
+	// Refresh album image ids when returning to the tab (e.g. after uploading elsewhere).
 	$effect(() => {
 		if (!browser) return;
 		const handler = () => {
-			if (document.visibilityState === 'visible') invalidateAll();
+			if (document.visibilityState === 'visible') {
+				void invalidate('app:gallery-album');
+			}
 		};
 		document.addEventListener('visibilitychange', handler);
 		return () => document.removeEventListener('visibilitychange', handler);
 	});
 
 	$effect(() => {
-		if (!browser || !loadMoreSentinel) return;
+		if (!browser || !loadMoreSentinel || !hasNextPage) return;
+		// Re-check when the grid grows — Masonry can push the sentinel out of the
+		// initial intersection window on mobile after a batch lands.
+		void visibleSlots.length;
+
+		const el = loadMoreSentinel;
+		const maybeLoad = () => {
+			const rect = el.getBoundingClientRect();
+			if (rect.top < window.innerHeight + LOAD_AHEAD_PX) {
+				void loadNextImagePage();
+			}
+		};
 
 		const observer = new IntersectionObserver(
 			(entries) => {
@@ -320,12 +335,18 @@
 					void loadNextImagePage();
 				}
 			},
-			{ rootMargin: `${LOAD_AHEAD_PX}px 0px` }
+			{ root: null, rootMargin: `${LOAD_AHEAD_PX}px 0px`, threshold: 0 }
 		);
 
-		observer.observe(loadMoreSentinel);
+		observer.observe(el);
+		// iOS often skips the initial intersection callback after Masonry layout.
+		requestAnimationFrame(maybeLoad);
+		const t = window.setTimeout(maybeLoad, 250);
 
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			window.clearTimeout(t);
+		};
 	});
 
 	$effect(() => {
@@ -399,11 +420,18 @@
 		</div>
 
 		{#if hasNextPage}
-			<div class="gallery-load-more" bind:this={loadMoreSentinel} aria-hidden="true">
+			<div class="gallery-load-more" bind:this={loadMoreSentinel} aria-live="polite">
 				{#if isLoadingMore}
-					Loading more images...
+					<span class="gallery-load-more__spinner" aria-hidden="true"></span>
+					<span class="gallery-load-more__label">Loading more…</span>
 				{:else}
-					&nbsp;
+					<button
+						type="button"
+						class="gallery-load-more__button"
+						onclick={() => void loadNextImagePage()}
+					>
+						Load more
+					</button>
 				{/if}
 			</div>
 		{/if}
@@ -469,6 +497,12 @@
 				gallery={data.gallery as unknown as GalleryAlbum}
 				{galleryImageId}
 				{useProxy}
+				onMediaMetaUpdated={(patch) => {
+					if (galleryImageId == null) return;
+					const existing = slotMedia[galleryImageId];
+					if (!existing) return;
+					injectResolvedMedia({ ...existing, ...patch });
+				}}
 			/>
 		{/snippet}
 	</Lightbox>
@@ -544,12 +578,51 @@
 	}
 
 	.gallery-load-more {
-		height: 2rem;
-		display: grid;
-		place-items: center;
+		min-height: 2.5rem;
+		margin-top: 1.25rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
 		color: var(--color-tertiary);
 		font-family: var(--font-roboto);
 		font-size: var(--fs-xs);
+	}
+
+	.gallery-load-more__label {
+		letter-spacing: 0.02em;
+	}
+
+	.gallery-load-more__spinner {
+		width: 0.85rem;
+		height: 0.85rem;
+		border: 1.5px solid color-mix(in oklch, var(--color-tertiary) 35%, transparent);
+		border-top-color: var(--color-tertiary);
+		border-radius: 50%;
+		animation: gallery-load-spin 0.75s linear infinite;
+		flex-shrink: 0;
+	}
+
+	.gallery-load-more__button {
+		appearance: none;
+		border: none;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		padding: 0.35rem 0.5rem;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	.gallery-load-more__button:hover {
+		color: var(--color-primary-darker, var(--color-tertiary));
+	}
+
+	@keyframes gallery-load-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.gallery-load-error {
@@ -558,5 +631,13 @@
 		color: #b00020;
 		font-family: var(--font-roboto);
 		font-size: var(--fs-xs);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gallery-load-more__spinner {
+			animation: none;
+			border-top-color: var(--color-tertiary);
+			opacity: 0.7;
+		}
 	}
 </style>

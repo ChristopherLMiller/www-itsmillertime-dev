@@ -8,7 +8,14 @@ import { build, files, version } from '$service-worker';
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const CACHE = `articles-offline-${version}`;
-const ASSETS = [...build, ...files];
+
+/** OG / server-only assets in `static/` — do not precache (multi‑MB). */
+const PRECACHE_EXCLUDE = new Set([
+	'/logo-new.png',
+	'/ImpactLabel-lVYZ.ttf'
+]);
+
+const ASSETS = [...build, ...files].filter((path) => !PRECACHE_EXCLUDE.has(path));
 
 const SW_PRECACHE_ARTICLES = 'PRECACHE_ARTICLES';
 const SW_PRECACHE_PATHS = 'PRECACHE_PATHS';

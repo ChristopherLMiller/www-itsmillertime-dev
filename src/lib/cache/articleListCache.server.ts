@@ -6,6 +6,7 @@ import {
 } from '$lib/cache/articleCache';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { Post, PostsCategory, PostsTag } from '$lib/types/payload-types';
+import { getLexicalParagraphsUpToWords } from '$lib/utils/lexicalParagraphsUpToWords';
 
 export type ArticlesListLoadOptions = {
 	/** When true, also include never-published drafts (admin preview). */
@@ -13,6 +14,9 @@ export type ArticlesListLoadOptions = {
 	fetch?: typeof globalThis.fetch;
 	request?: Request;
 };
+
+/** Enough Lexical for newspaper leads (~150 words) without shipping the full article body. */
+const LIST_CONTENT_MAX_WORDS = 160;
 
 const LIST_SELECT = {
 	publishedAt: true,
@@ -33,6 +37,44 @@ const LIST_SELECT = {
 		image: true
 	}
 } as const;
+
+/**
+ * Keep only the lead paragraphs clients need for cards / newspaper leads so
+ * `__data.json` does not carry full Lexical trees for every post on the list.
+ */
+function slimArticleContentForList(content: Post['content'] | null | undefined): Post['content'] {
+	const empty = {
+		root: {
+			type: 'root' as const,
+			children: [] as never[],
+			direction: null,
+			format: '' as const,
+			indent: 0,
+			version: 1
+		}
+	};
+
+	if (content == null) return empty as Post['content'];
+
+	const { blocks } = getLexicalParagraphsUpToWords(content, LIST_CONTENT_MAX_WORDS);
+	const root = (content as { root?: Record<string, unknown> }).root;
+	if (!root || typeof root !== 'object') return empty as Post['content'];
+
+	return {
+		...content,
+		root: {
+			...root,
+			children: blocks.map((b) => b.node).filter(Boolean)
+		}
+	} as Post['content'];
+}
+
+function slimArticleForList(post: Post): Post {
+	return {
+		...post,
+		content: slimArticleContentForList(post.content)
+	};
+}
 
 function buildTaxonomyFilters(category: string, tag: string) {
 	return [
@@ -142,12 +184,14 @@ async function fetchArticlesListFromCMS(
 		sdk.find({
 			collection: 'posts-categories',
 			limit: 100,
-			sort: 'title'
+			sort: 'title',
+			select: { id: true, slug: true, title: true }
 		}),
 		sdk.find({
 			collection: 'posts-tags',
 			limit: 100,
-			sort: 'title'
+			sort: 'title',
+			select: { id: true, slug: true, title: true }
 		})
 	]);
 
@@ -156,7 +200,7 @@ async function fetchArticlesListFromCMS(
 
 	if (!includeDrafts || !draftOnlyData) {
 		const { docs, ...meta } = publishedData;
-		articles = docs as Post[];
+		articles = (docs as Post[]).map(slimArticleForList);
 		pagination = meta as ArticlesListPagination;
 	} else {
 		/**
@@ -175,6 +219,7 @@ async function fetchArticlesListFromCMS(
 		}
 		const merged = sortArticles([...byId.values()], sort);
 		({ articles, pagination } = paginateArticles(merged, page, limit));
+		articles = articles.map(slimArticleForList);
 	}
 
 	return {

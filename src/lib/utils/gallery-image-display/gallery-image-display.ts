@@ -30,6 +30,43 @@ function readCommerce(doc: object): GalleryCommerce | null {
 
 const PLACEHOLDER_DATE = '1970-01-01T00:00:00.000Z';
 
+function normalizeFilenameLabel(value: string): string {
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/\+/g, ' ')
+		.replace(/[_-]+/g, ' ')
+		.replace(/\s+/g, ' ');
+}
+
+/**
+ * Payload often defaults `alt` to the upload filename. Those aren't real titles.
+ */
+export function altMatchesFilename(
+	alt: string | null | undefined,
+	filename: string | null | undefined
+): boolean {
+	const title = (alt ?? '').trim();
+	const file = (filename ?? '').trim();
+	if (!title || !file) return false;
+
+	const altNorm = normalizeFilenameLabel(title);
+	const fileNorm = normalizeFilenameLabel(file);
+	const baseNorm = fileNorm.replace(/\.[a-z0-9]{1,8}$/i, '');
+
+	return altNorm === fileNorm || altNorm === baseNorm;
+}
+
+/** Alt for display (polaroid strip, lightbox title); empty when missing or filename-like. */
+export function displayableImageTitle(
+	alt: string | null | undefined,
+	filename: string | null | undefined
+): string {
+	const title = (alt ?? '').trim();
+	if (!title || altMatchesFilename(title, filename)) return '';
+	return title;
+}
+
 /**
  * Minimal `Media` for Polaroid while the full gallery-image fetch runs: blurhash shows inside
  * `Image` (no `url` yet). `id` is the gallery-image row id until replaced by real file media.

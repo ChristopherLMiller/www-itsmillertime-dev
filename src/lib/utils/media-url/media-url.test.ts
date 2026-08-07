@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { getMediaUrl, isGifMedia, isVideoMedia } from './media-url';
+import {
+	getLightboxPaintUrl,
+	getLightboxZoomUrl,
+	getMediaUrl,
+	isGifMedia,
+	isVideoMedia
+} from './media-url';
 
 describe('getMediaUrl', () => {
 	it('returns empty string for missing path', () => {
@@ -14,6 +20,48 @@ describe('getMediaUrl', () => {
 
 	it('uses media proxy when requested', () => {
 		expect(getMediaUrl('/private/x.png', true)).toBe('/api/media-proxy/private/x.png');
+	});
+});
+
+describe('getLightboxPaintUrl', () => {
+	it('prefers xlarge then large over original', () => {
+		expect(
+			getLightboxPaintUrl({
+				url: '/media/orig.jpg',
+				sizes: {
+					xlarge: { url: '/media/xl.jpg' },
+					large: { url: '/media/lg.jpg' }
+				}
+			})
+		).toMatch(/\/media\/xl\.jpg$/);
+
+		expect(
+			getLightboxPaintUrl({
+				url: '/media/orig.jpg',
+				sizes: { large: { url: '/media/lg.jpg' } }
+			})
+		).toMatch(/\/media\/lg\.jpg$/);
+	});
+
+	it('uses original for gifs', () => {
+		expect(
+			getLightboxPaintUrl({
+				url: '/media/dance.gif',
+				mimeType: 'image/gif',
+				sizes: { xlarge: { url: '/media/dance-xl.jpg' } }
+			})
+		).toMatch(/\/media\/dance\.gif$/);
+	});
+});
+
+describe('getLightboxZoomUrl', () => {
+	it('always uses the original url', () => {
+		expect(
+			getLightboxZoomUrl({
+				url: '/media/orig.jpg',
+				sizes: { xlarge: { url: '/media/xl.jpg' } }
+			})
+		).toMatch(/\/media\/orig\.jpg$/);
 	});
 });
 

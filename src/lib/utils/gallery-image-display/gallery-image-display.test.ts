@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	altMatchesFilename,
 	buildPlaceholderGalleryMedia,
+	displayableImageTitle,
 	galleryImageDocToDisplayMedia
 } from './gallery-image-display';
+
+describe('altMatchesFilename / displayableImageTitle', () => {
+	it('matches filename with or without extension', () => {
+		expect(altMatchesFilename('IMG_1234.JPG', 'IMG_1234.JPG')).toBe(true);
+		expect(altMatchesFilename('IMG_1234', 'IMG_1234.JPG')).toBe(true);
+		expect(altMatchesFilename('img 1234', 'IMG_1234.jpg')).toBe(true);
+	});
+
+	it('does not match real titles', () => {
+		expect(altMatchesFilename('Golden hour at the lake', 'IMG_1234.JPG')).toBe(false);
+		expect(displayableImageTitle('Golden hour at the lake', 'IMG_1234.JPG')).toBe(
+			'Golden hour at the lake'
+		);
+	});
+
+	it('returns empty when alt is filename-like or blank', () => {
+		expect(displayableImageTitle('DSC_0001.jpg', 'DSC_0001.jpg')).toBe('');
+		expect(displayableImageTitle('  ', 'DSC_0001.jpg')).toBe('');
+		expect(displayableImageTitle('DSC_0001.jpg', null)).toBe('DSC_0001.jpg');
+	});
+});
 
 describe('buildPlaceholderGalleryMedia', () => {
 	it('uses dimensions when valid', () => {

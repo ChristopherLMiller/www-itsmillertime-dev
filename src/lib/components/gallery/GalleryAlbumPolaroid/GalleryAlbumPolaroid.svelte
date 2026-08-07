@@ -3,10 +3,10 @@
 	import Polaroid from '$lib/components/polaroid/Polaroid';
 	import {
 		buildPlaceholderGalleryMedia,
+		displayableImageTitle,
 		type GalleryGridMedia
 	} from '$lib/utils/gallery-image-display';
 	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
-	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 
 	type GalleryAlbumPolaroidProps = {
 		galleryImageId: number;
@@ -75,9 +75,12 @@
 
 		// Do not AbortController + cleanup: parent re-renders (e.g. slotMedia updates) were
 		// aborting in-flight work and causing canceled storms. Dedupe is in fetchGalleryImageFullForPolaroid.
+		// Keep any already-shown preview for this id while a remount re-subscribes (avoid blank flash).
 		let stale = false;
-		media = null;
-		loadError = null;
+		if (media == null || media.galleryImageId !== id) {
+			media = null;
+			loadError = null;
+		}
 
 		void fetchGalleryImageFullForPolaroid(id, albumIsNsfw).then((m) => {
 			if (stale) return;
@@ -112,9 +115,7 @@
 		{#key `${displayMedia.id}-${displayMedia.url ?? ''}-${displayMedia.needsProxy ? 'p' : 'd'}`}
 			<Polaroid
 				media={displayMedia}
-				caption={displayMedia.caption
-					? lexicalToPlainText(displayMedia.caption).trim() || undefined
-					: undefined}
+				caption={displayableImageTitle(displayMedia.alt, displayMedia.filename) || undefined}
 				interactive={false}
 				clickable={false}
 				enableViewTransition={false}
@@ -126,11 +127,17 @@
 				disableContextMenu={true}
 			/>
 		{/key}
+		{#if !media}
+			<span class="gallery-album-polaroid__skeleton" aria-hidden="true">
+				<span class="gallery-album-polaroid__skeleton-shine"></span>
+			</span>
+		{/if}
 	</button>
 {/if}
 
 <style lang="postcss">
 	.gallery-album-polaroid__hit {
+		position: relative;
 		display: block;
 		width: 100%;
 		background: transparent;
@@ -145,11 +152,49 @@
 		pointer-events: none;
 	}
 
+	.gallery-album-polaroid__skeleton {
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		border-radius: 2px;
+		overflow: hidden;
+		pointer-events: none;
+		background: color-mix(in oklch, var(--color-tertiary-darker, #2a2a2a) 12%, transparent);
+	}
+
+	.gallery-album-polaroid__skeleton-shine {
+		position: absolute;
+		inset: 0;
+		transform: translateX(-120%);
+		background: linear-gradient(
+			105deg,
+			transparent 35%,
+			rgba(255, 255, 255, 0.1) 50%,
+			transparent 65%
+		);
+		animation: gallery-polaroid-skeleton-shine 1.6s ease-in-out infinite;
+	}
+
+	@keyframes gallery-polaroid-skeleton-shine {
+		100% {
+			transform: translateX(120%);
+		}
+	}
+
 	.gallery-album-polaroid__error {
 		font-family: var(--font-roboto, sans-serif);
 		font-size: var(--fs-xs);
 		color: var(--color-tertiary);
 		text-align: center;
 		padding: 2rem 0.5rem;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gallery-album-polaroid__skeleton-shine {
+			animation: none;
+			opacity: 0.35;
+			transform: none;
+			background: rgba(255, 255, 255, 0.12);
+		}
 	}
 </style>

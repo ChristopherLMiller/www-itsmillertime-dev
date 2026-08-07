@@ -286,7 +286,20 @@
 						aria-modal="true"
 						aria-labelledby="admin-dock-dialog-title"
 					>
-						<h2 id="admin-dock-dialog-title" class="admin-dock-sr-only">Admin tools</h2>
+						<div class="admin-dock-header">
+							<h2 id="admin-dock-dialog-title" class="admin-dock-header__title">Admin tools</h2>
+							<button
+								type="button"
+								class="admin-dock-close"
+								onclick={(e) => {
+									e.stopPropagation();
+									closePanel();
+								}}
+								aria-label="Close admin tools"
+							>
+								<span aria-hidden="true">×</span>
+							</button>
+						</div>
 
 						<div
 							class="admin-dock-tablist"
@@ -555,16 +568,58 @@
 		border: 1px solid color-mix(in oklch, var(--color-tertiary) 40%, transparent);
 	}
 
-	.admin-dock-sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
+	.admin-dock-header {
+		display: flex;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.65rem 0.75rem 0.65rem 1.1rem;
+		background: color-mix(
+			in oklch,
+			var(--color-tertiary-darkest) 75%,
+			var(--color-secondary-darker)
+		);
+		border-bottom: 1px solid color-mix(in oklch, var(--color-tertiary) 45%, transparent);
+	}
+
+	.admin-dock-header__title {
+		margin: 0;
+		font-family: var(--font-oswald);
+		font-size: var(--fs-base);
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--color-white-lighter);
+	}
+
+	.admin-dock-close {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		margin: 0;
 		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
+		border: none;
+		border-radius: 0.35rem;
+		background: color-mix(in oklch, var(--color-tertiary) 35%, transparent);
+		color: var(--color-white-lighter);
+		font-family: var(--font-oswald);
+		font-size: 1.75rem;
+		line-height: 1;
+		cursor: pointer;
+		transition: background 150ms ease;
+	}
+
+	.admin-dock-close:hover {
+		background: color-mix(in oklch, var(--color-primary) 55%, transparent);
+	}
+
+	.admin-dock-close:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 2px;
 	}
 
 	.admin-dock-tab {
@@ -585,22 +640,25 @@
 		text-orientation: mixed;
 	}
 
-	/* Bottom-right pill — mid-right vertical tab covered lightbox/nav controls. */
+	/* Vertical tab above the footer version bar (avoids covering vX.Y.Z). */
 	.admin-dock-tab--solo {
 		position: fixed;
-		right: max(0.5rem, env(safe-area-inset-right, 0px));
-		bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+		right: 0;
+		bottom: var(--chrome-corner-bottom);
 		top: auto;
 		z-index: 10003;
 		pointer-events: auto;
-		writing-mode: horizontal-tb;
+		writing-mode: vertical-rl;
 		text-orientation: mixed;
 		min-width: auto;
-		padding: 0.45rem 0.85rem;
-		border-radius: 999px;
+		width: var(--admin-edge-tab-width);
+		padding: 0.85rem 0;
+		border-radius: 0.35rem 0 0 0.35rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		font-size: var(--fs-xs);
+		box-sizing: border-box;
+		transition: bottom 180ms ease;
 	}
 
 	.admin-dock-tab--attached {

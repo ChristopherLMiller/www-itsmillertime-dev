@@ -8,10 +8,21 @@ export interface LayoutApiResponse {
 	siteMeta: SiteMeta;
 }
 
+/** Short in-process TTL — nav/meta change rarely; cuts Payload on focus revalidate. */
+const LAYOUT_TTL_MS = 60_000;
+
+let cached: { data: LayoutApiResponse; expiresAt: number } | null = null;
+let inflight: Promise<LayoutApiResponse> | null = null;
+
 async function fetchNavigationFromCMS(): Promise<SiteNavigation> {
 	const sdk = getPayloadSDK();
 
-	const nav = await sdk.findGlobal({ slug: 'site-navigation', depth: 1, draft: true });
+	const nav = await sdk.findGlobal({
+		slug: 'site-navigation',
+		depth: 1,
+		draft: true,
+		select: { navItems: true }
+	});
 
 	const navItems = nav.navItems
 		? [...nav.navItems]
@@ -29,14 +40,38 @@ async function fetchNavigationFromCMS(): Promise<SiteNavigation> {
 
 async function fetchSiteMetaFromCMS(): Promise<SiteMeta> {
 	const sdk = getPayloadSDK();
-	return sdk.findGlobal({ slug: 'site-meta', depth: 1 });
+	return sdk.findGlobal({
+		slug: 'site-meta',
+		depth: 0,
+		select: { siteMeta: true }
+	});
+}
+
+async function loadLayoutData(): Promise<LayoutApiResponse> {
+	const now = Date.now();
+	if (cached && cached.expiresAt > now) return cached.data;
+	if (inflight) return inflight;
+
+	inflight = Promise.all([fetchNavigationFromCMS(), fetchSiteMetaFromCMS()])
+		.then(([navigation, siteMeta]) => {
+			const data = { navigation, siteMeta } satisfies LayoutApiResponse;
+			cached = { data, expiresAt: Date.now() + LAYOUT_TTL_MS };
+			return data;
+		})
+		.finally(() => {
+			inflight = null;
+		});
+
+	return inflight;
 }
 
 export const GET: RequestHandler = async () => {
-	const [navigation, siteMeta] = await Promise.all([
-		fetchNavigationFromCMS(),
-		fetchSiteMetaFromCMS()
-	]);
+	const data = await loadLayoutData();
 
-	return json({ navigation, siteMeta } satisfies LayoutApiResponse);
+	return json(data, {
+		headers: {
+			// Anonymous browsers / CDN may reuse briefly; IDB + TanStack own longer client cache.
+			'Cache-Control': 'public, max-age=60, stale-while-revalidate=300'
+		}
+	});
 };

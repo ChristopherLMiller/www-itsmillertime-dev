@@ -33,7 +33,8 @@ function albumIdsFromRelation(albums: unknown): number[] {
 		.filter((id): id is number => typeof id === 'number');
 }
 
-export const load: PageServerLoad = async ({ params, fetch, request, url, parent }) => {
+export const load: PageServerLoad = async ({ params, fetch, request, url, parent, depends }) => {
+	depends('app:gallery-album');
 	const { slug } = params;
 	const session = await getParentSession(parent);
 	const user = session?.user ?? null;

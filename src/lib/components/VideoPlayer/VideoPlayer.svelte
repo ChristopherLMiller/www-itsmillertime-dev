@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<script type="module" src="https://cdn.jsdelivr.net/npm/media-chrome@4/+esm"></script>
+	<!-- media-chrome is bundled via npm import above; only the YouTube custom element is CDN. -->
 	<script type="module" src="https://cdn.jsdelivr.net/npm/youtube-video-element@1.1/+esm"></script>
 </svelte:head>
 

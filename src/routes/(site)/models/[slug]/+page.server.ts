@@ -1,11 +1,13 @@
-import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
+import { getParentSession } from '$lib/auth/parentSession';
+import { isAdminRole } from '$lib/auth/requireAdmin.server';
 import { loadModelPageData } from '$lib/cache/modelCache.server';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const { params, url, fetch, request } = event;
-	const includeNotStarted = isAdminRole(await getMergedSessionUser(event));
+	const { params, url, fetch, request, parent } = event;
+	const session = await getParentSession(parent);
+	const includeNotStarted = isAdminRole(session?.user ?? null);
 
 	const initialModel = await loadModelPageData(params.slug, url.origin, {
 		includeNotStarted,

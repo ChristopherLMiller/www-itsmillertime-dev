@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import * as maplibregl from 'maplibre-gl';
-	import 'maplibre-gl/dist/maplibre-gl.css';
 	import type { PageData } from './$types';
 	import type { GalleryAlbum, MapMarker } from '$lib/types/payload-types';
 
@@ -107,45 +105,54 @@
 	}
 
 	onMount(() => {
-		const map = new maplibregl.Map({
-			container: mapContainer,
-			// Raster OSM — same approach that worked before (vector + canvas filters were glitchy).
-			style: {
-				version: 8,
-				sources: {
-					'osm-tiles': {
-						type: 'raster',
-						tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-						tileSize: 256,
-						attribution:
-							'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-					}
+		let disposed = false;
+		let map: import('maplibre-gl').Map | null = null;
+		let ro: ResizeObserver | null = null;
+
+		void (async () => {
+			const maplibregl = await import('maplibre-gl');
+			await import('maplibre-gl/dist/maplibre-gl.css');
+			if (disposed || !mapContainer) return;
+
+			map = new maplibregl.Map({
+				container: mapContainer,
+				// Raster OSM — same approach that worked before (vector + canvas filters were glitchy).
+				style: {
+					version: 8,
+					sources: {
+						'osm-tiles': {
+							type: 'raster',
+							tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+							tileSize: 256,
+							attribution:
+								'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+						}
+					},
+					layers: [
+						{
+							id: 'osm-tiles',
+							type: 'raster',
+							source: 'osm-tiles',
+							minzoom: 0,
+							maxzoom: 19
+						}
+					]
 				},
-				layers: [
-					{
-						id: 'osm-tiles',
-						type: 'raster',
-						source: 'osm-tiles',
-						minzoom: 0,
-						maxzoom: 19
-					}
-				]
-			},
-			center: [-86.2384, 41.703],
-			zoom: 7,
-			attributionControl: { compact: true }
-		});
+				center: [-86.2384, 41.703],
+				zoom: 7,
+				attributionControl: { compact: true }
+			});
 
-		map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+			map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
 
-		const resizeMap = () => map.resize();
-		requestAnimationFrame(resizeMap);
-		const ro =
-			typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeMap) : null;
-		ro?.observe(mapContainer);
+			const resizeMap = () => map?.resize();
+			requestAnimationFrame(resizeMap);
+			ro =
+				typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeMap) : null;
+			ro?.observe(mapContainer);
 
-		for (const marker of data.mapMarkers) {
-			const popupContent = `
+			for (const marker of data.mapMarkers) {
+				const popupContent = `
 				<div class="trail-popup">
 					<div class="trail-popup__rule" aria-hidden="true"></div>
 					<div class="trail-popup__title">${escapeHtml(marker.title)}</div>
@@ -164,26 +171,28 @@
 				</div>
 			`;
 
-			const popup = new maplibregl.Popup({
-				offset: 28,
-				className: 'trail-popup-shell',
-				maxWidth: '260px',
-				closeButton: true,
-				closeOnClick: true
-			}).setHTML(popupContent);
+				const popup = new maplibregl.Popup({
+					offset: 28,
+					className: 'trail-popup-shell',
+					maxWidth: '260px',
+					closeButton: true,
+					closeOnClick: true
+				}).setHTML(popupContent);
 
-			new maplibregl.Marker({
-				element: createPinElement(marker.title),
-				anchor: 'bottom'
-			})
-				.setLngLat(marker.location)
-				.setPopup(popup)
-				.addTo(map);
-		}
+				new maplibregl.Marker({
+					element: createPinElement(marker.title),
+					anchor: 'bottom'
+				})
+					.setLngLat(marker.location)
+					.setPopup(popup)
+					.addTo(map);
+			}
+		})();
 
 		return () => {
+			disposed = true;
 			ro?.disconnect();
-			map.remove();
+			map?.remove();
 		};
 	});
 </script>

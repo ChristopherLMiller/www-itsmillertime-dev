@@ -13,7 +13,19 @@ async function fetchProjectsFromCMS(page: number, limit: number): Promise<Projec
 		limit,
 		page,
 		sort: '-createdAt',
-		depth: 2,
+		depth: 1,
+		select: {
+			projectStatus: true,
+			category: true,
+			technologies: true,
+			version: true,
+			title: true,
+			shortDescription: true,
+			content: true,
+			links: true,
+			screenshots: true,
+			createdAt: true
+		},
 		where: {
 			_status: { not_equals: 'draft' }
 		}

@@ -1,7 +1,8 @@
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch, request, url }) => {
+export const load: PageServerLoad = async ({ fetch, request, url, depends }) => {
+	depends('app:galleries-list');
 	const sdk = getPayloadSDK(fetch, request);
 
 	const [galleriesData, categoriesData, tagsData] = await Promise.all([

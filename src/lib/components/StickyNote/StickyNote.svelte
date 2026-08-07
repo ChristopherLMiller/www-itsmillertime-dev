@@ -10,6 +10,13 @@
 	const { className = '', title, children }: StickyNoteProps = $props();
 </script>
 
+<svelte:head>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Delius&display=swap"
+		rel="stylesheet"
+	/>
+</svelte:head>
+
 <div class="sticky-note {className}">
 	<div class="sticky-note__content">
 		{#if title}

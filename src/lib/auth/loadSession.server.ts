@@ -14,15 +14,15 @@ export async function loadSession(
 	request: Request
 ): Promise<SessionShape> {
 	const cookie = request.headers.get('cookie');
+	if (!hasBetterAuthCookie(cookie)) return null;
+
 	const sessionInit: RequestInit | undefined = cookie ? { headers: { cookie } } : undefined;
 
 	try {
 		const payloadFetch = createPayloadFetch(fetch, request);
 		// When a better-auth cookie is present, fetch session + /users/me together
 		// to cut the SSR waterfall on every document load.
-		const mePromise = hasBetterAuthCookie(cookie)
-			? payloadFetch(`${getPayloadApiBaseUrl()}/users/me`).catch(() => null)
-			: Promise.resolve(null);
+		const mePromise = payloadFetch(`${getPayloadApiBaseUrl()}/users/me`).catch(() => null);
 
 		const [sessionResponse, meResponse] = await Promise.all([
 			fetch('/api/auth/get-session', sessionInit),
