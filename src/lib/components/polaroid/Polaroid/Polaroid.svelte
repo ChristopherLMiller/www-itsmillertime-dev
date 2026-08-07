@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Image from '$lib/components/Image';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
+	import { displayableImageTitle } from '$lib/utils/gallery-image-display';
 	import { isVideoMedia } from '$lib/utils/media-url';
 	import type { Media } from '$lib/types/payload-types';
 
@@ -52,7 +53,9 @@
 		disableContextMenu = false
 	}: PolaroidProps = $props();
 
-	const displayCaption = $derived(caption ?? '');
+	const displayCaption = $derived(
+		displayableImageTitle(caption?.trim() || media.alt, media.filename)
+	);
 	const isVideo = $derived(isVideoMedia(media));
 
 	let isFlipped = $state(false);
@@ -351,6 +354,18 @@
 		color: #4a4a47;
 		margin: 0;
 		overflow-wrap: break-word;
+	}
+
+	/* Single-column gallery grid: polaroids are large — bump back copy past the --fs-xs floor */
+	@media (max-width: 639px) {
+		.polaroid__album-title {
+			font-size: var(--fs-s);
+		}
+
+		.polaroid__album-description,
+		.polaroid__note {
+			font-size: var(--fs-base);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

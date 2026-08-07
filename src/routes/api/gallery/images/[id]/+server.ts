@@ -1,4 +1,4 @@
-import { getMergedSessionUser } from '$lib/auth/requireAdmin.server';
+import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import type { GalleryImage } from '$lib/types/payload-types';
@@ -76,7 +76,9 @@ export const GET: RequestHandler = async (event) => {
 		: (doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '');
 
 	const payload = {
-		thumbnailURL: isGif ? (doc.url ?? doc.thumbnailURL ?? null) : (doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null),
+		thumbnailURL: isGif
+			? (doc.url ?? doc.thumbnailURL ?? null)
+			: (doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? null),
 		id: doc.id,
 		blurhash: doc.blurhash ?? null,
 		mimeType: doc.mimeType ?? null,
@@ -99,4 +101,73 @@ export const GET: RequestHandler = async (event) => {
 	};
 
 	return json(payload);
+};
+
+/**
+ * Admin-only: update gallery-image `alt` and/or Lexical `caption` from the lightbox.
+ */
+export const PATCH: RequestHandler = async (event) => {
+	const { params, fetch, request } = event;
+	const galleryImageId = Number(params.id);
+	if (!Number.isFinite(galleryImageId)) {
+		return json({ error: 'Invalid gallery image ID' }, { status: 400 });
+	}
+
+	const user = await getMergedSessionUser(event);
+	if (!isAdminRole(user)) {
+		return json({ error: 'Forbidden' }, { status: 403 });
+	}
+
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ error: 'Invalid JSON body' }, { status: 400 });
+	}
+
+	if (!body || typeof body !== 'object') {
+		return json({ error: 'Invalid body' }, { status: 400 });
+	}
+
+	const record = body as Record<string, unknown>;
+	const data: { alt?: string; caption?: GalleryImage['caption'] | null } = {};
+
+	if ('alt' in record) {
+		if (record.alt != null && typeof record.alt !== 'string') {
+			return json({ error: 'alt must be a string' }, { status: 400 });
+		}
+		data.alt = record.alt == null ? '' : String(record.alt);
+	}
+
+	if ('caption' in record) {
+		if (
+			record.caption !== null &&
+			(typeof record.caption !== 'object' || Array.isArray(record.caption))
+		) {
+			return json({ error: 'caption must be a Lexical document or null' }, { status: 400 });
+		}
+		data.caption = (record.caption as GalleryImage['caption'] | null) ?? null;
+	}
+
+	if (!('alt' in data) && !('caption' in data)) {
+		return json({ error: 'Provide alt and/or caption' }, { status: 400 });
+	}
+
+	const sdk = getPayloadSDK(fetch, request);
+	try {
+		const updated = await sdk.update({
+			collection: 'gallery-images',
+			id: galleryImageId,
+			data,
+			depth: 0
+		});
+		return json({
+			id: updated.id,
+			alt: updated.alt,
+			caption: updated.caption ?? null
+		});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Update failed';
+		return json({ error: message }, { status: 500 });
+	}
 };

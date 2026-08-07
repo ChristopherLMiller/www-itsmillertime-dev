@@ -3,10 +3,10 @@
 	import Polaroid from '$lib/components/polaroid/Polaroid';
 	import {
 		buildPlaceholderGalleryMedia,
+		displayableImageTitle,
 		type GalleryGridMedia
 	} from '$lib/utils/gallery-image-display';
 	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
-	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
 
 	type GalleryAlbumPolaroidProps = {
 		galleryImageId: number;
@@ -115,9 +115,7 @@
 		{#key `${displayMedia.id}-${displayMedia.url ?? ''}-${displayMedia.needsProxy ? 'p' : 'd'}`}
 			<Polaroid
 				media={displayMedia}
-				caption={displayMedia.caption
-					? lexicalToPlainText(displayMedia.caption).trim() || undefined
-					: undefined}
+				caption={displayableImageTitle(displayMedia.alt, displayMedia.filename) || undefined}
 				interactive={false}
 				clickable={false}
 				enableViewTransition={false}

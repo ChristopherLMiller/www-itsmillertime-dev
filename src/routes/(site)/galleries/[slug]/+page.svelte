@@ -497,6 +497,12 @@
 				gallery={data.gallery as unknown as GalleryAlbum}
 				{galleryImageId}
 				{useProxy}
+				onMediaMetaUpdated={(patch) => {
+					if (galleryImageId == null) return;
+					const existing = slotMedia[galleryImageId];
+					if (!existing) return;
+					injectResolvedMedia({ ...existing, ...patch });
+				}}
 			/>
 		{/snippet}
 	</Lightbox>

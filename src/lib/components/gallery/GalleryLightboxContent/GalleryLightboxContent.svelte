@@ -15,8 +15,10 @@
 		type GalleryImageTrackingCounts
 	} from '$lib/utils/gallery-image-tracking/types';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
-	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
+	import { lexicalToPlainText, plainTextToLexical } from '$lib/utils/lexical-to-text';
 	import { getMediaUrl, getLightboxPaintUrl, getLightboxZoomUrl, isVideoMedia } from '$lib/utils/media-url';
+	import Lexical from '$lib/components/Lexical';
+	import type { GalleryImage } from '$lib/types/payload-types';
 	import { imageZoomPan, type ImageZoomPanHandle, type ImageZoomPanTransform } from '$lib/utils/image-zoom-pan';
 	import {
 		createLightboxZoomCanvasController,
@@ -27,6 +29,7 @@
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
 	import type { GalleryCommerce } from '$lib/utils/gallery-image-display';
+	import { displayableImageTitle } from '$lib/utils/gallery-image-display';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 
@@ -93,7 +96,8 @@
 		hasNext,
 		gallery,
 		galleryImageId,
-		useProxy
+		useProxy,
+		onMediaMetaUpdated
 	}: {
 		image: Media | undefined;
 		index: number;
@@ -110,6 +114,10 @@
 		gallery: GalleryAlbum;
 		galleryImageId?: number;
 		useProxy?: boolean;
+		onMediaMetaUpdated?: (patch: {
+			alt: string;
+			caption: GalleryImage['caption'] | null;
+		}) => void;
 	} = $props();
 
 	const cmsImageEditHref = $derived(
@@ -444,9 +452,70 @@
 		};
 	}
 
-	// Caption (Lexical) or alt as fallback
+	// Alt = image title; Lexical caption = description. Shown separately (not as fallbacks).
+	// Filename-default alts are skipped — they aren't real titles.
+	const imageTitle = $derived(displayableImageTitle(image?.alt, image?.filename));
 	const captionText = $derived(image?.caption ? lexicalToPlainText(image.caption) : null);
-	const displayCaption = $derived((captionText && captionText.trim()) || image?.alt || '');
+	const hasLexicalCaption = $derived(Boolean(captionText && captionText.trim()));
+	const shareTitle = $derived(imageTitle || captionText?.trim() || gallery.title || 'Gallery image');
+
+	let editingMeta = $state(false);
+	let draftAlt = $state('');
+	let draftCaption = $state('');
+	let metaSaveError = $state<string | null>(null);
+	let metaSaving = $state(false);
+
+	$effect(() => {
+		void slideIdentity;
+		editingMeta = false;
+		metaSaveError = null;
+		metaSaving = false;
+	});
+
+	function startEditingMeta() {
+		draftAlt = image?.alt ?? '';
+		draftCaption = captionText ?? '';
+		metaSaveError = null;
+		editingMeta = true;
+	}
+
+	function cancelEditingMeta() {
+		editingMeta = false;
+		metaSaveError = null;
+	}
+
+	async function saveMediaMeta() {
+		if (!isAdmin || galleryImageId == null || metaSaving) return;
+		metaSaving = true;
+		metaSaveError = null;
+		const caption = plainTextToLexical(draftCaption) as GalleryImage['caption'] | null;
+		const alt = draftAlt.trim();
+		try {
+			const res = await fetch(`/api/gallery/images/${galleryImageId}`, {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ alt, caption })
+			});
+			const payload = (await res.json().catch(() => null)) as {
+				alt?: string;
+				caption?: GalleryImage['caption'] | null;
+				error?: string;
+			} | null;
+			if (!res.ok) {
+				metaSaveError = payload?.error ?? `Save failed (${res.status})`;
+				return;
+			}
+			onMediaMetaUpdated?.({
+				alt: payload?.alt ?? alt,
+				caption: payload?.caption ?? caption
+			});
+			editingMeta = false;
+		} catch {
+			metaSaveError = 'Could not save changes';
+		} finally {
+			metaSaving = false;
+		}
+	}
 
 	// Commerce: Medusa is the source of truth. A for-sale image carries a live
 	// Medusa variant id (resolved server-side) we can add to the cart.
@@ -582,8 +651,6 @@
 		url.searchParams.set('selected', String(galleryImageId));
 		return url.toString();
 	});
-
-	const shareTitle = $derived(displayCaption || gallery.title || 'Gallery image');
 
 	const metricItems = $derived([
 		{ label: 'Views', value: tracking.views },
@@ -1022,11 +1089,92 @@
 						</section>
 					{/if}
 
-					<section class="gallery-lightbox__section">
-						<h3 class="gallery-lightbox__section-title">Caption</h3>
-						<p class="gallery-lightbox__section-text gallery-lightbox__caption">
-							{displayCaption || '—'}
-						</p>
+					<section class="gallery-lightbox__section gallery-lightbox__section--about">
+						<div class="gallery-lightbox__section-heading">
+							<h3 class="gallery-lightbox__section-title">About</h3>
+							{#if isAdmin && galleryImageId != null && !editingMeta}
+								<button
+									type="button"
+									class="gallery-lightbox__meta-edit-btn"
+									onclick={(e) => {
+										e.stopPropagation();
+										startEditingMeta();
+									}}
+								>
+									Edit
+								</button>
+							{/if}
+						</div>
+
+						{#if isAdmin && editingMeta}
+							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+							<form
+								class="gallery-lightbox__meta-form"
+								onsubmit={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									void saveMediaMeta();
+								}}
+								onclick={(e) => e.stopPropagation()}
+								onkeydown={(e) => e.stopPropagation()}
+							>
+								<label class="gallery-lightbox__meta-field">
+									<span class="gallery-lightbox__meta-field-label">Title</span>
+									<input
+										class="gallery-lightbox__meta-input"
+										type="text"
+										bind:value={draftAlt}
+										disabled={metaSaving}
+										autocomplete="off"
+										placeholder="Short title for this image"
+									/>
+									<span class="gallery-lightbox__meta-hint">Stored as the image alt text</span>
+								</label>
+								<label class="gallery-lightbox__meta-field">
+									<span class="gallery-lightbox__meta-field-label">Description</span>
+									<textarea
+										class="gallery-lightbox__meta-textarea"
+										rows="4"
+										bind:value={draftCaption}
+										disabled={metaSaving}
+										placeholder="Optional longer description"
+									></textarea>
+								</label>
+								{#if metaSaveError}
+									<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>
+								{/if}
+								<div class="gallery-lightbox__meta-actions">
+									<button
+										type="submit"
+										class="gallery-lightbox__meta-save"
+										disabled={metaSaving}
+									>
+										{metaSaving ? 'Saving…' : 'Save'}
+									</button>
+									<button
+										type="button"
+										class="gallery-lightbox__meta-cancel"
+										disabled={metaSaving}
+										onclick={cancelEditingMeta}
+									>
+										Cancel
+									</button>
+								</div>
+							</form>
+						{:else if imageTitle || hasLexicalCaption}
+							<div class="gallery-lightbox__about">
+								{#if imageTitle}
+									<p class="gallery-lightbox__image-title">{imageTitle}</p>
+								{/if}
+								{#if hasLexicalCaption && image?.caption}
+									<blockquote class="gallery-lightbox__image-description">
+										<Lexical data={image.caption} />
+									</blockquote>
+								{/if}
+							</div>
+						{:else}
+							<p class="gallery-lightbox__section-text">—</p>
+						{/if}
 					</section>
 
 					<section class="gallery-lightbox__section">
@@ -1159,7 +1307,7 @@
 							<BuyButton
 								variantId={buyVariantId}
 								priceUSD={buyPrice}
-								title={displayCaption}
+								title={shareTitle}
 							/>
 						{:else}
 							<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
@@ -1607,6 +1755,179 @@
 		border-bottom: 1px solid var(--color-tertiary-lighter);
 	}
 
+	.gallery-lightbox__section-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.gallery-lightbox__section-heading .gallery-lightbox__section-title {
+		flex: 1;
+		margin: 0;
+	}
+
+	.gallery-lightbox__meta-edit-btn {
+		flex-shrink: 0;
+		margin: 0;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid rgba(255, 255, 255, 0.22);
+		border-radius: 4px;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--color-secondary);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+
+	.gallery-lightbox__meta-edit-btn:hover,
+	.gallery-lightbox__meta-edit-btn:focus-visible {
+		outline: none;
+		border-color: var(--color-secondary);
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.gallery-lightbox__meta-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.gallery-lightbox__meta-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.gallery-lightbox__meta-field-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-tertiary);
+	}
+
+	.gallery-lightbox__meta-hint {
+		font-size: 0.6875rem;
+		line-height: 1.35;
+		color: rgba(255, 255, 255, 0.45);
+	}
+
+	.gallery-lightbox__about {
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+	}
+
+	.gallery-lightbox__image-title {
+		margin: 0;
+		font-family: var(--font-permanent-marker), cursive;
+		font-size: var(--fs-xs);
+		font-weight: 400;
+		font-style: normal;
+		letter-spacing: 0.02em;
+		line-height: 1.35;
+		color: rgba(255, 255, 255, 0.72);
+		text-wrap: pretty;
+	}
+
+	.gallery-lightbox__image-description {
+		margin: 0;
+		padding: 0.55rem 0.7rem 0.55rem 0.85rem;
+		border-left: 2px solid var(--color-secondary);
+		background: rgba(0, 0, 0, 0.28);
+		box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+		border-radius: 0 4px 4px 0;
+		font-family: var(--font-crimson-text, Georgia, serif);
+		font-size: var(--fs-xs);
+		font-style: italic;
+		line-height: 1.45;
+		color: rgba(255, 255, 255, 0.85);
+	}
+
+	.gallery-lightbox__image-description :global(p) {
+		margin: 0 0 0.5rem;
+		line-height: 1.45;
+		color: inherit;
+		font: inherit;
+	}
+
+	.gallery-lightbox__image-description :global(p:last-child) {
+		margin-bottom: 0;
+	}
+
+	.gallery-lightbox__meta-input,
+	.gallery-lightbox__meta-textarea {
+		width: 100%;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0.5rem 0.65rem;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.35);
+		color: var(--color-white-lightest);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.875rem;
+		line-height: 1.4;
+	}
+
+	.gallery-lightbox__meta-textarea {
+		resize: vertical;
+		min-height: 5.5rem;
+		font-family: var(--font-crimson-text, Georgia, serif);
+	}
+
+	.gallery-lightbox__meta-input:focus-visible,
+	.gallery-lightbox__meta-textarea:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 1px;
+	}
+
+	.gallery-lightbox__meta-error {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: #f0a0a0;
+	}
+
+	.gallery-lightbox__meta-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.gallery-lightbox__meta-save,
+	.gallery-lightbox__meta-cancel {
+		margin: 0;
+		padding: 0.4rem 0.85rem;
+		border-radius: 4px;
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.gallery-lightbox__meta-save {
+		border: 1px solid var(--color-secondary);
+		background: color-mix(in oklch, var(--color-secondary) 28%, transparent);
+		color: var(--color-secondary);
+	}
+
+	.gallery-lightbox__meta-cancel {
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		background: transparent;
+		color: var(--color-white-lightest);
+	}
+
+	.gallery-lightbox__meta-save:disabled,
+	.gallery-lightbox__meta-cancel:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+
 	.gallery-lightbox__edit-btn {
 		display: inline-flex;
 		align-items: center;
@@ -1666,11 +1987,6 @@
 		line-height: 1.35;
 		margin: 0;
 		color: var(--color-white-lightest);
-	}
-
-	.gallery-lightbox__caption {
-		font-family: var(--font-crimson-text);
-		font-style: italic;
 	}
 
 	.gallery-lightbox__meta-grid {

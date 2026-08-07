@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lexicalToPlainText } from './lexical-to-text';
+import { lexicalToPlainText, plainTextToLexical } from './lexical-to-text';
 
 describe('lexicalToPlainText', () => {
 	it('returns empty string for nullish input', () => {
@@ -51,5 +51,24 @@ describe('lexicalToPlainText', () => {
 			}
 		};
 		expect(lexicalToPlainText(doc)).toBe('a b');
+	});
+});
+
+describe('plainTextToLexical', () => {
+	it('returns null for empty input', () => {
+		expect(plainTextToLexical('')).toBeNull();
+		expect(plainTextToLexical('   ')).toBeNull();
+	});
+
+	it('round-trips plain text through Lexical', () => {
+		const doc = plainTextToLexical('Hello world');
+		expect(doc).not.toBeNull();
+		expect(lexicalToPlainText(doc)).toBe('Hello world');
+	});
+
+	it('splits paragraphs on blank lines', () => {
+		const doc = plainTextToLexical('One\n\nTwo');
+		expect(doc?.root.children).toHaveLength(2);
+		expect(lexicalToPlainText(doc)).toBe('One Two');
 	});
 });
