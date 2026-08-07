@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import PolaroidStack from '$lib/components/polaroid/PolaroidStack';
 	import { buildPlaceholderGalleryMedia } from '$lib/utils/gallery-image-display';
+	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
 	import type { Media } from '$lib/types/payload-types';
 
 	type GalleryLandingPolaroidStackProps = {
@@ -63,44 +64,27 @@
 			})
 	);
 
-	function isMedia(value: unknown): value is Media {
-		return typeof value === 'object' && value !== null && 'id' in value && 'url' in value;
-	}
-
 	$effect(() => {
 		if (!browser) return;
 
 		const id = galleryImageId;
 		let cancelled = false;
-		const ac = new AbortController();
 
 		primary = null;
 		loadError = null;
 
-		(async () => {
-			try {
-				const res = await fetch(`/api/gallery/images/${id}?data=basic`, { signal: ac.signal });
-				if (!res.ok) {
-					if (!cancelled)
-						loadError = res.status === 404 ? 'Image unavailable' : 'Could not load image';
-					return;
-				}
-				const data: unknown = await res.json();
-				if (cancelled) return;
-				if (isMedia(data)) {
-					primary = data;
-				} else {
-					loadError = 'Invalid response';
-				}
-			} catch (e) {
-				if (e instanceof DOMException && e.name === 'AbortError') return;
-				if (!cancelled) loadError = 'Could not load image';
+		// Coalesces with other landing covers into /api/gallery/images/batch?data=basic
+		void fetchGalleryImageFullForPolaroid(id, isNsfw).then((media) => {
+			if (cancelled) return;
+			if (media) {
+				primary = media;
+			} else {
+				loadError = 'Could not load image';
 			}
-		})();
+		});
 
 		return () => {
 			cancelled = true;
-			ac.abort();
 		};
 	});
 </script>

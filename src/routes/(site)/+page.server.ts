@@ -5,6 +5,11 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ fetch, request, url }) => {
 	const pageData = await getPayloadSDK(fetch, request).find({
 		collection: 'pages',
+		depth: 1,
+		select: {
+			blocks: true,
+			meta: true
+		},
 		where: {
 			and: [
 				{

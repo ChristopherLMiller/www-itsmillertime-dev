@@ -7,7 +7,13 @@ export const load: PageServerLoad = async ({ fetch, request }) => {
 		collection: 'gardens',
 		limit: 100,
 		sort: '-updatedAt',
-		depth: 2
+		depth: 1,
+		select: {
+			name: true,
+			slug: true,
+			featuredImage: true,
+			content: true
+		}
 	});
 
 	return { gardens: result.docs };

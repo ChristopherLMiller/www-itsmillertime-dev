@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { invalidateAll, replaceState } from '$app/navigation';
+	import { invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Masonry from 'svelte-bricks';
@@ -10,7 +10,10 @@
 	import Lightbox from '$lib/components/gallery/Lightbox';
 	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
 	import type { GalleryGridMedia } from '$lib/utils/gallery-image-display';
-	import { fetchGalleryImageFullForPolaroid } from '$lib/utils/gallery-image-full-fetch';
+	import {
+		fetchGalleryImageFullForLightbox,
+		fetchGalleryImageFullForPolaroid
+	} from '$lib/utils/gallery-image-full-fetch';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 
@@ -188,7 +191,7 @@
 		directLinkFailed = false;
 
 		try {
-			const media = await fetchGalleryImageFullForPolaroid(selectedId, albumIsNsfw);
+			const media = await fetchGalleryImageFullForLightbox(selectedId, albumIsNsfw);
 			if (!media) {
 				directLinkFailed = true;
 				directLinkDismissed = true;
@@ -243,7 +246,7 @@
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 	}
 
-	/** While lightbox is open, resolve ±1 slot media so next/prev are in `galleryImages` and can preload. */
+	/** While lightbox is open, upgrade current ±1 to full docs (commerce/exif) and keep next/prev ready. */
 	$effect(() => {
 		if (!browser || !lightboxOpen || pinnedLightboxFileMediaId == null) return;
 
@@ -255,9 +258,8 @@
 			(id): id is number => typeof id === 'number'
 		);
 
-		for (const id of neighborIds) {
-			if (slotMedia[id]) continue;
-			void fetchGalleryImageFullForPolaroid(id, albumIsNsfw).then((media) => {
+		for (const id of [currentId, ...neighborIds]) {
+			void fetchGalleryImageFullForLightbox(id, albumIsNsfw).then((media) => {
 				if (media) injectResolvedMedia(media);
 			});
 		}
@@ -301,11 +303,13 @@
 		infiniteLoadError = null;
 	});
 
-	// Refresh data when returning to the tab (e.g. after uploading elsewhere)
+	// Refresh album image ids when returning to the tab (e.g. after uploading elsewhere).
 	$effect(() => {
 		if (!browser) return;
 		const handler = () => {
-			if (document.visibilityState === 'visible') invalidateAll();
+			if (document.visibilityState === 'visible') {
+				void invalidate('app:gallery-album');
+			}
 		};
 		document.addEventListener('visibilitychange', handler);
 		return () => document.removeEventListener('visibilitychange', handler);

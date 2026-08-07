@@ -16,7 +16,7 @@
 	} from '$lib/utils/gallery-image-tracking/types';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText } from '$lib/utils/lexical-to-text';
-	import { getMediaUrl, isVideoMedia } from '$lib/utils/media-url';
+	import { getMediaUrl, getLightboxPaintUrl, getLightboxZoomUrl, isVideoMedia } from '$lib/utils/media-url';
 	import { imageZoomPan, type ImageZoomPanHandle, type ImageZoomPanTransform } from '$lib/utils/image-zoom-pan';
 	import {
 		createLightboxZoomCanvasController,
@@ -27,6 +27,11 @@
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
 	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
 	import type { GalleryCommerce } from '$lib/utils/gallery-image-display';
+	import { cubicOut } from 'svelte/easing';
+	import { fade } from 'svelte/transition';
+
+	/** Crossfade duration: blurhash/placeholder out ↔ full image in */
+	const IMAGE_REVEAL_MS = 320;
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -114,9 +119,23 @@
 	);
 
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
+	/** Prefer xlarge/large for paint; fall back to parent imageSrc / original. */
 	const resolvedImageSrc = $derived(
-		imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
+		getLightboxPaintUrl(image, useProxy ?? false) ??
+			imageSrc ??
+			(image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
 	);
+	/** Full original for sharp zoom bitmap. */
+	const zoomSourceSrc = $derived(
+		getLightboxZoomUrl(image, useProxy ?? false) ?? resolvedImageSrc
+	);
+	/**
+	 * Stable per-photo identity. Lightbox `index` shifts as polaroids resolve into the images
+	 * array — resetting on index caused blur→loaded→blur pulsing for the same photo.
+	 */
+	const slideIdentity = $derived(galleryImageId ?? image?.id ?? null);
+	/** Last identity we reset reveal UI for — ignore transient nulls and same-id churn. */
+	let lastRevealIdentity: number | null = null;
 	const zoomHandle: ImageZoomPanHandle = {
 		reset: () => {},
 		isZoomed: () => false
@@ -159,13 +178,13 @@
 	}
 
 	function ensureZoomBitmap() {
-		if (!browser || !resolvedImageSrc || zoomBitmap || zoomBitmapLoading || zoomBitmapFailed) return;
-		const src = resolvedImageSrc;
+		if (!browser || !zoomSourceSrc || zoomBitmap || zoomBitmapLoading || zoomBitmapFailed) return;
+		const src = zoomSourceSrc;
 		const imgEl = mainImageEl;
 		zoomBitmapLoading = true;
 		void loadZoomBitmap(src, imgEl)
 			.then((bitmap) => {
-				if (resolvedImageSrc !== src) {
+				if (zoomSourceSrc !== src) {
 					disposeZoomBitmap(bitmap);
 					return;
 				}
@@ -174,10 +193,10 @@
 				zoomCanvasController?.schedule();
 			})
 			.catch(() => {
-				if (resolvedImageSrc === src) zoomBitmapFailed = true;
+				if (zoomSourceSrc === src) zoomBitmapFailed = true;
 			})
 			.finally(() => {
-				if (resolvedImageSrc === src) zoomBitmapLoading = false;
+				if (zoomSourceSrc === src) zoomBitmapLoading = false;
 			});
 	}
 
@@ -246,14 +265,20 @@
 		};
 	});
 
+	/**
+	 * Reset zoom + load UI only when the photo identity changes (not lightbox index).
+	 * Index shifts as the sparse galleryImages array densifies and must not re-flash blur.
+	 */
 	$effect(() => {
 		if (!browser) return;
-		void index;
-		void resolvedImageSrc;
+		const id = slideIdentity;
+		if (id == null) return;
 		setZoomBitmap(null);
 		zoomBitmapLoading = false;
 		zoomBitmapFailed = false;
 		zoomTransform = { scale: 1, tx: 0, ty: 0 };
+		zoomHandle.reset();
+		imageZoomed = false;
 		return () => {
 			setZoomBitmap(null);
 		};
@@ -276,50 +301,93 @@
 
 	/** Load state for the main <img>; parent isLoaded probes src only and is not used here */
 	let mainImageLoaded = $state(false);
+	let mainImgReadyNotified = false;
+	/**
+	 * Placeholder layer stays mounted until reveal so `out:fade` can crossfade with the image.
+	 * Reset on slide change; cleared in markMainImageReady once the full bitmap is decoded.
+	 */
+	let showPlaceholderOverlay = $state(true);
+
+	/**
+	 * Src painted in the <img>. Survives basic→full URL upgrades: we keep the current frame
+	 * visible and swap only after the next URL is decoded (no spinner flash).
+	 */
+	let paintedImageSrc = $state<string | null>(null);
 
 	$effect(() => {
-		void index;
-		void resolvedImageSrc;
+		const id = slideIdentity;
+		if (id == null) return;
+		if (id === lastRevealIdentity) return;
+		lastRevealIdentity = id;
 		mainImageLoaded = false;
+		paintedImageSrc = null;
+		mainImgReadyNotified = false;
+		showPlaceholderOverlay = true;
 	});
 
-	const showImageLoadingUi = $derived(!isVideo && !!resolvedImageSrc && !mainImageLoaded);
+	$effect(() => {
+		const next = resolvedImageSrc;
+		// Keep the last painted frame across transient gaps (images array reshuffle).
+		if (!next) return;
+		if (!paintedImageSrc) {
+			paintedImageSrc = next;
+			return;
+		}
+		if (next === paintedImageSrc) return;
 
-	let mainImgReadyNotified = false;
+		// Same slide, upgraded URL — preload then swap; keep reveal state so overlay stays off.
+		let cancelled = false;
+		const img = new Image();
+		img.onload = () => {
+			if (cancelled) return;
+			void img
+				.decode()
+				.catch(() => {})
+				.finally(() => {
+					if (cancelled) return;
+					paintedImageSrc = next;
+					// Drop any zoom bitmap decoded from the previous URL so idle prefetch can rebuild.
+					setZoomBitmap(null);
+					zoomBitmapFailed = false;
+					// Already revealed: do not re-open the placeholder overlay.
+					if (!mainImgReadyNotified) markMainImageReady();
+				});
+		};
+		img.onerror = () => {
+			if (cancelled) return;
+			paintedImageSrc = next;
+			if (!mainImgReadyNotified) markMainImageReady();
+		};
+		img.src = next;
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	const showImageLoadingUi = $derived(!isVideo && showPlaceholderOverlay);
 
 	function markMainImageReady() {
 		if (mainImgReadyNotified) return;
 		mainImgReadyNotified = true;
 		mainImageLoaded = true;
+		// Trigger placeholder outro (fade) while the full image fades in.
+		showPlaceholderOverlay = false;
 		onImageLoad();
 	}
 
+	/** Idle-prefetch zoom bitmap from the original after the lightbox img is ready. */
 	$effect(() => {
-		void index;
-		void resolvedImageSrc;
-		mainImgReadyNotified = false;
-	});
-
-	$effect(() => {
-		void index;
-		void resolvedImageSrc;
-		zoomHandle.reset();
-		imageZoomed = false;
-	});
-
-	/** Idle-prefetch bitmap after the lightbox img is ready. */
-	$effect(() => {
-		if (!browser || !mainImageLoaded || !resolvedImageSrc || zoomBitmap || zoomBitmapFailed) return;
-		const src = resolvedImageSrc;
+		if (!browser || !mainImageLoaded || !zoomSourceSrc || zoomBitmap || zoomBitmapFailed) return;
+		const src = zoomSourceSrc;
 		const ric = window.requestIdleCallback?.bind(window);
 		if (ric) {
 			const id = ric(() => {
-				if (resolvedImageSrc === src) ensureZoomBitmap();
+				if (zoomSourceSrc === src) ensureZoomBitmap();
 			}, { timeout: 1500 });
 			return () => window.cancelIdleCallback?.(id);
 		}
 		const t = setTimeout(() => {
-			if (resolvedImageSrc === src) ensureZoomBitmap();
+			if (zoomSourceSrc === src) ensureZoomBitmap();
 		}, 400);
 		return () => clearTimeout(t);
 	});
@@ -330,52 +398,47 @@
 	});
 
 	/**
-	 * Cached / 304 responses often leave the img complete before `load` fires (or skip it).
-	 * Poll naturalWidth + decode() so the overlay does not stick forever.
+	 * Reveal only after the full file is fetched and decoded.
+	 * Progressive JPEGs expose naturalWidth after the first scan — do not treat that as ready
+	 * (that caused visible scan-line painting over the blurhash).
 	 */
 	function mainLightboxImage(node: HTMLImageElement) {
 		let cleared = false;
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
-		let raf2 = 0;
+		let settling = false;
 
-		const maybeReady = () => {
+		const settle = async () => {
+			if (cleared || !node.isConnected || settling || mainImgReadyNotified) return;
+			// complete === full download; naturalWidth alone is too early for progressive JPEG
+			if (!node.complete || node.naturalWidth === 0) return;
+			settling = true;
+			try {
+				if (typeof node.decode === 'function') {
+					await node.decode();
+				}
+			} catch {
+				/* decode can reject; still reveal if the file finished loading */
+			}
+			settling = false;
 			if (cleared || !node.isConnected) return;
-			if (node.naturalWidth > 0) {
-				markMainImageReady();
-				return;
-			}
-			if (node.complete && node.currentSrc) {
+			if (node.complete && node.naturalWidth > 0) {
 				markMainImageReady();
 			}
 		};
 
-		const tryDecode = () => {
-			if (cleared || typeof node.decode !== 'function') return;
-			node.decode().then(maybeReady).catch(maybeReady);
-		};
+		const onLoad = () => void settle();
+		node.addEventListener('load', onLoad);
+		queueMicrotask(() => void settle());
 
-		queueMicrotask(maybeReady);
-		tryDecode();
-
-		const raf1 = requestAnimationFrame(() => {
-			maybeReady();
-			raf2 = requestAnimationFrame(maybeReady);
-		});
-
-		for (const ms of [0, 32, 100, 400]) {
-			timeouts.push(
-				setTimeout(() => {
-					maybeReady();
-					if (ms === 400) tryDecode();
-				}, ms)
-			);
+		// Cached / 304 responses may skip `load`; poll briefly for complete+decode.
+		for (const ms of [0, 50, 200, 500, 1200]) {
+			timeouts.push(setTimeout(() => void settle(), ms));
 		}
 
 		return {
 			destroy() {
 				cleared = true;
-				cancelAnimationFrame(raf1);
-				cancelAnimationFrame(raf2);
+				node.removeEventListener('load', onLoad);
 				for (const t of timeouts) clearTimeout(t);
 			}
 		};
@@ -701,8 +764,9 @@
 					{#if showImageLoadingUi}
 						<div
 							class="gallery-lightbox__loading-overlay"
-							aria-busy="true"
-							aria-label="Loading image"
+							out:fade={{ duration: IMAGE_REVEAL_MS, easing: cubicOut }}
+							aria-busy={!mainImageLoaded}
+							aria-label={mainImageLoaded ? undefined : 'Loading image'}
 						>
 							{#if blurPlaceholder}
 								<img
@@ -719,29 +783,28 @@
 							{:else}
 								<div class="gallery-lightbox__loading-backdrop" aria-hidden="true"></div>
 							{/if}
-							<div class="gallery-lightbox__spinner" aria-hidden="true"></div>
+							{#if !mainImageLoaded}
+								<div class="gallery-lightbox__spinner" aria-hidden="true"></div>
+							{/if}
 						</div>
 					{/if}
-					{#if resolvedImageSrc}
-						{#key index}
-							<img
-								class="gallery-lightbox__image"
-								class:gallery-lightbox__image--sharp-hidden={sharpZoomActive}
-								bind:this={mainImageEl}
-								use:mainLightboxImage
-								src={resolvedImageSrc ?? ''}
-								alt={image?.alt ?? ''}
-								width={image?.width}
-								height={image?.height}
-								draggable="false"
-								fetchpriority="high"
-								decoding="async"
-								style:opacity={mainImageLoaded ? 1 : 0}
-								onload={markMainImageReady}
-								onerror={markMainImageReady}
-								oncontextmenu={preventContextMenu}
-							/>
-						{/key}
+					{#if paintedImageSrc}
+						<img
+							class="gallery-lightbox__image"
+							class:gallery-lightbox__image--revealed={mainImageLoaded}
+							class:gallery-lightbox__image--sharp-hidden={sharpZoomActive}
+							bind:this={mainImageEl}
+							use:mainLightboxImage
+							src={paintedImageSrc}
+							alt={image?.alt ?? ''}
+							width={image?.width}
+							height={image?.height}
+							draggable="false"
+							fetchpriority="high"
+							decoding="async"
+							onerror={markMainImageReady}
+							oncontextmenu={preventContextMenu}
+						/>
 					{/if}
 				</div>
 			{/if}
@@ -1186,10 +1249,20 @@
 			flex-basis 220ms ease;
 	}
 
-	.gallery-lightbox__info-toggle:hover,
+	.gallery-lightbox__info-toggle:hover {
+		background: color-mix(in oklch, var(--color-tertiary-darker) 80%, black);
+		color: var(--color-white-lightest);
+	}
+
+	.gallery-lightbox__info-toggle:focus {
+		outline: none;
+	}
+
 	.gallery-lightbox__info-toggle:focus-visible {
 		background: color-mix(in oklch, var(--color-tertiary-darker) 80%, black);
 		color: var(--color-white-lightest);
+		outline: 2px solid var(--color-secondary);
+		outline-offset: -2px;
 	}
 
 	.gallery-lightbox__info-toggle--collapsed {
@@ -1397,12 +1470,22 @@
 		object-fit: contain;
 		object-position: center;
 		pointer-events: none;
-		transition: opacity 300ms ease;
-		animation: imageFadeIn 180ms ease;
+		opacity: 0;
+		transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.gallery-lightbox__image--revealed {
+		opacity: 1;
 	}
 
 	.gallery-lightbox__image--sharp-hidden {
 		visibility: hidden;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gallery-lightbox__image {
+			transition-duration: 1ms;
+		}
 	}
 
 	.gallery-lightbox__image-frame :global(.gallery-lightbox__video) {
@@ -1508,14 +1591,6 @@
 		}
 	}
 
-	@keyframes imageFadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
 
 	.gallery-lightbox__section {
 		display: flex;

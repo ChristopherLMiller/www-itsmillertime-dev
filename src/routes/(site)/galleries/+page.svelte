@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
+	import { goto, invalidate, beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import FilmStrip from '$lib/components/gallery/FilmStrip';
 	import Paginator from '$lib/components/Paginator';
@@ -191,11 +191,13 @@
 		return null;
 	}
 
-	// Refresh data when returning to the tab (e.g. after uploading elsewhere)
+	// Refresh gallery list when returning to the tab (e.g. after uploading elsewhere).
 	$effect(() => {
 		if (!browser) return;
 		const handler = () => {
-			if (document.visibilityState === 'visible') invalidateAll();
+			if (document.visibilityState === 'visible') {
+				void invalidate('app:galleries-list');
+			}
 		};
 		document.addEventListener('visibilitychange', handler);
 		return () => document.removeEventListener('visibilitychange', handler);

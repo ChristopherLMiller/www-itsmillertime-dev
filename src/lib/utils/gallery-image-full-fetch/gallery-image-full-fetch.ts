@@ -1,6 +1,7 @@
 import { galleryImageDocToDisplayMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
 
-const inflight = new Map<number, Promise<GalleryGridMedia | null>>();
+const inflightBasic = new Map<number, Promise<GalleryGridMedia | null>>();
+const inflightFull = new Map<number, Promise<GalleryGridMedia | null>>();
 
 const BATCH_SIZE = 6;
 const BATCH_WAIT_MS = 40;
@@ -10,6 +11,7 @@ const MAX_IN_FLIGHT_BATCHES = 2;
 type QueueItem = {
 	id: number;
 	albumIsNsfw: boolean;
+	data: 'basic' | 'full';
 	resolve: (value: GalleryGridMedia | null) => void;
 };
 
@@ -36,20 +38,25 @@ function scheduleFlush() {
 
 async function flushBatches() {
 	while (queue.length > 0 && inFlightBatches < MAX_IN_FLIGHT_BATCHES) {
-		const batch = queue.splice(0, BATCH_SIZE);
+		// Keep basic and full requests in separate HTTP batches.
+		const mode = queue[0]?.data ?? 'basic';
+		const batch: QueueItem[] = [];
+		while (batch.length < BATCH_SIZE && queue.length > 0 && queue[0].data === mode) {
+			batch.push(queue.shift()!);
+		}
 		if (batch.length === 0) break;
 		inFlightBatches += 1;
-		void runBatch(batch).finally(() => {
+		void runBatch(batch, mode).finally(() => {
 			inFlightBatches -= 1;
 			if (queue.length > 0) void flushBatches();
 		});
 	}
 }
 
-async function runBatch(batch: QueueItem[]) {
+async function runBatch(batch: QueueItem[], data: 'basic' | 'full') {
 	const ids = batch.map((item) => item.id);
 	try {
-		const res = await fetch(`/api/gallery/images/batch?ids=${ids.join(',')}&data=full`);
+		const res = await fetch(`/api/gallery/images/batch?ids=${ids.join(',')}&data=${data}`);
 		if (!res.ok) {
 			for (const item of batch) item.resolve(null);
 			return;
@@ -59,7 +66,7 @@ async function runBatch(batch: QueueItem[]) {
 			typeof payload === 'object' &&
 			payload !== null &&
 			Array.isArray((payload as { docs?: unknown }).docs)
-				? ((payload as { docs: unknown[] }).docs)
+				? (payload as { docs: unknown[] }).docs
 				: [];
 		const byId = new Map<number, unknown>();
 		for (const doc of docs) {
@@ -77,19 +84,17 @@ async function runBatch(batch: QueueItem[]) {
 	}
 }
 
-/**
- * Full gallery-image fetch for polaroids. Requests are coalesced into HTTP batches of
- * {@link BATCH_SIZE} so a masonry page does not open one connection per cell.
- */
-export function fetchGalleryImageFullForPolaroid(
+function enqueue(
 	galleryImageId: number,
-	albumIsNsfw: boolean
+	albumIsNsfw: boolean,
+	data: 'basic' | 'full',
+	inflight: Map<number, Promise<GalleryGridMedia | null>>
 ): Promise<GalleryGridMedia | null> {
 	const existing = inflight.get(galleryImageId);
 	if (existing) return existing;
 
 	const promise = new Promise<GalleryGridMedia | null>((resolve) => {
-		queue.push({ id: galleryImageId, albumIsNsfw, resolve });
+		queue.push({ id: galleryImageId, albumIsNsfw, data, resolve });
 		scheduleFlush();
 	}).finally(() => {
 		inflight.delete(galleryImageId);
@@ -99,9 +104,30 @@ export function fetchGalleryImageFullForPolaroid(
 	return promise;
 }
 
+/**
+ * Grid/polaroid preview: depth-0 docs, no Medusa. Coalesced into HTTP batches.
+ */
+export function fetchGalleryImageFullForPolaroid(
+	galleryImageId: number,
+	albumIsNsfw: boolean
+): Promise<GalleryGridMedia | null> {
+	return enqueue(galleryImageId, albumIsNsfw, 'basic', inflightBasic);
+}
+
+/**
+ * Lightbox detail: depth-1 docs + Medusa commerce when present.
+ */
+export function fetchGalleryImageFullForLightbox(
+	galleryImageId: number,
+	albumIsNsfw: boolean
+): Promise<GalleryGridMedia | null> {
+	return enqueue(galleryImageId, albumIsNsfw, 'full', inflightFull);
+}
+
 /** Test helper — not for app code. */
 export function __resetGalleryImageFullFetchForTests() {
-	inflight.clear();
+	inflightBasic.clear();
+	inflightFull.clear();
 	queue.length = 0;
 	inFlightBatches = 0;
 	if (flushTimer != null) {

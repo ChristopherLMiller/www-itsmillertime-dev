@@ -9,8 +9,9 @@ import type { RequestHandler } from './$types';
 const MAX_IDS = 12;
 
 /**
- * Batch gallery-image docs for the album grid.
- * `GET ?ids=1,2,3&data=full` → `{ docs: GalleryImage[] }` (depth 1).
+ * Batch gallery-image docs for the album grid / lightbox.
+ * `GET ?ids=1,2,3&data=basic` → depth 0 upload fields (grid polaroids; no Medusa).
+ * `GET ?ids=1,2,3&data=full` → depth 1 + Medusa commerce (lightbox).
  * Missing / inaccessible ids are omitted (not 404 for the whole batch).
  */
 export const GET: RequestHandler = async (event) => {

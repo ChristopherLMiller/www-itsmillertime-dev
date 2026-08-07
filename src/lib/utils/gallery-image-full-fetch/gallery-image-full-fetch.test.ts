@@ -46,6 +46,7 @@ describe('fetchGalleryImageFullForPolaroid', () => {
 			vi.fn((url: string) => {
 				fetchCalls++;
 				expect(String(url)).toContain('/api/gallery/images/batch');
+				expect(String(url)).toContain('data=basic');
 				return Promise.resolve({
 					ok: true,
 					json: async () => ({ docs: [media] })
@@ -102,7 +103,45 @@ describe('fetchGalleryImageFullForPolaroid', () => {
 
 		expect(urls.length).toBe(2);
 		expect(urls[0]).toContain('ids=1,2,3,4,5,6');
+		expect(urls[0]).toContain('data=basic');
 		expect(urls[1]).toContain('ids=7');
 		expect(results.map((r) => r?.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+	});
+
+	it('batches lightbox full fetches separately from polaroid basic', async () => {
+		vi.useFakeTimers();
+		const { fetchGalleryImageFullForLightbox } = await import('./gallery-image-full-fetch');
+		const urls: string[] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				urls.push(String(url));
+				return Promise.resolve({
+					ok: true,
+					json: async () => ({
+						docs: [
+							{
+								id: 9,
+								url: '/photo-9.jpg',
+								alt: '',
+								width: 10,
+								height: 10,
+								updatedAt: '',
+								createdAt: '',
+								commerce: { forSale: true, variantId: 'v1', priceUSD: 5 }
+							}
+						]
+					})
+				});
+			})
+		);
+
+		const p = fetchGalleryImageFullForLightbox(9, false);
+		await vi.advanceTimersByTimeAsync(50);
+		const out = await p;
+
+		expect(urls).toHaveLength(1);
+		expect(urls[0]).toContain('data=full');
+		expect(out?.commerce?.variantId).toBe('v1');
 	});
 });

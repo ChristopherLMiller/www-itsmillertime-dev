@@ -59,7 +59,7 @@ async function fetchModelsListFromCMS(
 					sort,
 					limit,
 					page,
-					depth: 2,
+					depth: 1,
 					select: {
 						id: true,
 						title: true,
