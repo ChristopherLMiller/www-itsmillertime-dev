@@ -23,6 +23,12 @@ export async function loadSession(
 
 	// Prefer the Request cookie jar (includes HttpOnly). document.cookie cannot.
 	const cookie = request?.headers.get('cookie') ?? null;
+	if (request && !hasBetterAuthCookie(cookie)) {
+		// Server-side anonymous document load — skip get-session entirely.
+		return null;
+	}
+	// Browser: cookie header is usually unavailable on fetch(); still call get-session
+	// (credentials: include) so HttpOnly session cookies are sent.
 	const sessionInit: RequestInit = cookie
 		? { headers: { cookie }, credentials: 'include' }
 		: { credentials: 'include' };

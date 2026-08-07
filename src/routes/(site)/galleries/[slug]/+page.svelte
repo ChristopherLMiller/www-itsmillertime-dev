@@ -312,7 +312,18 @@
 	});
 
 	$effect(() => {
-		if (!browser || !loadMoreSentinel) return;
+		if (!browser || !loadMoreSentinel || !hasNextPage) return;
+		// Re-check when the grid grows — Masonry can push the sentinel out of the
+		// initial intersection window on mobile after a batch lands.
+		void visibleSlots.length;
+
+		const el = loadMoreSentinel;
+		const maybeLoad = () => {
+			const rect = el.getBoundingClientRect();
+			if (rect.top < window.innerHeight + LOAD_AHEAD_PX) {
+				void loadNextImagePage();
+			}
+		};
 
 		const observer = new IntersectionObserver(
 			(entries) => {
@@ -320,12 +331,18 @@
 					void loadNextImagePage();
 				}
 			},
-			{ rootMargin: `${LOAD_AHEAD_PX}px 0px` }
+			{ root: null, rootMargin: `${LOAD_AHEAD_PX}px 0px`, threshold: 0 }
 		);
 
-		observer.observe(loadMoreSentinel);
+		observer.observe(el);
+		// iOS often skips the initial intersection callback after Masonry layout.
+		requestAnimationFrame(maybeLoad);
+		const t = window.setTimeout(maybeLoad, 250);
 
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			window.clearTimeout(t);
+		};
 	});
 
 	$effect(() => {
@@ -399,11 +416,18 @@
 		</div>
 
 		{#if hasNextPage}
-			<div class="gallery-load-more" bind:this={loadMoreSentinel} aria-hidden="true">
+			<div class="gallery-load-more" bind:this={loadMoreSentinel} aria-live="polite">
 				{#if isLoadingMore}
-					Loading more images...
+					<span class="gallery-load-more__spinner" aria-hidden="true"></span>
+					<span class="gallery-load-more__label">Loading more…</span>
 				{:else}
-					&nbsp;
+					<button
+						type="button"
+						class="gallery-load-more__button"
+						onclick={() => void loadNextImagePage()}
+					>
+						Load more
+					</button>
 				{/if}
 			</div>
 		{/if}
@@ -544,12 +568,51 @@
 	}
 
 	.gallery-load-more {
-		height: 2rem;
-		display: grid;
-		place-items: center;
+		min-height: 2.5rem;
+		margin-top: 1.25rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
 		color: var(--color-tertiary);
 		font-family: var(--font-roboto);
 		font-size: var(--fs-xs);
+	}
+
+	.gallery-load-more__label {
+		letter-spacing: 0.02em;
+	}
+
+	.gallery-load-more__spinner {
+		width: 0.85rem;
+		height: 0.85rem;
+		border: 1.5px solid color-mix(in oklch, var(--color-tertiary) 35%, transparent);
+		border-top-color: var(--color-tertiary);
+		border-radius: 50%;
+		animation: gallery-load-spin 0.75s linear infinite;
+		flex-shrink: 0;
+	}
+
+	.gallery-load-more__button {
+		appearance: none;
+		border: none;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		padding: 0.35rem 0.5rem;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	.gallery-load-more__button:hover {
+		color: var(--color-primary-darker, var(--color-tertiary));
+	}
+
+	@keyframes gallery-load-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.gallery-load-error {
@@ -558,5 +621,13 @@
 		color: #b00020;
 		font-family: var(--font-roboto);
 		font-size: var(--fs-xs);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gallery-load-more__spinner {
+			animation: none;
+			border-top-color: var(--color-tertiary);
+			opacity: 0.7;
+		}
 	}
 </style>

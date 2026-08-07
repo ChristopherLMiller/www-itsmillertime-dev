@@ -153,7 +153,7 @@
 			<p>Copyright &copy; 2017-{new Date().getFullYear()}</p>
 		</div>
 	</div>
-	<div class="bottom-bar">
+	<div class="bottom-bar" data-site-footer-version>
 		ItsMillerTime | v{pkg.version}{#if pullRequestNumber}-PR{pullRequestNumber}{/if}
 	</div>
 </footer>

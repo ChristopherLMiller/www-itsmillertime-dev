@@ -70,6 +70,17 @@
 
 	/* App Constraints */
 	--top-bar-height: 3rem;
+	/* Fixed chrome height including Android/iOS status bar (fullscreen PWA). */
+	--top-bar-offset: calc(var(--top-bar-height) + env(safe-area-inset-top, 0px));
+	/* Shared gap above the footer version bar for fixed corner chrome. */
+	--chrome-corner-gap: 0.5rem;
+	--chrome-above-footer: calc(
+		var(--top-bar-height) + env(safe-area-inset-bottom, 0px) + var(--chrome-corner-gap)
+	);
+	/* Default: hug the viewport corner. Lifted when the footer version bar is on-screen. */
+	--chrome-corner-bottom: calc(var(--chrome-corner-gap) + env(safe-area-inset-bottom, 0px));
+	/* Thickness of the vertical Admin edge tab (padding + type). */
+	--admin-edge-tab-width: 2.25rem;
 	/* Fluid gutters: 0.75rem @ 768px → 2rem @ 1400px (slope is px-based vi, not rem) */
 	--side-margins: clamp(0.75rem, 3.165vi - 0.769rem, 2rem);
 
@@ -81,4 +92,8 @@
 
 	/* borders */
 	--border-width: 5px;
+}
+
+html.footer-version-bar-visible {
+	--chrome-corner-bottom: var(--chrome-above-footer);
 }

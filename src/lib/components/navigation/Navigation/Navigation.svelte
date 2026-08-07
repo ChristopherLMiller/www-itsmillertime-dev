@@ -27,7 +27,7 @@
 	nav {
 		grid-area: nav;
 		position: sticky;
-		top: var(--top-bar-height);
+		top: var(--top-bar-offset);
 		z-index: 999;
 	}
 

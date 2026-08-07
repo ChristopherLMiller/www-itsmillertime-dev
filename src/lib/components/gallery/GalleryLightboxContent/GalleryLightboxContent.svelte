@@ -5,7 +5,7 @@
 	import ShareButtons from '$lib/components/ShareButtons';
 	import type { GalleryAlbum, Media } from '$lib/types/payload-types';
 	import {
-		fetchGalleryImageTrackingClient,
+		ensureGalleryImageTrackingOnOpen,
 		getStoredGalleryImageVote,
 		recordGalleryImageTracking,
 		type GalleryImageVote
@@ -554,12 +554,6 @@
 		tracking = next;
 	}
 
-	async function refreshTrackingCounts() {
-		if (galleryImageId == null) return;
-		const counts = await fetchGalleryImageTrackingClient(galleryImageId);
-		if (counts) applyTracking(counts);
-	}
-
 	async function trackEvent(event: Parameters<typeof recordGalleryImageTracking>[1]) {
 		if (galleryImageId == null || trackingBusy) return;
 		trackingBusy = true;
@@ -602,14 +596,14 @@
 		userVote = id != null ? getStoredGalleryImageVote(id) : null;
 		if (!browser || id == null) return;
 
-		void (async () => {
-			const fromView = await recordGalleryImageTracking(id, 'view');
-			if (fromView) {
-				applyTracking(fromView);
-				return;
-			}
-			await refreshTrackingCounts();
-		})();
+		let cancelled = false;
+		void ensureGalleryImageTrackingOnOpen(id).then((counts) => {
+			if (!cancelled && counts) applyTracking(counts);
+		});
+
+		return () => {
+			cancelled = true;
+		};
 	});
 </script>
 

@@ -9,6 +9,7 @@
 	import GrungeOverlay from '$lib/components/GrungeOverlay';
 	import AdminUtilitiesDockLazy from '$lib/components/AdminUtilitiesDock/AdminUtilitiesDockLazy.svelte';
 	import TopBar from '$lib/components/TopBar';
+	import ScrollToTop from '$lib/components/ScrollToTop';
 	import type { LayoutCacheData } from '$lib/cache/layoutCache';
 	import { layoutQueryOptions } from '$lib/query/queries';
 	import { setSiteLayoutContext } from '$lib/query/siteLayoutContext';
@@ -48,6 +49,7 @@
 		</div>
 		<Footer />
 		<LastFmNowPlayingLazy />
+		<ScrollToTop />
 		<AdminUtilitiesDockLazy />
 	</div>
 </div>
