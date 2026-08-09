@@ -41,8 +41,9 @@ function rewriteSetCookie(cookie: string, requestHost: string): string {
  * Proxies all /api/auth/* requests to the Payload CMS backend.
  * This avoids CORS issues since the browser only talks to the SvelteKit server.
  *
- * Forwards X-Forwarded-Host/Proto so Better Auth builds OAuth redirect_uri for
- * this site origin (callback returns through this proxy with the state cookie).
+ * Forwards Origin so Better Auth trustedOrigins checks pass for the browser site.
+ * OAuth login for www starts on CMS via /api/frontend-oauth-start (not this proxy)
+ * so Authentik state/session cookies stay on the cms callback path.
  */
 const proxy: RequestHandler = async ({ request, params, url }) => {
 	const targetUrl = `${PUBLIC_PAYLOAD_URL}/api/auth/${params.path}`;
