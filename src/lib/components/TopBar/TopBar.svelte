@@ -37,10 +37,7 @@
 				{ title: 'Sign Out', href: '/account/logout' }
 			];
 		}
-		return [
-			{ title: 'Login', href: '/account/login' },
-			{ title: 'Sign Up', href: '/account/sign-up' }
-		];
+		return [{ title: 'Login', href: '/account/login' }];
 	});
 
 	const appLinks = $derived.by((): MenuLink[] => {

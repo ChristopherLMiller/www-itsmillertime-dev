@@ -1,13 +1,13 @@
 import { createAuthClient } from 'better-auth/svelte';
-import { inferAdditionalFields, twoFactorClient } from 'better-auth/client/plugins';
-import { passkeyClient } from '@better-auth/passkey/client';
+import { genericOAuthClient, inferAdditionalFields } from 'better-auth/client/plugins';
 import { browser } from '$app/environment';
+
+export const AUTHENTIK_PROVIDER_ID = 'authentik' as const;
 
 export const authClient = createAuthClient({
 	baseURL: browser ? `${window.location.origin}/api/auth` : 'http://localhost/api/auth',
 	plugins: [
-		twoFactorClient(),
-		passkeyClient(),
+		genericOAuthClient(),
 		inferAdditionalFields({
 			user: {
 				displayName: {

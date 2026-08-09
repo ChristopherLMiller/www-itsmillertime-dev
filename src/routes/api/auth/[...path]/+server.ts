@@ -2,25 +2,35 @@ import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
+const SHARED_COOKIE_DOMAIN = '.itsmillertime.dev';
+
 /**
  * Rewrites Set-Cookie headers so cookies work when proxying to a different backend.
- * - Strips Domain so the cookie is set for the current request host (the site)
- * - In dev (HTTP): strips Secure and __Secure- prefix so browsers accept the cookie
+ * - Production on *.itsmillertime.dev: keep/force Domain=.itsmillertime.dev so OAuth
+ *   state + session cookies are visible to both www and cms (callback is on CMS).
+ * - Local/dev: strip Domain so the cookie binds to the current host (localhost),
+ *   and strip Secure / __Secure- so browsers accept cookies over HTTP.
  */
-function rewriteSetCookie(cookie: string): string {
+function rewriteSetCookie(cookie: string, requestHost: string): string {
 	const [nameValue, ...attrs] = cookie.split('; ').map((s) => s.trim());
 	const [name, ...valueParts] = nameValue.split('=');
 	const value = valueParts.join('=').trim();
 
+	const hostname = requestHost.split(':')[0] ?? requestHost;
+	const shareAcrossSubdomains = !dev && hostname.endsWith('itsmillertime.dev');
+
 	const keep: string[] = [];
 	for (const attr of attrs) {
 		const lower = attr.toLowerCase();
-		if (lower.startsWith('domain=')) continue; // strip Domain - cookie will use request host
-		if (dev && lower === 'secure') continue; // strip Secure in dev (HTTP)
+		if (lower.startsWith('domain=')) continue;
+		if (dev && lower === 'secure') continue;
 		keep.push(attr);
 	}
 
-	// In dev, backend may use __Secure-better-auth.*; browser rejects that on HTTP
+	if (shareAcrossSubdomains) {
+		keep.push(`Domain=${SHARED_COOKIE_DOMAIN}`);
+	}
+
 	const cookieName =
 		dev && name.startsWith('__Secure-better-auth.') ? name.replace('__Secure-', '') : name;
 
@@ -31,19 +41,22 @@ function rewriteSetCookie(cookie: string): string {
  * Proxies all /api/auth/* requests to the Payload CMS backend.
  * This avoids CORS issues since the browser only talks to the SvelteKit server.
  *
- * Rewrites Set-Cookie so cookies are set for the site's domain (not the backend).
- * In dev mode, also strips Secure/__Secure- so cookies work over plain HTTP.
+ * Forwards X-Forwarded-Host/Proto so Better Auth builds OAuth redirect_uri for
+ * this site origin (callback returns through this proxy with the state cookie).
  */
-const proxy: RequestHandler = async ({ request, params }) => {
+const proxy: RequestHandler = async ({ request, params, url }) => {
 	const targetUrl = `${PUBLIC_PAYLOAD_URL}/api/auth/${params.path}`;
-	const url = new URL(request.url);
 	const fullUrl = `${targetUrl}${url.search}`;
 
 	const headers = new Headers(request.headers);
 	headers.delete('accept-encoding');
 	headers.delete('host');
-	headers.set('origin', PUBLIC_PAYLOAD_URL);
-	headers.set('referer', `${PUBLIC_PAYLOAD_URL}/`);
+	// Tell Better Auth the browser-facing origin so oauth2 redirect_uri matches
+	// the host that holds the rewritten state cookie (this site, via the proxy).
+	headers.set('x-forwarded-host', url.host);
+	headers.set('x-forwarded-proto', url.protocol.replace(':', ''));
+	headers.set('origin', url.origin);
+	headers.set('referer', `${url.origin}/`);
 
 	if (dev) {
 		const cookieHeader = headers.get('cookie');
@@ -77,7 +90,7 @@ const proxy: RequestHandler = async ({ request, params }) => {
 	}
 
 	for (const cookie of response.headers.getSetCookie()) {
-		responseHeaders.append('Set-Cookie', rewriteSetCookie(cookie));
+		responseHeaders.append('Set-Cookie', rewriteSetCookie(cookie, url.host));
 	}
 
 	const body = await response.arrayBuffer();

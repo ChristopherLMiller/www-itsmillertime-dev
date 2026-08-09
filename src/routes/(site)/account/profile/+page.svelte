@@ -27,7 +27,6 @@
 		image?: string | null;
 		role?: string[] | null;
 		emailVerified?: boolean | null;
-		twoFactorEnabled?: boolean | null;
 		banned?: boolean | null;
 		createdAt?: string;
 	};
@@ -35,8 +34,6 @@
 	let signingOut = $state(false);
 	let profileSaving = $state(false);
 	let prefsSaving = $state(false);
-	let passwordSaving = $state(false);
-	let emailSaving = $state(false);
 	let sessionsLoading = $state(false);
 	let revokingSessions = $state(false);
 	let deletingAccount = $state(false);
@@ -45,10 +42,6 @@
 	let profileSuccess = $state<string | null>(null);
 	let prefsError = $state<string | null>(null);
 	let prefsSuccess = $state<string | null>(null);
-	let passwordError = $state<string | null>(null);
-	let passwordSuccess = $state<string | null>(null);
-	let emailError = $state<string | null>(null);
-	let emailSuccess = $state<string | null>(null);
 	let sessionsError = $state<string | null>(null);
 	let deleteError = $state<string | null>(null);
 
@@ -57,14 +50,6 @@
 	let nsfwFiltering = $state<NsfwFiltering | ''>('');
 	let bggUsername = $state('');
 
-	let currentPassword = $state('');
-	let newPassword = $state('');
-	let confirmPassword = $state('');
-	let revokeOtherOnPasswordChange = $state(true);
-
-	let newEmail = $state('');
-
-	let deletePassword = $state('');
 	let deleteConfirm = $state('');
 
 	let otherSessions = $state<AuthSession[]>([]);
@@ -93,7 +78,6 @@
 			email: sessionUser?.email ?? snapshot?.email ?? null,
 			role: sessionUser?.role ?? null,
 			emailVerified: sessionUser?.emailVerified ?? null,
-			twoFactorEnabled: sessionUser?.twoFactorEnabled ?? null,
 			banned: sessionUser?.banned ?? null,
 			createdAt: sessionUser?.createdAt
 		};
@@ -252,86 +236,6 @@
 		}
 	}
 
-	async function changePassword(e: SubmitEvent) {
-		e.preventDefault();
-		passwordSaving = true;
-		passwordError = null;
-		passwordSuccess = null;
-
-		try {
-			if (!currentPassword || !newPassword || !confirmPassword) {
-				passwordError = 'Please fill in all password fields.';
-				return;
-			}
-			if (newPassword.length < 8) {
-				passwordError = 'New password must be at least 8 characters.';
-				return;
-			}
-			if (newPassword !== confirmPassword) {
-				passwordError = 'New passwords do not match.';
-				return;
-			}
-
-			const result = await authClient.changePassword({
-				currentPassword,
-				newPassword,
-				revokeOtherSessions: revokeOtherOnPasswordChange
-			});
-
-			if (result.error) {
-				passwordError = authErrorMessage(result.error, 'Could not change password.');
-				return;
-			}
-
-			currentPassword = '';
-			newPassword = '';
-			confirmPassword = '';
-			passwordSuccess = 'Password updated.';
-			if (revokeOtherOnPasswordChange) {
-				await loadSessions();
-			}
-		} catch (err) {
-			passwordError = err instanceof Error ? err.message : 'Could not change password.';
-		} finally {
-			passwordSaving = false;
-		}
-	}
-
-	async function changeEmail(e: SubmitEvent) {
-		e.preventDefault();
-		emailSaving = true;
-		emailError = null;
-		emailSuccess = null;
-
-		try {
-			const next = newEmail.trim();
-			if (!next) {
-				emailError = 'Enter a new email address.';
-				return;
-			}
-
-			const result = await authClient.changeEmail({
-				newEmail: next,
-				callbackURL: '/account/profile'
-			});
-
-			if (result.error) {
-				emailError = authErrorMessage(
-					result.error,
-					'Could not start email change. It may be disabled on the server.'
-				);
-				return;
-			}
-
-			emailSuccess = 'Check your inbox to confirm the email change.';
-			newEmail = '';
-		} catch (err) {
-			emailError = err instanceof Error ? err.message : 'Could not change email.';
-		} finally {
-			emailSaving = false;
-		}
-	}
-
 	async function loadSessions() {
 		sessionsLoading = true;
 		sessionsError = null;
@@ -404,14 +308,8 @@
 				deleteError = 'Type DELETE to confirm.';
 				return;
 			}
-			if (!deletePassword) {
-				deleteError = 'Enter your password to delete your account.';
-				return;
-			}
 
-			const result = await authClient.deleteUser({
-				password: deletePassword
-			});
+			const result = await authClient.deleteUser();
 
 			if (result.error) {
 				deleteError = authErrorMessage(
@@ -472,9 +370,6 @@
 							{#each user.role ?? [] as role}
 								<span class="badge role">{role}</span>
 							{/each}
-							{#if user.twoFactorEnabled}
-								<span class="badge secure">2FA Enabled</span>
-							{/if}
 							{#if !user.emailVerified}
 								<span class="badge warning">Email Unverified</span>
 							{/if}
@@ -580,132 +475,51 @@
 			<div class="span-all">
 			<Panel hasPadding={true} hasBorder={true}>
 				<section class="section">
-					<h2>Security</h2>
-					<div class="security-grid">
-						<div class="security-col">
-							<h3>Change password</h3>
-							{#if passwordError}
-								<div class="message error" role="alert">{passwordError}</div>
-							{/if}
-							{#if passwordSuccess}
-								<div class="message success" role="status">{passwordSuccess}</div>
-							{/if}
-							<form class="account-form" onsubmit={changePassword}>
-								<label class="field">
-									<span>Current password</span>
-									<input
-										type="password"
-										name="currentPassword"
-										autocomplete="current-password"
-										bind:value={currentPassword}
-										disabled={passwordSaving}
-									/>
-								</label>
-								<label class="field">
-									<span>New password</span>
-									<input
-										type="password"
-										name="newPassword"
-										autocomplete="new-password"
-										bind:value={newPassword}
-										disabled={passwordSaving}
-									/>
-								</label>
-								<label class="field">
-									<span>Confirm new password</span>
-									<input
-										type="password"
-										name="confirmPassword"
-										autocomplete="new-password"
-										bind:value={confirmPassword}
-										disabled={passwordSaving}
-									/>
-								</label>
-								<label class="checkbox-field">
-									<input
-										type="checkbox"
-										bind:checked={revokeOtherOnPasswordChange}
-										disabled={passwordSaving}
-									/>
-									<span>Sign out other sessions</span>
-								</label>
-								<button type="submit" class="submit-btn" disabled={passwordSaving}>
-									{passwordSaving ? 'Updating...' : 'Update password'}
-								</button>
-							</form>
+					<h2>Sessions</h2>
+					<p class="hint">
+						Sign-in is managed by Authentik. Password and email changes happen there.
+					</p>
+					{#if sessionsError}
+						<div class="message error" role="alert">{sessionsError}</div>
+					{/if}
+					<dl class="details-list">
+						<div class="detail-row">
+							<dt>This device</dt>
+							<dd>
+								{formatDateTime(sess.createdAt)}
+								{#if sess.ipAddress}
+									· {sess.ipAddress}
+								{/if}
+							</dd>
 						</div>
-
-						<div class="security-col">
-							<h3>Change email</h3>
-							<p class="hint">Current email: {user.email}</p>
-							{#if emailError}
-								<div class="message error" role="alert">{emailError}</div>
-							{/if}
-							{#if emailSuccess}
-								<div class="message success" role="status">{emailSuccess}</div>
-							{/if}
-							<form class="account-form" onsubmit={changeEmail}>
-								<label class="field">
-									<span>New email</span>
-									<input
-										type="email"
-										name="newEmail"
-										autocomplete="email"
-										bind:value={newEmail}
-										disabled={emailSaving}
-									/>
-								</label>
-								<button type="submit" class="submit-btn secondary" disabled={emailSaving}>
-									{emailSaving ? 'Sending...' : 'Request email change'}
-								</button>
-							</form>
-
-							<hr class="section-divider" />
-
-							<h3>Sessions</h3>
-							{#if sessionsError}
-								<div class="message error" role="alert">{sessionsError}</div>
-							{/if}
-							<dl class="details-list">
-								<div class="detail-row">
-									<dt>This device</dt>
-									<dd>
-										{formatDateTime(sess.createdAt)}
-										{#if sess.ipAddress}
-											· {sess.ipAddress}
-										{/if}
-									</dd>
-								</div>
-							</dl>
-							{#if sessionsLoading}
-								<p class="hint">Loading other sessions…</p>
-							{:else if otherSessions.length === 0}
-								<p class="hint">No other active sessions.</p>
-							{:else}
-								<ul class="session-list">
-									{#each otherSessions as other (other.id)}
-										<li>
-											<span>{formatDateTime(other.createdAt)}</span>
-											{#if other.ipAddress}
-												<span class="mono">{other.ipAddress}</span>
-											{/if}
-											{#if other.userAgent}
-												<span class="user-agent">{other.userAgent}</span>
-											{/if}
-										</li>
-									{/each}
-								</ul>
-								<button
-									type="button"
-									class="submit-btn secondary"
-									onclick={revokeOtherSessions}
-									disabled={revokingSessions}
-								>
-									{revokingSessions ? 'Signing out…' : 'Sign out other sessions'}
-								</button>
-							{/if}
-						</div>
-					</div>
+					</dl>
+					{#if sessionsLoading}
+						<p class="hint">Loading other sessions…</p>
+					{:else if otherSessions.length === 0}
+						<p class="hint">No other active sessions.</p>
+					{:else}
+						<ul class="session-list">
+							{#each otherSessions as other (other.id)}
+								<li>
+									<span>{formatDateTime(other.createdAt)}</span>
+									{#if other.ipAddress}
+										<span class="mono">{other.ipAddress}</span>
+									{/if}
+									{#if other.userAgent}
+										<span class="user-agent">{other.userAgent}</span>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+						<button
+							type="button"
+							class="submit-btn secondary"
+							onclick={revokeOtherSessions}
+							disabled={revokingSessions}
+						>
+							{revokingSessions ? 'Signing out…' : 'Sign out other sessions'}
+						</button>
+					{/if}
 				</section>
 			</Panel>
 			</div>
@@ -715,8 +529,7 @@
 				<section class="section danger">
 					<h2>Danger zone</h2>
 					<p class="hint">
-						Deleting your account is permanent. Type <strong>DELETE</strong> and enter your password
-						to confirm.
+						Deleting your account is permanent. Type <strong>DELETE</strong> to confirm.
 					</p>
 					{#if deleteError}
 						<div class="message error" role="alert">{deleteError}</div>
@@ -731,16 +544,6 @@
 								bind:value={deleteConfirm}
 								disabled={deletingAccount}
 								placeholder="DELETE"
-							/>
-						</label>
-						<label class="field">
-							<span>Password</span>
-							<input
-								type="password"
-								name="deletePassword"
-								autocomplete="current-password"
-								bind:value={deletePassword}
-								disabled={deletingAccount}
 							/>
 						</label>
 						<button type="submit" class="submit-btn danger-btn" disabled={deletingAccount}>
@@ -848,21 +651,6 @@
 		}
 	}
 
-	.security-grid {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: 1.5rem;
-
-		@media (min-width: 800px) {
-			grid-template-columns: 1fr 1fr;
-			gap: 1.75rem;
-		}
-	}
-
-	.security-col {
-		min-width: 0;
-	}
-
 	.danger-form {
 		display: grid;
 		grid-template-columns: 1fr;
@@ -870,7 +658,7 @@
 		align-items: end;
 
 		@media (min-width: 700px) {
-			grid-template-columns: 1fr 1fr auto;
+			grid-template-columns: 1fr auto;
 		}
 	}
 
@@ -918,11 +706,6 @@
 		color: var(--color-white-lightest);
 	}
 
-	.badge.secure {
-		background: oklch(0.55 0.15 145);
-		color: var(--color-white-lightest);
-	}
-
 	.badge.warning {
 		background: var(--color-secondary);
 		color: var(--color-tertiary-darkest);
@@ -940,21 +723,6 @@
 		margin: 0 0 1rem;
 		padding-bottom: 0.5rem;
 		border-bottom: 2px solid var(--color-tertiary-lightest);
-	}
-
-	.section h3 {
-		font-family: var(--font-oswald);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary-darkest);
-		margin: 0 0 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-	}
-
-	.section-divider {
-		border: none;
-		border-top: 1px solid var(--color-tertiary-lightest);
-		margin: 1.5rem 0;
 	}
 
 	.account-form {
@@ -997,17 +765,6 @@
 		&:disabled {
 			opacity: 0.6;
 		}
-	}
-
-	.checkbox-field {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-family: var(--font-roboto);
-		font-size: var(--fs-xs);
-		color: var(--color-tertiary-darkest);
-		text-transform: none;
-		letter-spacing: normal;
 	}
 
 	.submit-btn {
