@@ -80,8 +80,7 @@ export const GET: RequestHandler = async ({ request, fetch }) => {
 			bggUsername: session.user.bggUsername ?? null,
 			image: session.user.image ?? null,
 			role: session.user.role ?? null,
-			emailVerified: session.user.emailVerified ?? null,
-			twoFactorEnabled: session.user.twoFactorEnabled ?? null
+			emailVerified: session.user.emailVerified ?? null
 		}
 	});
 };

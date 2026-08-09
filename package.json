@@ -57,7 +57,6 @@
 	},
 	"packageManager": "pnpm@11.18.0",
 	"dependencies": {
-		"@better-auth/passkey": "^1.6.25",
 		"@js-temporal/polyfill": "^0.5.1",
 		"@payloadcms/sdk": "^3.87.0",
 		"@tanstack/query-async-storage-persister": "^5.101.4",
