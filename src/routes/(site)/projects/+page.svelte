@@ -5,6 +5,7 @@
 	import Lexical from '$lib/components/Lexical';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import { projectsQueryOptions, queryKeys } from '$lib/query/queries';
+	import { getMediaUrl } from '$lib/utils/media-url';
 	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import type { PageData } from './$types';
 	import type { Project } from '$lib/types/payload-types';
@@ -27,10 +28,8 @@
 	});
 
 	const projects = $derived(
-		(query.isPlaceholderData
-			? data.initialProjects
-			: (query.data ?? data.initialProjects)
-		)?.projects ?? []
+		(query.isPlaceholderData ? data.initialProjects : (query.data ?? data.initialProjects))
+			?.projects ?? []
 	);
 
 	const isAdmin = $derived(
@@ -105,7 +104,7 @@
 		if (!screenshots || !Array.isArray(screenshots) || screenshots.length === 0) return null;
 		const firstScreenshot = screenshots[0];
 		if (typeof firstScreenshot === 'number') return null;
-		return firstScreenshot.url || null;
+		return firstScreenshot.url ? getMediaUrl(firstScreenshot.url) : null;
 	}
 </script>
 

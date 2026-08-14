@@ -1,13 +1,86 @@
-import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+import { PUBLIC_PAYLOAD_URL, PUBLIC_URL } from '$env/static/public';
+
+/** Upload collections served from Cloudflare edge hostnames `{collection}.{apex}`. */
+const CDN_UPLOAD_COLLECTIONS = new Set(['media', 'gallery-images']);
+
+const PAYLOAD_UPLOAD_PATH = /^\/api\/([^/]+)\/file\/(.+)$/;
+
+const CDN_APEX_HOST = resolveCdnApexHost(PUBLIC_URL);
+
+function resolveCdnApexHost(publicUrl: string): string {
+	try {
+		const parts = new URL(publicUrl).hostname.split('.').filter(Boolean);
+		if (parts.length >= 2) return parts.slice(-2).join('.');
+		if (parts.length === 1) return parts[0];
+	} catch {
+		// Fall through to the production apex.
+	}
+	return 'itsmillertime.dev';
+}
+
+function isAbsoluteUrl(value: string): boolean {
+	return /^https?:\/\//i.test(value);
+}
+
+/** Resolve a Payload media path (relative or absolute) against the CMS origin. */
+function toAbsolutePayloadUrl(path: string): string {
+	if (isAbsoluteUrl(path)) return path;
+	return new URL(path, `${PUBLIC_PAYLOAD_URL.replace(/\/$/, '')}/`).href;
+}
+
+/**
+ * Path + query to forward through `/api/media-proxy` (auth cookies stay on this origin).
+ */
+function toProxyPath(path: string): string {
+	if (!isAbsoluteUrl(path)) return path.startsWith('/') ? path : `/${path}`;
+	try {
+		const url = new URL(path);
+		return `${url.pathname}${url.search}`;
+	} catch {
+		return path.startsWith('/') ? path : `/${path}`;
+	}
+}
+
+/**
+ * Rewrite Payload upload file URLs onto the Cloudflare edge hostname.
+ *
+ * https://cms.itsmillertime.dev/api/gallery-images/file/IMG_3213-1920x1280.avif?prefix=gallery-images
+ * → https://gallery-images.itsmillertime.dev/IMG_3213-1920x1280.avif?prefix=gallery-images
+ *
+ * Same mapping for `{media}` → `https://media.{apex}/…`. Other URLs are unchanged.
+ */
+export function toCloudflareMediaUrl(path: string | null | undefined): string {
+	if (!path) return '';
+
+	let url: URL;
+	try {
+		url = new URL(toAbsolutePayloadUrl(path));
+	} catch {
+		return path;
+	}
+
+	const match = PAYLOAD_UPLOAD_PATH.exec(url.pathname);
+	if (!match) return url.href;
+
+	const collection = match[1];
+	const filePath = match[2];
+	if (!CDN_UPLOAD_COLLECTIONS.has(collection)) return url.href;
+
+	const cdn = new URL(`https://${collection}.${CDN_APEX_HOST}`);
+	cdn.pathname = `/${filePath}`;
+	cdn.search = url.search;
+	return cdn.href;
+}
 
 /**
  * Returns the full URL for a media asset. When `proxy` is true, routes through
  * the SvelteKit server so auth cookies are forwarded (needed for NSFW/restricted content).
+ * Public `media` and `gallery-images` file URLs are rewritten to the Cloudflare edge cache.
  */
 export function getMediaUrl(path: string | null | undefined, proxy = false): string {
 	if (!path) return '';
-	if (proxy) return `/api/media-proxy${path}`;
-	return `${PUBLIC_PAYLOAD_URL}${path}`;
+	if (proxy) return `/api/media-proxy${toProxyPath(path)}`;
+	return toCloudflareMediaUrl(path);
 }
 
 /**
@@ -28,9 +101,7 @@ export function isVideoMedia(
  */
 export function isGifMedia(
 	media:
-		| { mimeType?: string | null; filename?: string | null; url?: string | null }
-		| null
-		| undefined
+		{ mimeType?: string | null; filename?: string | null; url?: string | null } | null | undefined
 ): boolean {
 	if (!media) return false;
 	if (media.mimeType === 'image/gif') return true;

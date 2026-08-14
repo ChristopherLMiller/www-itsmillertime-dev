@@ -1,13 +1,13 @@
 <script lang="ts">
 	let { navItem } = $props();
 	import { page } from '$app/state';
-	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import { getMediaUrl } from '$lib/utils/media-url';
 </script>
 
 <a href={navItem.link} class={`${navItem.link === page.url.pathname ? 'active' : ''}`}>
 	{#if navItem.icon}
 		<img
-			src={`${PUBLIC_PAYLOAD_URL}${navItem.icon.url}`}
+			src={getMediaUrl(navItem.icon.url)}
 			alt={navItem.title}
 			width="30"
 			height="30"

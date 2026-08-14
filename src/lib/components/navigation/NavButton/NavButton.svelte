@@ -1,14 +1,14 @@
 <script lang="ts">
 	let { navItem } = $props();
 	import { page } from '$app/state';
-	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import NavLink from '$lib/components/navigation/NavLink';
+	import { getMediaUrl } from '$lib/utils/media-url';
 </script>
 
 <button class={`${navItem.path === page.url.pathname ? 'active' : ''}`}>
 	{#if navItem.icon}
 		<img
-			src={`${PUBLIC_PAYLOAD_URL}${navItem.icon.url}`}
+			src={getMediaUrl(navItem.icon.url)}
 			alt={navItem.title}
 			width="30"
 			height="30"
@@ -17,7 +17,7 @@
 	{/if}
 	<span>{navItem.title}</span>
 	<div class="sub-menu">
-		{#each navItem.childNodes as child}
+		{#each navItem.childNodes as child (child.id ?? child.link)}
 			<NavLink navItem={child} />
 		{/each}
 	</div>
