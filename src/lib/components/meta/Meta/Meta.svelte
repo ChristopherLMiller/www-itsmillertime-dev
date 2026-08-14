@@ -14,8 +14,6 @@
 
 	function toAbsoluteUrl(url: string | null | undefined): string {
 		if (!url || typeof url !== 'string') return '';
-		if (url.startsWith('http://') || url.startsWith('https://')) return url;
-		// Relative paths from Payload – use Payload URL as base (image is hosted there)
 		return getMediaUrl(url, false);
 	}
 

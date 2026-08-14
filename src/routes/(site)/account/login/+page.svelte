@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { AUTHENTIK_PROVIDER_ID, authClient } from '$lib/auth/client';
+	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Panel from '$lib/components/Panel';
 
 	let loading = $state(false);
-	let actionError = $state<string | null>(null);
 	let oauthError = $state<string | null>(null);
-
-	const error = $derived(actionError ?? oauthError);
 
 	function humanizeOAuthError(code: string): string {
 		const messages: Record<string, string> = {
 			access_denied: 'Access was denied by Authentik.',
 			oauth_provider_not_found: 'Authentik is not configured. Please contact support.',
 			oauth_code_verification_failed: 'Could not complete Authentik sign-in. Please try again.',
+			state_mismatch: 'Login session expired or cookies were blocked. Please try again.',
+			account_not_linked:
+				'Your email already exists but could not be linked to Authentik. Please contact support.',
 			user_info_is_missing: 'Authentik did not return user information.',
 			email_is_missing: 'Authentik did not share an email address.',
 			unable_to_link_account: 'Could not link this Authentik account to an existing user.'
@@ -27,43 +27,24 @@
 		if (!code) return;
 
 		oauthError = humanizeOAuthError(code);
-		params.delete('error');
-		params.delete('error_description');
-		const query = params.toString();
-		window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+		// Keep ?error= visible for debugging / support screenshots.
 	});
 
-	async function signInWithAuthentik() {
+	function signInWithAuthentik() {
 		if (loading) return;
 		loading = true;
-		actionError = null;
 		oauthError = null;
 
 		const loginUrl = `${window.location.origin}/account/login`;
 		const callbackURL = `${window.location.origin}/account/profile`;
 
-		try {
-			const result = await authClient.signIn.oauth2({
-				providerId: AUTHENTIK_PROVIDER_ID,
-				callbackURL,
-				errorCallbackURL: loginUrl
-			});
-
-			if (result.error) {
-				actionError = result.error.message || 'Authentik sign-in failed.';
-				loading = false;
-				return;
-			}
-
-			const data = result.data as { url?: string; redirect?: boolean } | undefined;
-			if (data?.url) {
-				window.location.href = data.url;
-				return;
-			}
-		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Authentik sign-in failed.';
-			loading = false;
-		}
+		// Start OAuth on the CMS origin so state + session cookies stay first-party with
+		// the Authentik redirect_uri (cms callback). Shared Domain=.itsmillertime.dev
+		// then makes the session visible on www after redirect back.
+		const start = new URL(`${PUBLIC_PAYLOAD_URL}/api/frontend-oauth-start`);
+		start.searchParams.set('callbackURL', callbackURL);
+		start.searchParams.set('errorCallbackURL', loginUrl);
+		window.location.href = start.toString();
 	}
 </script>
 
@@ -77,9 +58,9 @@
 			<h1>Sign In</h1>
 			<p class="subtitle">Sign in with your itsmillertime.dev identity</p>
 
-			{#if error}
+			{#if oauthError}
 				<div class="error-message" role="alert">
-					<span>{error}</span>
+					<span>{oauthError}</span>
 				</div>
 			{/if}
 
