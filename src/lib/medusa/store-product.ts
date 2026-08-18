@@ -14,6 +14,8 @@ export type StoreCommerceVariant = {
 	digital: boolean;
 	/** Offering set / paper type (e.g. "Photo Rag"). Null for digital. */
 	paper: string | null;
+	/** Offering set description for this paper type. */
+	paperDescription: string | null;
 	/** Size / format (e.g. "11x14"). */
 	format: string | null;
 };
@@ -23,6 +25,11 @@ export type PublicProduct = {
 	variantId: string | null;
 	priceUSD: number | null;
 	variants: StoreCommerceVariant[];
+};
+
+export type OfferingSetInfo = {
+	name: string;
+	description: string | null;
 };
 
 const PROCESSING_PRICE_KEYS = [
@@ -184,6 +191,7 @@ export function parseStoreProduct(payload: unknown): PublicProduct | null {
 			priceUSD: readAmount(raw),
 			digital,
 			paper: axes.paper,
+			paperDescription: null,
 			format: axes.format
 		});
 	}
@@ -196,5 +204,55 @@ export function parseStoreProduct(payload: unknown): PublicProduct | null {
 		variantId: primary.variantId,
 		priceUSD: primary.priceUSD,
 		variants
+	};
+}
+
+function readDescription(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Offering sets from a Store product payload, if the retrieve included the link. */
+export function readOfferingSets(payload: unknown): OfferingSetInfo[] {
+	if (!isRecord(payload)) return [];
+	const product = isRecord(payload.product) ? payload.product : payload;
+	const raw = product.offering_sets;
+	if (!Array.isArray(raw)) return [];
+
+	const sets: OfferingSetInfo[] = [];
+	for (const entry of raw) {
+		if (!isRecord(entry) || typeof entry.name !== 'string' || !entry.name.trim()) continue;
+		sets.push({
+			name: entry.name.trim(),
+			description: readDescription(entry.description)
+		});
+	}
+	return sets;
+}
+
+/**
+ * Attach offering-set descriptions onto print variants by matching set name to
+ * the Paper option (apply-offering-set uses the set name as the paper value).
+ */
+export function applyOfferingSetDescriptions(
+	product: PublicProduct,
+	sets: OfferingSetInfo[]
+): PublicProduct {
+	if (sets.length === 0) return product;
+
+	const byPaper = new Map<string, string | null>();
+	for (const set of sets) {
+		byPaper.set(set.name.trim().toLowerCase(), set.description);
+	}
+
+	return {
+		...product,
+		variants: product.variants.map((variant) => {
+			if (variant.digital || !variant.paper) return variant;
+			const description = byPaper.get(variant.paper.trim().toLowerCase());
+			if (description === undefined) return variant;
+			return { ...variant, paperDescription: description };
+		})
 	};
 }
