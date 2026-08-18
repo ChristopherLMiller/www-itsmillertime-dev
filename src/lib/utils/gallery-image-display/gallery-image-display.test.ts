@@ -4,7 +4,8 @@ import {
 	altMatchesFilename,
 	buildPlaceholderGalleryMedia,
 	displayableImageTitle,
-	galleryImageDocToDisplayMedia
+	galleryImageDocToDisplayMedia,
+	looksLikeCameraFilenameAlt
 } from './gallery-image-display';
 
 describe('altMatchesFilename / displayableImageTitle', () => {
@@ -14,7 +15,25 @@ describe('altMatchesFilename / displayableImageTitle', () => {
 		expect(altMatchesFilename('img 1234', 'IMG_1234.jpg')).toBe(true);
 	});
 
+	it('treats CMS defaultAltText camera names (IMG_2848.jpg → IMG 2848) as filename-like', () => {
+		expect(looksLikeCameraFilenameAlt('IMG 2848')).toBe(true);
+		expect(altMatchesFilename('IMG 2848', 'IMG_2848.jpg')).toBe(true);
+		expect(altMatchesFilename('IMG 2848', null)).toBe(true);
+		expect(displayableImageTitle('IMG 2848', 'IMG_2848.jpg')).toBe('');
+		expect(displayableImageTitle('IMG 2848', null)).toBe('');
+		expect(displayableImageTitle('IMG_2848', null)).toBe('');
+	});
+
+	it('matches CMS defaultAltText (spaces for underscores) including watermarked ingest names', () => {
+		expect(altMatchesFilename('IMG 6468', 'IMG_6468-full-watermarked.jpg')).toBe(true);
+		expect(altMatchesFilename('IMG 6468 full watermarked', 'IMG_6468-full-watermarked.jpg')).toBe(
+			true
+		);
+		expect(displayableImageTitle('IMG 6468', 'IMG_6468-full-watermarked.jpg')).toBe('');
+	});
+
 	it('does not match real titles', () => {
+		expect(looksLikeCameraFilenameAlt('Golden hour at the lake')).toBe(false);
 		expect(altMatchesFilename('Golden hour at the lake', 'IMG_1234.JPG')).toBe(false);
 		expect(displayableImageTitle('Golden hour at the lake', 'IMG_1234.JPG')).toBe(
 			'Golden hour at the lake'
@@ -24,7 +43,7 @@ describe('altMatchesFilename / displayableImageTitle', () => {
 	it('returns empty when alt is filename-like or blank', () => {
 		expect(displayableImageTitle('DSC_0001.jpg', 'DSC_0001.jpg')).toBe('');
 		expect(displayableImageTitle('  ', 'DSC_0001.jpg')).toBe('');
-		expect(displayableImageTitle('DSC_0001.jpg', null)).toBe('DSC_0001.jpg');
+		expect(displayableImageTitle('DSC_0001.jpg', null)).toBe('');
 	});
 });
 
@@ -125,5 +144,28 @@ describe('galleryImageDocToDisplayMedia', () => {
 		expect(m?.url).toBe('/nested.jpg');
 		expect(m?.galleryImageId).toBe(5);
 		expect(m?.needsProxy).toBe(false);
+	});
+
+	it('passes nested commerce through from the gallery-image doc', () => {
+		const doc = {
+			id: 5,
+			commerce: {
+				forSale: true,
+				variantId: 'variant_digital',
+				variants: [{ variantId: 'variant_digital', title: 'Digital Download', digital: true }]
+			},
+			image: {
+				id: 99,
+				url: '/nested.jpg',
+				alt: 'n',
+				width: 1,
+				height: 1,
+				updatedAt: '',
+				createdAt: ''
+			}
+		};
+		const m = galleryImageDocToDisplayMedia(doc, false);
+		expect(m?.commerce?.variantId).toBe('variant_digital');
+		expect(m?.commerce?.variants).toHaveLength(1);
 	});
 });

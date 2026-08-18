@@ -3,6 +3,7 @@ import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { canAccessGallerySettings } from '$lib/utils/gallery-access';
+import { commerceFromStoreProduct } from '$lib/utils/gallery-image-display';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -62,13 +63,9 @@ export const GET: RequestHandler = async (event) => {
 				if (!productId) return;
 				try {
 					const product = await getStoreProduct(getStoreConfig(), productId);
-					if (product?.variantId) {
-						(doc as unknown as Record<string, unknown>).commerce = {
-							forSale: true,
-							productId: product.productId,
-							variantId: product.variantId,
-							priceUSD: product.priceUSD
-						};
+					const commerce = product ? commerceFromStoreProduct(product) : null;
+					if (commerce) {
+						(doc as unknown as Record<string, unknown>).commerce = commerce;
 					}
 				} catch {
 					/* Medusa optional */

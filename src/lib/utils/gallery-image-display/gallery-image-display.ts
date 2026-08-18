@@ -4,13 +4,25 @@ import { mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
 /**
  * Commerce data attached to a sellable gallery image. Resolved server-side from
  * Medusa (the source of truth) by the gallery image endpoint, not stored in
- * Payload. Present only when the image maps to a published, priced product.
+ * Payload. Present only when the image maps to a published product.
  */
+export type GalleryCommerceVariant = {
+	variantId: string;
+	title: string;
+	priceUSD?: number | null;
+	digital?: boolean;
+	/** Offering set / paper type. Null for digital. */
+	paper?: string | null;
+	/** Size / format (e.g. "11x14"). */
+	format?: string | null;
+};
+
 export type GalleryCommerce = {
 	forSale?: boolean | null;
 	priceUSD?: number | null;
 	productId?: string | null;
 	variantId?: string | null;
+	variants?: GalleryCommerceVariant[] | null;
 };
 
 export type GalleryGridMedia = Media & {
@@ -28,33 +40,103 @@ function readCommerce(doc: object): GalleryCommerce | null {
 	return (doc as { commerce?: GalleryCommerce }).commerce ?? null;
 }
 
+/** Attach live Medusa store data onto a gallery-image API document. */
+export function commerceFromStoreProduct(product: {
+	productId: string;
+	variantId: string | null;
+	priceUSD: number | null;
+	variants: GalleryCommerceVariant[];
+}): GalleryCommerce | null {
+	if (!product.variantId && product.variants.length === 0) return null;
+	return {
+		forSale: true,
+		productId: product.productId,
+		variantId: product.variantId,
+		priceUSD: product.priceUSD,
+		variants: product.variants
+	};
+}
+
 const PLACEHOLDER_DATE = '1970-01-01T00:00:00.000Z';
 
-function normalizeFilenameLabel(value: string): string {
-	return value
-		.trim()
+/** Tokens added by ingest (piu watermark / size derivatives), not part of the title. */
+const FILENAME_PROCESSING_TOKENS = new Set([
+	'full',
+	'watermarked',
+	'watermark',
+	'wm',
+	'thumb',
+	'thumbnail',
+	'large',
+	'xlarge',
+	'original',
+	'master',
+	'web',
+	'preview'
+]);
+
+function filenameTokens(value: string): string[] {
+	const withoutExt = value.trim().replace(/\.[a-z0-9]{1,8}$/i, '');
+	return withoutExt
 		.toLowerCase()
 		.replace(/\+/g, ' ')
 		.replace(/[_-]+/g, ' ')
-		.replace(/\s+/g, ' ');
+		.replace(/\s+/g, ' ')
+		.trim()
+		.split(' ')
+		.filter(Boolean);
+}
+
+function stripProcessingTokens(tokens: string[]): string[] {
+	let end = tokens.length;
+	while (end > 0 && FILENAME_PROCESSING_TOKENS.has(tokens[end - 1]!)) {
+		end -= 1;
+	}
+	return tokens.slice(0, end);
 }
 
 /**
- * Payload often defaults `alt` to the upload filename. Those aren't real titles.
+ * CMS `defaultAltText` turns `IMG_2848.jpg` into `IMG 2848` (underscores → spaces,
+ * extension stripped). Those aren't real titles even when we don't have the
+ * stored filename to compare against.
+ */
+const CAMERA_FILENAME_ALT =
+	/^(img|dsc|dscn|dscf|pict|_?mg)(?:\s+\d+){1,2}$/i;
+
+export function looksLikeCameraFilenameAlt(alt: string | null | undefined): boolean {
+	const tokens = stripProcessingTokens(filenameTokens(alt ?? ''));
+	if (tokens.length === 0) return false;
+	const key = tokens.join(' ');
+	if (CAMERA_FILENAME_ALT.test(key)) return true;
+	return /^(img|dsc|dscn|dscf|pict|_?mg)\d{3,8}$/i.test(key.replace(/\s/g, ''));
+}
+
+/**
+ * Payload / CMS defaultAltText often sets `alt` from the filename, replacing
+ * `_`/`-` with spaces. New ingest also appends `-full-watermarked` to the
+ * stored filename after alt is already set, so `IMG 6468` must still match
+ * `IMG_6468-full-watermarked.jpg`.
  */
 export function altMatchesFilename(
 	alt: string | null | undefined,
 	filename: string | null | undefined
 ): boolean {
 	const title = (alt ?? '').trim();
+	if (!title) return false;
+	if (looksLikeCameraFilenameAlt(title)) return true;
+
 	const file = (filename ?? '').trim();
-	if (!title || !file) return false;
+	if (!file) return false;
 
-	const altNorm = normalizeFilenameLabel(title);
-	const fileNorm = normalizeFilenameLabel(file);
-	const baseNorm = fileNorm.replace(/\.[a-z0-9]{1,8}$/i, '');
+	const altTokens = filenameTokens(title);
+	const fileTokens = filenameTokens(file);
+	if (altTokens.length === 0 || fileTokens.length === 0) return false;
 
-	return altNorm === fileNorm || altNorm === baseNorm;
+	const altKey = altTokens.join(' ');
+	const fileKey = fileTokens.join(' ');
+	const fileBaseKey = stripProcessingTokens(fileTokens).join(' ');
+
+	return altKey === fileKey || (fileBaseKey.length > 0 && altKey === fileBaseKey);
 }
 
 /** Alt for display (polaroid strip, lightbox title); empty when missing or filename-like. */
