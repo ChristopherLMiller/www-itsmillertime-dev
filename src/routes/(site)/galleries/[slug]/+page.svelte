@@ -80,9 +80,18 @@
 		);
 	}
 
+	function mergeSlotMedia(existing: GalleryGridMedia | undefined, incoming: GalleryGridMedia) {
+		return {
+			...existing,
+			...incoming,
+			// Polaroid `basic` fetches omit commerce; don't let them wipe a full fetch.
+			commerce: incoming.commerce ?? existing?.commerce ?? null
+		};
+	}
+
 	function injectResolvedMedia(media: GalleryGridMedia) {
 		const galleryImageId = galleryImageLinkId(media);
-		slotMedia = { ...slotMedia, [galleryImageId]: media };
+		slotMedia = { ...slotMedia, [galleryImageId]: mergeSlotMedia(slotMedia[galleryImageId], media) };
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 
 		if (!galleryImageSlots.some((slot) => slot.id === galleryImageId)) {
@@ -239,7 +248,10 @@
 	});
 
 	function handlePolaroidResolved(galleryImageId: number, media: GalleryGridMedia) {
-		slotMedia = { ...slotMedia, [galleryImageId]: media };
+		slotMedia = {
+			...slotMedia,
+			[galleryImageId]: mergeSlotMedia(slotMedia[galleryImageId], media)
+		};
 	}
 
 	function markSlotFetchDone(galleryImageId: number) {

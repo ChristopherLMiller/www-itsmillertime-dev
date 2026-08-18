@@ -27,9 +27,12 @@
 	import { disposeZoomBitmap, loadZoomBitmap } from '$lib/utils/lightbox-zoom-source';
 	import ExifIcon from '$lib/components/ExifIcon';
 	import GalleryMediaPlayer from '$lib/components/gallery/GalleryMediaPlayer';
-	import BuyButton from '$lib/components/commerce/BuyButton.svelte';
-	import type { GalleryCommerce } from '$lib/utils/gallery-image-display';
-	import { displayableImageTitle } from '$lib/utils/gallery-image-display';
+	import GalleryShopPanel from '$lib/components/commerce/GalleryShopPanel.svelte';
+	import {
+		displayableImageTitle,
+		type GalleryCommerce,
+		type GalleryCommerceVariant
+	} from '$lib/utils/gallery-image-display';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 
@@ -517,13 +520,24 @@
 		}
 	}
 
-	// Commerce: Medusa is the source of truth. A for-sale image carries a live
-	// Medusa variant id (resolved server-side) we can add to the cart.
+	// Commerce: Medusa is the source of truth. Products may have a digital
+	// download plus print variants (Paper × Format); list all of them.
 	const commerce = $derived((image as { commerce?: GalleryCommerce | null } | undefined)?.commerce);
-	const buyVariantId = $derived(
-		commerce?.forSale && commerce?.variantId ? commerce.variantId : null
-	);
-	const buyPrice = $derived(typeof commerce?.priceUSD === 'number' ? commerce.priceUSD : null);
+	const shopVariants = $derived.by((): GalleryCommerceVariant[] => {
+		const listed = (commerce?.variants ?? []).filter((v) => v.variantId);
+		if (listed.length > 0) return listed;
+		if (commerce?.forSale && commerce?.variantId) {
+			return [
+				{
+					variantId: commerce.variantId,
+					title: 'Digital download',
+					priceUSD: commerce.priceUSD,
+					digital: true
+				}
+			];
+		}
+		return [];
+	});
 
 	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
 
@@ -1300,21 +1314,9 @@
 				>
 					<section class="gallery-lightbox__section">
 						<h3 class="gallery-lightbox__section-title">Prints &amp; Products</h3>
-						{#if buyVariantId}
-							<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
-								Buy this image as a digital download.
-							</p>
-							<BuyButton
-								variantId={buyVariantId}
-								priceUSD={buyPrice}
-								title={shareTitle}
-							/>
-						{:else}
-							<p class="gallery-lightbox__section-text gallery-lightbox__shop-copy">
-								This image isn't available for purchase right now. Check back later for ways to
-								bring it home.
-							</p>
-						{/if}
+						{#key galleryImageId}
+							<GalleryShopPanel variants={shopVariants} />
+						{/key}
 					</section>
 				</div>
 			</div>
@@ -2107,10 +2109,6 @@
 
 	.gallery-lightbox__vote:disabled {
 		cursor: default;
-	}
-
-	.gallery-lightbox__shop-copy {
-		color: var(--color-tertiary);
 	}
 
 	.gallery-lightbox__metrics {

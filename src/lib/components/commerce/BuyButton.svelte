@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { addVariantToCart } from '$lib/commerce/add-to-cart';
+	import { formatUsd } from '$lib/commerce/shop-offers';
+
 	interface Props {
 		variantId: string;
 		priceUSD?: number | null;
@@ -10,28 +13,16 @@
 	let busy = $state(false);
 	let errorMsg = $state<string | null>(null);
 
-	const priceLabel = $derived(
-		typeof priceUSD === 'number'
-			? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceUSD)
-			: null
-	);
+	const priceLabel = $derived(typeof priceUSD === 'number' ? formatUsd(priceUSD) : null);
 
 	async function addToCart() {
 		if (busy) return;
 		busy = true;
 		errorMsg = null;
 		try {
-			const res = await fetch('/api/cart/add', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ variantId, quantity: 1 })
-			});
-
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-			const data = (await res.json()) as { redirectUrl?: string | null };
-			if (data.redirectUrl) {
-				window.location.href = data.redirectUrl;
+			const { redirectUrl } = await addVariantToCart(variantId);
+			if (redirectUrl) {
+				window.location.href = redirectUrl;
 			} else {
 				errorMsg = 'Added to cart, but the shop URL is not configured.';
 			}

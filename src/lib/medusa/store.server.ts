@@ -1,4 +1,7 @@
 import { env } from '$env/dynamic/private';
+import { parseStoreProduct, type PublicProduct } from './store-product';
+
+export type { PublicProduct, StoreCommerceVariant } from './store-product';
 
 /**
  * Server-only Medusa Store API client used by the add-to-cart handoff.
@@ -85,23 +88,6 @@ export async function addLineItem(
 	});
 }
 
-interface StoreVariant {
-	id: string;
-	calculated_price?: { calculated_amount?: number | null } | null;
-}
-
-interface StoreProduct {
-	id: string;
-	title?: string;
-	variants?: StoreVariant[];
-}
-
-export interface PublicProduct {
-	productId: string;
-	variantId: string | null;
-	priceUSD: number | null;
-}
-
 /**
  * Look up a published storefront product by id (Medusa is the source of truth).
  * The Store API only returns published products in the key's sales channel, so a
@@ -111,22 +97,21 @@ export async function getStoreProduct(
 	cfg: StoreConfig,
 	productId: string
 ): Promise<PublicProduct | null> {
-	const query = new URLSearchParams({ fields: 'id,title,*variants.calculated_price' });
+	// Request variants + calculated_price explicitly. Selecting only
+	// `id,title,*variants.calculated_price` can omit variant ids after the
+	// Paper/Format offering-set shape landed.
+	const query = new URLSearchParams({
+		fields:
+			'*variants.calculated_price,*variants,*variants.metadata,*variants.options,*variants.options.option,+variants.manage_inventory'
+	});
 	if (cfg.regionId) query.set('region_id', cfg.regionId);
 
 	try {
-		const { product } = await storeFetch<{ product: StoreProduct }>(
+		const payload = await storeFetch<unknown>(
 			cfg,
 			`/store/products/${productId}?${query.toString()}`
 		);
-		if (!product) return null;
-		const variant = product.variants?.[0];
-		const amount = variant?.calculated_price?.calculated_amount;
-		return {
-			productId: product.id,
-			variantId: variant?.id ?? null,
-			priceUSD: typeof amount === 'number' ? amount : null
-		};
+		return parseStoreProduct(payload);
 	} catch {
 		return null;
 	}
