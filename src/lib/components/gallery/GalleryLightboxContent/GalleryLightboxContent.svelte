@@ -44,7 +44,7 @@
 			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
 	);
 
-	type SidebarTab = 'information' | 'admin' | 'shop';
+	type SidebarTab = 'information' | 'shop' | 'admin';
 
 	const INFO_COLLAPSED_KEY = 'gallery-lightbox-info-collapsed';
 
@@ -81,7 +81,7 @@
 	}
 
 	const sidebarTabs = $derived<SidebarTab[]>(
-		isAdmin ? ['information', 'admin', 'shop'] : ['information', 'shop']
+		isAdmin ? ['information', 'shop', 'admin'] : ['information', 'shop']
 	);
 
 	let {
@@ -982,6 +982,19 @@
 				>
 					Information
 				</button>
+				<button
+					type="button"
+					class="gallery-lightbox__tab"
+					class:gallery-lightbox__tab--active={activeSidebarTab === 'shop'}
+					role="tab"
+					id="gallery-lightbox-tab-shop"
+					aria-selected={activeSidebarTab === 'shop'}
+					aria-controls="gallery-lightbox-panel-shop"
+					tabindex={activeSidebarTab === 'shop' ? 0 : -1}
+					onclick={() => setSidebarTab('shop')}
+				>
+					Shop
+				</button>
 				{#if isAdmin}
 					<button
 						type="button"
@@ -997,19 +1010,6 @@
 						Admin
 					</button>
 				{/if}
-				<button
-					type="button"
-					class="gallery-lightbox__tab"
-					class:gallery-lightbox__tab--active={activeSidebarTab === 'shop'}
-					role="tab"
-					id="gallery-lightbox-tab-shop"
-					aria-selected={activeSidebarTab === 'shop'}
-					aria-controls="gallery-lightbox-panel-shop"
-					tabindex={activeSidebarTab === 'shop' ? 0 : -1}
-					onclick={() => setSidebarTab('shop')}
-				>
-					Shop
-				</button>
 			</div>
 
 			<div class="gallery-lightbox__tab-panels">
@@ -1269,6 +1269,25 @@
 					</section>
 				</div>
 
+				<div
+					id="gallery-lightbox-panel-shop"
+					class="gallery-lightbox__tab-panel"
+					role="tabpanel"
+					aria-labelledby="gallery-lightbox-tab-shop"
+					hidden={activeSidebarTab !== 'shop'}
+				>
+					<section class="gallery-lightbox__section">
+						<h3 class="gallery-lightbox__section-title">Prints &amp; Products</h3>
+						{#key galleryImageId}
+							<GalleryShopPanel
+								variants={shopVariants}
+								{galleryImageId}
+								albumSlug={gallery.slug}
+							/>
+						{/key}
+					</section>
+				</div>
+
 				{#if isAdmin}
 					<div
 						id="gallery-lightbox-panel-admin"
@@ -1304,21 +1323,6 @@
 						</section>
 					</div>
 				{/if}
-
-				<div
-					id="gallery-lightbox-panel-shop"
-					class="gallery-lightbox__tab-panel"
-					role="tabpanel"
-					aria-labelledby="gallery-lightbox-tab-shop"
-					hidden={activeSidebarTab !== 'shop'}
-				>
-					<section class="gallery-lightbox__section">
-						<h3 class="gallery-lightbox__section-title">Prints &amp; Products</h3>
-						{#key galleryImageId}
-							<GalleryShopPanel variants={shopVariants} />
-						{/key}
-					</section>
-				</div>
 			</div>
 		</aside>
 	</div>

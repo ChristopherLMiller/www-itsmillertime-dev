@@ -1,10 +1,19 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { addVariantsToCart } from '$lib/commerce/add-to-cart';
 	import { clampQuantity, MAX_CART_QTY, type CartLine } from '$lib/commerce/cart-items';
 	import { formatUsd, groupShopOffers, type ShopOfferGroup } from '$lib/commerce/shop-offers';
 	import type { GalleryCommerceVariant } from '$lib/utils/gallery-image-display';
 
-	let { variants }: { variants: GalleryCommerceVariant[] } = $props();
+	let {
+		variants,
+		galleryImageId,
+		albumSlug
+	}: {
+		variants: GalleryCommerceVariant[];
+		galleryImageId?: number | null;
+		albumSlug?: string | null;
+	} = $props();
 
 	const groups = $derived(groupShopOffers(variants));
 
@@ -40,7 +49,10 @@
 	});
 
 	function groupDomId(id: string): string {
-		return id.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+		return id
+			.replace(/[^a-z0-9]+/gi, '-')
+			.replace(/^-+|-+$/g, '')
+			.toLowerCase();
 	}
 
 	function qtyId(variantId: string): string {
@@ -80,12 +92,120 @@
 			busy = false;
 		}
 	}
+
+	function sessionString(value: unknown): string {
+		return typeof value === 'string' ? value.trim() : '';
+	}
+
+	function prefillFromSession(): { name: string; email: string } {
+		const user = page.data.session?.user as Record<string, unknown> | undefined;
+		if (!user) return { name: '', email: '' };
+		return {
+			name: sessionString(user.displayName) || sessionString(user.name),
+			email: sessionString(user.email)
+		};
+	}
+
+	const prefill = prefillFromSession();
+	let requestName = $state(prefill.name);
+	let requestEmail = $state(prefill.email);
+	let requestBusy = $state(false);
+	let requestError = $state<string | null>(null);
+	let requestOutcome = $state<'idle' | 'success' | 'duplicate'>('idle');
+
+	async function submitRequest(event: SubmitEvent) {
+		event.preventDefault();
+		if (requestBusy || galleryImageId == null) return;
+		requestBusy = true;
+		requestError = null;
+		try {
+			const res = await fetch('/api/gallery/product-request', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: requestName,
+					email: requestEmail,
+					galleryImageId,
+					albumSlug: albumSlug ?? undefined
+				})
+			});
+			const data = (await res.json().catch(() => ({}))) as {
+				error?: string;
+				duplicate?: boolean;
+			};
+			if (!res.ok) {
+				requestError = data.error ?? 'Could not send your request. Please try again.';
+				return;
+			}
+			requestOutcome = data.duplicate ? 'duplicate' : 'success';
+		} catch {
+			requestError = 'Could not send your request. Please try again.';
+		} finally {
+			requestBusy = false;
+		}
+	}
 </script>
 
 {#if groups.length === 0}
-	<p class="shop-panel__empty">
-		This image isn't available for purchase right now. Check back later for ways to bring it home.
-	</p>
+	<div class="shop-panel shop-panel--request">
+		{#if requestOutcome === 'success'}
+			<p class="shop-panel__success" role="status">
+				Thanks — I'll email you if this image becomes available to buy.
+			</p>
+		{:else if requestOutcome === 'duplicate'}
+			<p class="shop-panel__success" role="status">
+				You're already on the list for this image. I'll email you if it becomes available.
+			</p>
+		{:else if galleryImageId == null}
+			<p class="shop-panel__empty">
+				This image isn't available for purchase right now. Check back later for ways to bring it
+				home.
+			</p>
+		{:else}
+			<p class="shop-panel__empty">
+				This image isn't listed in the shop yet. Leave your name and email and I'll let you know if
+				I make it available to buy.
+			</p>
+			<form
+				class="shop-panel__request"
+				aria-label="Request this image in the shop"
+				onsubmit={submitRequest}
+			>
+				<div class="shop-panel__field">
+					<label for="shop-request-name">Name</label>
+					<input
+						id="shop-request-name"
+						name="name"
+						type="text"
+						autocomplete="name"
+						required
+						maxlength="200"
+						disabled={requestBusy}
+						bind:value={requestName}
+					/>
+				</div>
+				<div class="shop-panel__field">
+					<label for="shop-request-email">Email</label>
+					<input
+						id="shop-request-email"
+						name="email"
+						type="email"
+						autocomplete="email"
+						required
+						maxlength="320"
+						disabled={requestBusy}
+						bind:value={requestEmail}
+					/>
+				</div>
+				{#if requestError}
+					<p class="shop-panel__error" role="alert">{requestError}</p>
+				{/if}
+				<button class="shop-panel__add" type="submit" disabled={requestBusy}>
+					{requestBusy ? 'Sending…' : 'Request it'}
+				</button>
+			</form>
+		{/if}
+	</div>
 {:else}
 	<form class="shop-panel" onsubmit={addSelected}>
 		{#snippet groupPanel(group: ShopOfferGroup, selectedInGroup: number)}
@@ -270,6 +390,56 @@
 		font-size: calc(var(--fs-xs) * 0.95);
 		line-height: 1.45;
 		color: var(--color-tertiary);
+	}
+
+	.shop-panel--request {
+		gap: 0.9rem;
+	}
+
+	.shop-panel__request {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.shop-panel__field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.28rem;
+	}
+
+	.shop-panel__field label {
+		font-size: calc(var(--fs-xs) * 0.92);
+		color: var(--color-tertiary);
+	}
+
+	.shop-panel__field input {
+		box-sizing: border-box;
+		width: 100%;
+		margin: 0;
+		padding: 0.5rem 0.65rem;
+		border: 1px solid rgba(255, 255, 255, 0.22);
+		border-radius: 6px;
+		background: rgba(0, 0, 0, 0.25);
+		color: var(--color-white-lightest);
+		font-family: inherit;
+		font-size: 0.95rem;
+	}
+
+	.shop-panel__field input:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 2px;
+	}
+
+	.shop-panel__field input:disabled {
+		opacity: 0.55;
+	}
+
+	.shop-panel__success {
+		margin: 0;
+		font-size: calc(var(--fs-xs) * 0.95);
+		line-height: 1.45;
+		color: var(--color-secondary);
 	}
 
 	.shop-panel__lines {

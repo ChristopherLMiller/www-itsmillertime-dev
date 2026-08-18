@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { displaySizeLabel, groupShopOffers } from './shop-offers';
+import { DIGITAL_DOWNLOAD_DESCRIPTION, displaySizeLabel, groupShopOffers } from './shop-offers';
 
 describe('groupShopOffers', () => {
 	it('groups by paper type with sizes sorted inside each group', () => {
@@ -41,12 +41,26 @@ describe('groupShopOffers', () => {
 		]);
 
 		expect(groups.map((g) => g.name)).toEqual(['Digital', 'Lustre', 'Photo Rag']);
-		expect(groups[0]?.description).toBeNull();
+		expect(groups[0]?.description).toBe(DIGITAL_DOWNLOAD_DESCRIPTION);
 		expect(groups[1]?.description).toBeNull();
 		expect(groups[2]?.description).toBe('Cotton rag with a soft matte surface.');
 		expect(groups[0]?.offers.map((o) => o.title)).toEqual(['Download']);
 		expect(groups[1]?.offers.map((o) => o.title)).toEqual(['8×10']);
 		expect(groups[2]?.offers.map((o) => o.title)).toEqual(['8×10', '11×14']);
+	});
+
+	it('uses Medusa copy for digital when an offering-set description is present', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-dig',
+				title: 'Digital Download',
+				digital: true,
+				priceUSD: 15,
+				paperDescription: 'Full-resolution files, emailed after purchase.'
+			}
+		]);
+		expect(groups[0]?.kind).toBe('digital');
+		expect(groups[0]?.description).toBe('Full-resolution files, emailed after purchase.');
 	});
 
 	it('falls back to a Prints group when paper is missing', () => {
