@@ -1,7 +1,7 @@
 {
 	"name": "www-itsmillertime-dev",
 	"private": true,
-	"version": "0.27.0",
+	"version": "0.28.0",
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm run fetch-payload-types && vite dev",
