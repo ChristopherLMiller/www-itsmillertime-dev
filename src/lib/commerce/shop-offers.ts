@@ -11,10 +11,13 @@ export type ShopOfferGroup = {
 	id: string;
 	name: string;
 	kind: 'digital' | 'print';
-	/** Offering set description for this paper type. */
+	/** Offering set description for this paper type, or download copy for digital. */
 	description: string | null;
 	offers: ShopOffer[];
 };
+
+export const DIGITAL_DOWNLOAD_DESCRIPTION =
+	"After checkout, you'll receive an email containing the image(s) you purchased.";
 
 const SIZE_PATTERN = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i;
 
@@ -69,7 +72,9 @@ export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGr
 			priceUSD: typeof variant.priceUSD === 'number' ? variant.priceUSD : null
 		};
 		const description =
-			kind === 'digital' ? null : variant.paperDescription?.trim() || null;
+			kind === 'digital'
+				? variant.paperDescription?.trim() || DIGITAL_DOWNLOAD_DESCRIPTION
+				: variant.paperDescription?.trim() || null;
 		if (existing) {
 			existing.offers.push(offer);
 			if (!existing.description && description) existing.description = description;
