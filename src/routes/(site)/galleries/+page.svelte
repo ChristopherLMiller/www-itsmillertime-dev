@@ -406,6 +406,7 @@
 	.galleries-grid {
 		display: grid;
 		grid-template-columns: 1fr;
+		align-items: start;
 		gap: 2rem;
 		max-width: 1400px;
 		margin: 0 auto;
@@ -427,6 +428,24 @@
 	@media (min-width: 1280px) {
 		.galleries-grid {
 			grid-template-columns: repeat(4, 1fr);
+		}
+	}
+
+	@supports (grid-template-rows: masonry) {
+		.galleries-grid {
+			grid-template-rows: masonry;
+		}
+	}
+
+	@supports (display: masonry) {
+		.galleries-grid {
+			display: masonry;
+		}
+	}
+
+	@supports (display: grid-lanes) {
+		.galleries-grid {
+			display: grid-lanes;
 		}
 	}
 
