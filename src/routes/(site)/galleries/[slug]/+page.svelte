@@ -3,7 +3,6 @@
 	import { invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
-	import Masonry from 'svelte-bricks';
 	import Panel from '$lib/components/Panel';
 	import GalleryAlbumHeader from '$lib/components/gallery/GalleryAlbumHeader';
 	import GalleryAlbumPolaroid from '$lib/components/gallery/GalleryAlbumPolaroid';
@@ -283,7 +282,7 @@
 	});
 
 	// Seed first page from server when the album changes only. Do not clear slotMedia on
-	// arbitrary data refreshes or Masonry-driven rerenders — that was wiping resolved polaroids.
+	// arbitrary data refreshes — that was wiping resolved polaroids.
 	$effect(() => {
 		const galleryId = data.gallery.id;
 		const docs = (data.gallery.images?.docs ?? []) as {
@@ -329,8 +328,8 @@
 
 	$effect(() => {
 		if (!browser || !loadMoreSentinel || !hasNextPage) return;
-		// Re-check when the grid grows — Masonry can push the sentinel out of the
-		// initial intersection window on mobile after a batch lands.
+		// Re-check when the grid grows — a new batch can push the sentinel out of the
+		// initial intersection window on mobile.
 		void visibleSlots.length;
 
 		const el = loadMoreSentinel;
@@ -351,7 +350,7 @@
 		);
 
 		observer.observe(el);
-		// iOS often skips the initial intersection callback after Masonry layout.
+		// iOS often skips the initial intersection callback after layout.
 		requestAnimationFrame(maybeLoad);
 		const t = window.setTimeout(maybeLoad, 250);
 
@@ -390,45 +389,35 @@
 		/>
 
 		<div class="gallery-grid">
-			<Masonry
-				items={visibleSlots}
-				idKey="id"
-				minColWidth={400}
-				maxColWidth={600}
-				gap={30}
-				animate={false}
-			>
-				{#snippet children({ item: slot })}
-					{@const idx = visibleSlots.findIndex((s) => s.id === slot.id)}
-					{@const rotation = (
-						(((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 -
-						7
-					).toFixed(1)}
-					{@const layoutAspect = cssAspectRatioFromDimensions(
-						slot.width ?? undefined,
-						slot.height ?? undefined,
-						3 / 4
-					)}
-					<div class="gallery-grid__item">
-						<div class="gallery-grid__tilt" style:transform="rotate({rotation}deg)">
-							<GalleryAlbumPolaroid
-								galleryImageId={slot.id}
-								cachedMedia={slotMedia[slot.id]}
-								layoutWidth={slot.width}
-								layoutHeight={slot.height}
-								layoutAspectRatio={layoutAspect}
-								initialBlurhash={slot.blurhash ?? null}
-								{albumIsNsfw}
-								{useProxy}
-								priority={idx >= 0 && idx < 6}
-								onResolved={(m) => handlePolaroidResolved(slot.id, m)}
-								onFetchEnd={() => markSlotFetchDone(slot.id)}
-								onClick={openLightboxForItem}
-							/>
-						</div>
+			{#each visibleSlots as slot, idx (slot.id)}
+				{@const rotation = (
+					(((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 -
+					7
+				).toFixed(1)}
+				{@const layoutAspect = cssAspectRatioFromDimensions(
+					slot.width ?? undefined,
+					slot.height ?? undefined,
+					3 / 4
+				)}
+				<div class="gallery-grid__item">
+					<div class="gallery-grid__tilt" style:transform="rotate({rotation}deg)">
+						<GalleryAlbumPolaroid
+							galleryImageId={slot.id}
+							cachedMedia={slotMedia[slot.id]}
+							layoutWidth={slot.width}
+							layoutHeight={slot.height}
+							layoutAspectRatio={layoutAspect}
+							initialBlurhash={slot.blurhash ?? null}
+							{albumIsNsfw}
+							{useProxy}
+							priority={idx < 6}
+							onResolved={(m) => handlePolaroidResolved(slot.id, m)}
+							onFetchEnd={() => markSlotFetchDone(slot.id)}
+							onClick={openLightboxForItem}
+						/>
 					</div>
-				{/snippet}
-			</Masonry>
+				</div>
+			{/each}
 		</div>
 
 		{#if hasNextPage}
@@ -550,8 +539,34 @@
 		font-size: var(--fs-base);
 	}
 
+	.gallery-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 25rem), 1fr));
+		align-items: start;
+		gap: 1.875rem;
+	}
+
+	@supports (grid-template-rows: masonry) {
+		.gallery-grid {
+			grid-template-rows: masonry;
+		}
+	}
+
+	@supports (display: masonry) {
+		.gallery-grid {
+			display: masonry;
+		}
+	}
+
+	@supports (display: grid-lanes) {
+		.gallery-grid {
+			display: grid-lanes;
+		}
+	}
+
 	.gallery-grid__item {
 		display: block;
+		position: relative;
 		width: 100%;
 		background: transparent;
 		border: none;
@@ -569,6 +584,10 @@
 	.gallery-grid__item:hover .gallery-grid__tilt,
 	.gallery-grid__item:focus-within .gallery-grid__tilt {
 		transform: rotate(0deg) scale(1.15) !important;
+	}
+
+	.gallery-grid__item:hover,
+	.gallery-grid__item:focus-within {
 		z-index: 10;
 	}
 
