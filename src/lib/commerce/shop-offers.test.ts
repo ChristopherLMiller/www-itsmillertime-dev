@@ -9,6 +9,7 @@ describe('groupShopOffers', () => {
 				variantId: 'v-11',
 				title: 'Photo Rag · 11x14',
 				paper: 'Photo Rag',
+				paperDescription: 'Cotton rag with a soft matte surface.',
 				format: '11x14',
 				priceUSD: 45,
 				digital: false
@@ -40,6 +41,9 @@ describe('groupShopOffers', () => {
 		]);
 
 		expect(groups.map((g) => g.name)).toEqual(['Digital', 'Lustre', 'Photo Rag']);
+		expect(groups[0]?.description).toBeNull();
+		expect(groups[1]?.description).toBeNull();
+		expect(groups[2]?.description).toBe('Cotton rag with a soft matte surface.');
 		expect(groups[0]?.offers.map((o) => o.title)).toEqual(['Download']);
 		expect(groups[1]?.offers.map((o) => o.title)).toEqual(['8×10']);
 		expect(groups[2]?.offers.map((o) => o.title)).toEqual(['8×10', '11×14']);

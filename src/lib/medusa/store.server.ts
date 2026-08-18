@@ -1,5 +1,11 @@
 import { env } from '$env/dynamic/private';
-import { parseStoreProduct, type PublicProduct } from './store-product';
+import {
+	applyOfferingSetDescriptions,
+	parseStoreProduct,
+	readOfferingSets,
+	type OfferingSetInfo,
+	type PublicProduct
+} from './store-product';
 
 export type { PublicProduct, StoreCommerceVariant } from './store-product';
 
@@ -107,12 +113,30 @@ export async function getStoreProduct(
 	if (cfg.regionId) query.set('region_id', cfg.regionId);
 
 	try {
-		const payload = await storeFetch<unknown>(
-			cfg,
-			`/store/products/${productId}?${query.toString()}`
-		);
-		return parseStoreProduct(payload);
+		const [payload, linkedSets] = await Promise.all([
+			storeFetch<unknown>(cfg, `/store/products/${productId}?${query.toString()}`),
+			listProductOfferingSets(cfg, productId)
+		]);
+		const parsed = parseStoreProduct(payload);
+		if (!parsed) return null;
+		const sets = linkedSets.length > 0 ? linkedSets : readOfferingSets(payload);
+		return applyOfferingSetDescriptions(parsed, sets);
 	} catch {
 		return null;
+	}
+}
+
+async function listProductOfferingSets(
+	cfg: StoreConfig,
+	productId: string
+): Promise<OfferingSetInfo[]> {
+	try {
+		const payload = await storeFetch<unknown>(
+			cfg,
+			`/store/products/${encodeURIComponent(productId)}/offering-sets`
+		);
+		return readOfferingSets(payload);
+	} catch {
+		return [];
 	}
 }

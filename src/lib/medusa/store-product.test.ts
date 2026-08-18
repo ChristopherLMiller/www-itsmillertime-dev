@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isDigitalStoreVariant, parseStoreProduct } from './store-product';
+import {
+	applyOfferingSetDescriptions,
+	isDigitalStoreVariant,
+	parseStoreProduct,
+	readOfferingSets
+} from './store-product';
 
 describe('parseStoreProduct', () => {
 	it('returns null for empty or id-less payloads', () => {
@@ -68,6 +73,52 @@ describe('parseStoreProduct', () => {
 			}
 		});
 		expect(parsed?.priceUSD).toBe(19.99);
+	});
+});
+
+describe('readOfferingSets / applyOfferingSetDescriptions', () => {
+	it('reads offering sets from a dedicated store payload', () => {
+		expect(
+			readOfferingSets({
+				offering_sets: [
+					{ id: 'os_1', name: 'Photo Rag', description: '  Cotton rag.  ' },
+					{ id: 'os_2', name: 'Lustre', description: '' }
+				]
+			})
+		).toEqual([
+			{ name: 'Photo Rag', description: 'Cotton rag.' },
+			{ name: 'Lustre', description: null }
+		]);
+	});
+
+	it('matches set descriptions onto print variants by paper name', () => {
+		const parsed = parseStoreProduct({
+			product: {
+				id: 'prod_1',
+				variants: [
+					{
+						id: 'variant_print',
+						options: [
+							{ value: 'Photo Rag', option: { title: 'Paper' } },
+							{ value: '11x14', option: { title: 'Format' } }
+						],
+						calculated_price: { calculated_amount: 45 }
+					},
+					{
+						id: 'variant_digital',
+						metadata: { fulfillment_type: 'digital' },
+						calculated_price: { calculated_amount: 15 }
+					}
+				]
+			}
+		});
+		const withCopy = applyOfferingSetDescriptions(parsed!, [
+			{ name: 'Photo Rag', description: 'Cotton rag with a soft matte surface.' }
+		]);
+		expect(withCopy.variants[0]?.paperDescription).toBe(
+			'Cotton rag with a soft matte surface.'
+		);
+		expect(withCopy.variants[1]?.paperDescription).toBeNull();
 	});
 });
 

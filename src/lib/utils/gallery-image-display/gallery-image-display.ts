@@ -13,6 +13,8 @@ export type GalleryCommerceVariant = {
 	digital?: boolean;
 	/** Offering set / paper type. Null for digital. */
 	paper?: string | null;
+	/** Offering set description for this paper type. */
+	paperDescription?: string | null;
 	/** Size / format (e.g. "11x14"). */
 	format?: string | null;
 };

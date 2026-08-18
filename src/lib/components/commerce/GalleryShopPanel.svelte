@@ -98,6 +98,9 @@
 					<span class="shop-panel__chevron" aria-hidden="true"></span>
 				</span>
 			</summary>
+			{#if group.description}
+				<p class="shop-panel__desc">{group.description}</p>
+			{/if}
 			<ul class="shop-panel__lines">
 				{#each group.offers as offer (offer.variantId)}
 					{@const qty = qtyByVariant[offer.variantId] ?? 0}
@@ -219,6 +222,14 @@
 		font-size: 0.95rem;
 		font-weight: 700;
 		letter-spacing: 0.01em;
+	}
+
+	.shop-panel__desc {
+		margin: 0.55rem 0 0.15rem;
+		font-size: calc(var(--fs-xs) * 0.95);
+		line-height: 1.45;
+		color: var(--color-tertiary);
+		white-space: pre-wrap;
 	}
 
 	.shop-panel__summary-meta {

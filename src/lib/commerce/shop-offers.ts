@@ -11,6 +11,8 @@ export type ShopOfferGroup = {
 	id: string;
 	name: string;
 	kind: 'digital' | 'print';
+	/** Offering set description for this paper type. */
+	description: string | null;
 	offers: ShopOffer[];
 };
 
@@ -66,14 +68,18 @@ export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGr
 			title: sizeLabel(variant),
 			priceUSD: typeof variant.priceUSD === 'number' ? variant.priceUSD : null
 		};
+		const description =
+			kind === 'digital' ? null : variant.paperDescription?.trim() || null;
 		if (existing) {
 			existing.offers.push(offer);
+			if (!existing.description && description) existing.description = description;
 			continue;
 		}
 		byPaper.set(name, {
 			id: kind === 'digital' ? 'digital' : `print:${name}`,
 			name,
 			kind,
+			description,
 			offers: [offer]
 		});
 	}
