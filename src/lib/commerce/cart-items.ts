@@ -41,3 +41,22 @@ export function parseCartAddBody(body: unknown): CartLine[] | null {
 
 	return null;
 }
+
+/** Combine line groups by variant, clamping each qty. */
+export function mergeCartLines(...groups: CartLine[][]): CartLine[] {
+	const byVariant = new Map<string, number>();
+	for (const group of groups) {
+		for (const line of group) {
+			if (!line.variantId) continue;
+			const quantity = clampQuantity((byVariant.get(line.variantId) ?? 0) + line.quantity);
+			if (quantity > 0) byVariant.set(line.variantId, quantity);
+		}
+	}
+	return [...byVariant.entries()].map(([variantId, quantity]) => ({ variantId, quantity }));
+}
+
+/** Medusa refresh-payment-collection error when a checkout session cannot be torn down. */
+export function isPaymentSessionStuckError(err: unknown): boolean {
+	const msg = err instanceof Error ? err.message : String(err);
+	return /could not delete all payment sessions/i.test(msg);
+}

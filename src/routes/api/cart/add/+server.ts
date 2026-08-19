@@ -1,7 +1,20 @@
 import { env as pub } from '$env/dynamic/public';
 import { json } from '@sveltejs/kit';
-import { parseCartAddBody } from '$lib/commerce/cart-items';
-import { addLineItem, createCart, getCart, getStoreConfig } from '$lib/medusa/store.server';
+import {
+	isPaymentSessionStuckError,
+	mergeCartLines,
+	parseCartAddBody,
+	type CartLine
+} from '$lib/commerce/cart-items';
+import {
+	addLineItem,
+	cartHasPaymentSessions,
+	cartIsCompleted,
+	createCart,
+	getCart,
+	getStoreConfig,
+	linesFromStoreCart
+} from '$lib/medusa/store.server';
 import type { RequestHandler } from './$types';
 
 /**
@@ -15,6 +28,16 @@ import type { RequestHandler } from './$types';
 
 const CART_COOKIE = '_medusa_cart_id';
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
+
+async function addLines(
+	cfg: ReturnType<typeof getStoreConfig>,
+	cartId: string,
+	items: CartLine[]
+) {
+	for (const item of items) {
+		await addLineItem(cfg, cartId, item.variantId, item.quantity);
+	}
+}
 
 /** Share the cart cookie across subdomains in production; omit on localhost. */
 function cookieDomain(host: string): string | undefined {
@@ -50,19 +73,33 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 
 	try {
 		let cartId = cookies.get(CART_COOKIE) ?? null;
+		let existing = cartId ? await getCart(cfg, cartId) : null;
 
-		// Validate an existing cart id; drop it if the cart is gone.
-		if (cartId) {
-			const existing = await getCart(cfg, cartId);
-			if (!existing) cartId = null;
+		// Completed carts cannot take new items. Carts that already started
+		// checkout often cannot delete payment sessions, so adding a line 500s.
+		if (existing && (cartIsCompleted(existing) || cartHasPaymentSessions(existing))) {
+			const snapshot = cartIsCompleted(existing) ? [] : linesFromStoreCart(existing);
+			cartId = await createCart(cfg);
+			await addLines(cfg, cartId, mergeCartLines(snapshot, items));
+		} else {
+			if (!existing) {
+				cartId = await createCart(cfg);
+			} else {
+				cartId = existing.id;
+			}
+
+			try {
+				await addLines(cfg, cartId, items);
+			} catch (err) {
+				if (!isPaymentSessionStuckError(err)) throw err;
+				const snapshot = existing ? linesFromStoreCart(existing) : [];
+				cartId = await createCart(cfg);
+				await addLines(cfg, cartId, mergeCartLines(snapshot, items));
+			}
 		}
 
 		if (!cartId) {
-			cartId = await createCart(cfg);
-		}
-
-		for (const item of items) {
-			await addLineItem(cfg, cartId, item.variantId, item.quantity);
+			throw new Error('Cart was not created');
 		}
 
 		cookies.set(CART_COOKIE, cartId, {
