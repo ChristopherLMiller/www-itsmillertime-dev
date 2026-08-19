@@ -60,6 +60,31 @@ async function storeFetch<T>(cfg: StoreConfig, path: string, init?: RequestInit)
 
 interface StoreCart {
 	id: string;
+	completed_at?: string | null;
+	items?: { variant_id?: string | null; quantity?: number | null }[] | null;
+	payment_collection?: { payment_sessions?: unknown[] | null } | null;
+}
+
+const CART_FIELDS =
+	'id,completed_at,*items,*payment_collection,*payment_collection.payment_sessions';
+
+export function cartIsCompleted(cart: StoreCart): boolean {
+	return Boolean(cart.completed_at);
+}
+
+export function cartHasPaymentSessions(cart: StoreCart): boolean {
+	const sessions = cart.payment_collection?.payment_sessions;
+	return Array.isArray(sessions) && sessions.length > 0;
+}
+
+export function linesFromStoreCart(cart: StoreCart): { variantId: string; quantity: number }[] {
+	const lines: { variantId: string; quantity: number }[] = [];
+	for (const item of cart.items ?? []) {
+		if (typeof item.variant_id !== 'string' || !item.variant_id) continue;
+		const quantity = typeof item.quantity === 'number' ? Math.floor(item.quantity) : 0;
+		if (quantity > 0) lines.push({ variantId: item.variant_id, quantity });
+	}
+	return lines;
 }
 
 /** Create a new cart (optionally region-scoped) and return its id. */
@@ -73,11 +98,20 @@ export async function createCart(cfg: StoreConfig): Promise<string> {
 
 /** Return the cart if it still exists and is usable, else null. */
 export async function getCart(cfg: StoreConfig, cartId: string): Promise<StoreCart | null> {
+	const path = `/store/carts/${encodeURIComponent(cartId)}?fields=${encodeURIComponent(CART_FIELDS)}`;
 	try {
-		const { cart } = await storeFetch<{ cart: StoreCart }>(cfg, `/store/carts/${cartId}`);
+		const { cart } = await storeFetch<{ cart: StoreCart }>(cfg, path);
 		return cart ?? null;
 	} catch {
-		return null;
+		try {
+			const { cart } = await storeFetch<{ cart: StoreCart }>(
+				cfg,
+				`/store/carts/${encodeURIComponent(cartId)}`
+			);
+			return cart ?? null;
+		} catch {
+			return null;
+		}
 	}
 }
 
