@@ -43,7 +43,8 @@ function rewriteSetCookie(cookie: string, requestHost: string): string {
  *
  * Forwards Origin so Better Auth trustedOrigins checks pass for the browser site.
  * OAuth login for www starts on CMS via /api/frontend-oauth-start (not this proxy)
- * so Authentik state/session cookies stay on the cms callback path.
+ * so Authentik state cookies stay on the cms callback path. After Authentik, CMS
+ * continues same-origin then www exchanges a ticket to set the session cookie here.
  */
 const proxy: RequestHandler = async ({ request, params, url }) => {
 	const targetUrl = `${PUBLIC_PAYLOAD_URL}/api/auth/${params.path}`;
