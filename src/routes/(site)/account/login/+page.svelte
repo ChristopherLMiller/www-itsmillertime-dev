@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Panel from '$lib/components/Panel';
 
 	let oauthError = $state<string | null>(null);
@@ -23,13 +22,7 @@
 		return messages[code] ?? `Sign-in failed (${code}). Please try again.`;
 	}
 
-	const startHref = $derived.by(() => {
-		const origin = page.url.origin;
-		const start = new URL(`${PUBLIC_PAYLOAD_URL}/api/frontend-oauth-start`);
-		start.searchParams.set('callbackURL', `${origin}/account/profile`);
-		start.searchParams.set('errorCallbackURL', `${origin}/account/login`);
-		return start.toString();
-	});
+	const startHref = '/account/login/authentik';
 
 	onMount(() => {
 		const code = page.url.searchParams.get('error');
@@ -54,7 +47,7 @@
 				</div>
 			{/if}
 
-			<a class="authentik-btn" href={startHref}>Continue with Authentik</a>
+			<a class="authentik-btn" href={startHref} data-sveltekit-reload>Continue with Authentik</a>
 		</div>
 	</Panel>
 </div>
