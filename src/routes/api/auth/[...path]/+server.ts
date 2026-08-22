@@ -1,4 +1,4 @@
-import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 
@@ -7,7 +7,7 @@ const SHARED_COOKIE_DOMAIN = '.itsmillertime.dev';
 /**
  * Rewrites Set-Cookie headers so cookies work when proxying to a different backend.
  * - Production on *.itsmillertime.dev: keep/force Domain=.itsmillertime.dev so OAuth
- *   state + session cookies are visible to both www and cms (callback is on CMS).
+ *   state + session cookies are visible to www (and cms admin if shared).
  * - Local/dev: strip Domain so the cookie binds to the current host (localhost),
  *   and strip Secure / __Secure- so browsers accept cookies over HTTP.
  */
@@ -44,10 +44,15 @@ function rewriteSetCookie(cookie: string, requestHost: string): string {
  * Forwards Origin and X-Forwarded-Host so Better Auth builds the Authentik
  * redirect_uri for this site (www). Login starts at /account/login/authentik
  * so state and session cookies are first-party here, not on cms.
+ *
+ * Uses PAYLOAD_INTERNAL_URL (not the public CMS host) so Cloudflare cannot
+ * overwrite X-Forwarded-Host to cms.itsmillertime.dev. Also sends
+ * x-auth-browser-host for the CMS Next.js proxy to restore if a proxy still does.
  */
 const proxy: RequestHandler = async ({ request, params, url }) => {
-	const targetUrl = `${PUBLIC_PAYLOAD_URL}/api/auth/${params.path}`;
+	const targetUrl = `${getPayloadApiBaseUrl()}/auth/${params.path}`;
 	const fullUrl = `${targetUrl}${url.search}`;
+	const forwardedProto = url.protocol.replace(':', '');
 
 	const headers = new Headers(request.headers);
 	headers.delete('accept-encoding');
@@ -55,7 +60,9 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
 	// Tell Better Auth the browser-facing origin so oauth2 redirect_uri matches
 	// the host that holds the rewritten state cookie (this site, via the proxy).
 	headers.set('x-forwarded-host', url.host);
-	headers.set('x-forwarded-proto', url.protocol.replace(':', ''));
+	headers.set('x-forwarded-proto', forwardedProto);
+	headers.set('x-auth-browser-host', url.host);
+	headers.set('x-auth-browser-proto', forwardedProto);
 	headers.set('origin', url.origin);
 	headers.set('referer', `${url.origin}/`);
 
