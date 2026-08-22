@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import Panel from '$lib/components/Panel';
 
-	let loading = $state(false);
 	let oauthError = $state<string | null>(null);
 
 	function humanizeOAuthError(code: string): string {
@@ -16,36 +16,26 @@
 				'Your email already exists but could not be linked to Authentik. Please contact support.',
 			user_info_is_missing: 'Authentik did not return user information.',
 			email_is_missing: 'Authentik did not share an email address.',
-			unable_to_link_account: 'Could not link this Authentik account to an existing user.'
+			unable_to_link_account: 'Could not link this Authentik account to an existing user.',
+			unable_to_create_session:
+				'Authentik succeeded, but this browser blocked the sign-in cookie. Please try again.'
 		};
 		return messages[code] ?? `Sign-in failed (${code}). Please try again.`;
 	}
 
-	onMount(() => {
-		const params = new URLSearchParams(window.location.search);
-		const code = params.get('error');
-		if (!code) return;
-
-		oauthError = humanizeOAuthError(code);
-		// Keep ?error= visible for debugging / support screenshots.
+	const startHref = $derived.by(() => {
+		const origin = page.url.origin;
+		const start = new URL(`${PUBLIC_PAYLOAD_URL}/api/frontend-oauth-start`);
+		start.searchParams.set('callbackURL', `${origin}/account/profile`);
+		start.searchParams.set('errorCallbackURL', `${origin}/account/login`);
+		return start.toString();
 	});
 
-	function signInWithAuthentik() {
-		if (loading) return;
-		loading = true;
-		oauthError = null;
-
-		const loginUrl = `${window.location.origin}/account/login`;
-		const callbackURL = `${window.location.origin}/account/profile`;
-
-		// Start OAuth on the CMS origin so state + session cookies stay first-party with
-		// the Authentik redirect_uri (cms callback). Shared Domain=.itsmillertime.dev
-		// then makes the session visible on www after redirect back.
-		const start = new URL(`${PUBLIC_PAYLOAD_URL}/api/frontend-oauth-start`);
-		start.searchParams.set('callbackURL', callbackURL);
-		start.searchParams.set('errorCallbackURL', loginUrl);
-		window.location.href = start.toString();
-	}
+	onMount(() => {
+		const code = page.url.searchParams.get('error');
+		if (!code) return;
+		oauthError = humanizeOAuthError(code);
+	});
 </script>
 
 <svelte:head>
@@ -64,14 +54,7 @@
 				</div>
 			{/if}
 
-			<button
-				type="button"
-				class="authentik-btn"
-				onclick={signInWithAuthentik}
-				disabled={loading}
-			>
-				{loading ? 'Redirecting to Authentik…' : 'Continue with Authentik'}
-			</button>
+			<a class="authentik-btn" href={startHref}>Continue with Authentik</a>
 		</div>
 	</Panel>
 </div>
@@ -120,6 +103,7 @@
 	}
 
 	.authentik-btn {
+		display: block;
 		width: 100%;
 		padding: 0.75rem 1.5rem;
 		border: 2px solid var(--color-primary);
@@ -129,17 +113,15 @@
 		font-family: var(--font-roboto);
 		font-size: var(--fs-base);
 		font-weight: 500;
+		text-align: center;
+		text-decoration: none;
+		box-sizing: border-box;
 		cursor: pointer;
 		transition: all 0.2s ease;
 
-		&:hover:not(:disabled) {
+		&:hover {
 			background: var(--color-primary-darker);
 			border-color: var(--color-primary-darker);
-		}
-
-		&:disabled {
-			opacity: 0.6;
-			cursor: not-allowed;
 		}
 	}
 </style>
