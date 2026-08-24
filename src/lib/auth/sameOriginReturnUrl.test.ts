@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sameOriginReturnUrl } from './sameOriginReturnUrl';
+import { browserFacingLocation, sameOriginReturnUrl } from './sameOriginReturnUrl';
 
 describe('sameOriginReturnUrl', () => {
 	const origin = 'https://www.itsmillertime.dev';
@@ -18,5 +18,25 @@ describe('sameOriginReturnUrl', () => {
 		expect(sameOriginReturnUrl('https://evil.example/phish', origin, '/account/login')).toBe(
 			`${origin}/account/login`
 		);
+	});
+
+	it('replays cms locations onto www', () => {
+		expect(
+			browserFacingLocation(
+				'https://cms.itsmillertime.dev/account/profile',
+				origin,
+				'/account/login'
+			)
+		).toBe(`${origin}/account/profile`);
+	});
+
+	it('unwraps the CMS ticket continue URL', () => {
+		expect(
+			browserFacingLocation(
+				'https://cms.itsmillertime.dev/api/frontend-oauth-continue?to=https://www.itsmillertime.dev/account/profile',
+				origin,
+				'/account/login'
+			)
+		).toBe(`${origin}/account/profile`);
 	});
 });
