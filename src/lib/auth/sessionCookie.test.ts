@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { cookieNameForSite, isSessionCookieName, sessionCookieDomain } from './sessionCookie';
+import {
+	cookieNameForSite,
+	dedupeSetCookies,
+	isSessionCookieName,
+	rewriteProxiedAuthCookie,
+	sessionCookieDomain,
+	shouldCommitCookiesWithHtmlHop
+} from './sessionCookie';
 
 describe('session cookie handoff helpers', () => {
 	it('accepts better-auth session cookie names', () => {
@@ -17,10 +24,32 @@ describe('session cookie handoff helpers', () => {
 		);
 	});
 
-	it('shares the cookie across itsmillertime.dev hosts in production', () => {
-		expect(sessionCookieDomain('www.itsmillertime.dev', false)).toBe('.itsmillertime.dev');
-		expect(sessionCookieDomain('itsmillertime.dev', false)).toBe('.itsmillertime.dev');
-		expect(sessionCookieDomain('localhost:5173', false)).toBeUndefined();
-		expect(sessionCookieDomain('www.itsmillertime.dev', true)).toBeUndefined();
+	it('keeps session cookies host-only', () => {
+		expect(sessionCookieDomain('www.itsmillertime.dev', false)).toBeUndefined();
+		expect(sessionCookieDomain('itsmillertime.dev', false)).toBeUndefined();
+		expect(sessionCookieDomain('localhost:5173', true)).toBeUndefined();
+	});
+
+	it('strips Domain= from proxied auth cookies', () => {
+		const raw =
+			'__Secure-better-auth.session_token=abc; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Lax; Domain=.itsmillertime.dev';
+		expect(rewriteProxiedAuthCookie(raw, false)).toBe(
+			'__Secure-better-auth.session_token=abc; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Lax'
+		);
+	});
+
+	it('html-hops OAuth callback redirects so mobile Chrome can store cookies', () => {
+		expect(shouldCommitCookiesWithHtmlHop('GET', 302, 'oauth2/callback/authentik', [])).toBe(true);
+		expect(shouldCommitCookiesWithHtmlHop('POST', 302, 'sign-in/oauth2', [])).toBe(false);
+		expect(shouldCommitCookiesWithHtmlHop('GET', 200, 'get-session', [])).toBe(false);
+	});
+
+	it('dedupes duplicate Set-Cookie names', () => {
+		expect(
+			dedupeSetCookies([
+				'__Secure-better-auth.state=a; Path=/',
+				'__Secure-better-auth.state=b; Path=/'
+			])
+		).toEqual(['__Secure-better-auth.state=b; Path=/']);
 	});
 });
