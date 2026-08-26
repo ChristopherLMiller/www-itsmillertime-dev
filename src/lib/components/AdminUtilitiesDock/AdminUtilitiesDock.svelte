@@ -11,6 +11,7 @@
 		readPersistedQueryCache
 	} from '$lib/query/idbPersister';
 	import { PUBLIC_PAYLOAD_URL, PUBLIC_URL } from '$env/static/public';
+	import { currentReturnPath, hrefWithCallback } from '$lib/auth/returnTo';
 	import { cubicOut } from 'svelte/easing';
 	import { untrack } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
@@ -461,7 +462,14 @@
 								<p class="admin-dock-section-lead">This site and SEO endpoints.</p>
 								<ul class="admin-dock-links">
 									<li><a href="/account/profile">Profile</a></li>
-									<li><a href="/account/logout">Sign out</a></li>
+									<li>
+										<a
+											href={hrefWithCallback(
+												'/account/logout',
+												currentReturnPath(page.url, ['/account/profile'])
+											)}>Sign out</a
+										>
+									</li>
 									<li><a href="{PUBLIC_URL}/sitemap.xml">Sitemap</a></li>
 									<li><a href="{PUBLIC_URL}/robots.txt">robots.txt</a></li>
 								</ul>

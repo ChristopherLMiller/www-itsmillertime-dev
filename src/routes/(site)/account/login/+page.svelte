@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import Panel from '$lib/components/Panel';
+	import { hrefWithCallback } from '$lib/auth/returnTo';
 
 	let oauthError = $state<string | null>(null);
 
@@ -22,7 +23,9 @@
 		return messages[code] ?? `Sign-in failed (${code}). Please try again.`;
 	}
 
-	const startHref = '/account/login/authentik';
+	const startHref = $derived(
+		hrefWithCallback('/account/login/authentik', page.url.searchParams.get('callbackURL'))
+	);
 
 	onMount(() => {
 		const code = page.url.searchParams.get('error');

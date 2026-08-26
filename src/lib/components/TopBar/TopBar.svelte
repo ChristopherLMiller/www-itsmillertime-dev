@@ -5,6 +5,7 @@
 	import { navStore, type NavState } from '../../../stores/navigation';
 	import { filterNavItems } from '$lib/components/navigation/visibility';
 	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
+	import { currentReturnPath, hrefWithCallback } from '$lib/auth/returnTo';
 
 	type MenuLink = {
 		title: string;
@@ -31,13 +32,20 @@
 	const plausibleUrl = env.PUBLIC_PLAUSIBLE_URL || 'https://analytics.itsmillertime.dev';
 
 	const accountLinks = $derived.by((): MenuLink[] => {
+		const here = currentReturnPath(page.url);
 		if (isLoggedIn) {
 			return [
 				{ title: 'Profile', href: '/account/profile' },
-				{ title: 'Sign Out', href: '/account/logout' }
+				{
+					title: 'Sign Out',
+					href: hrefWithCallback(
+						'/account/logout',
+						currentReturnPath(page.url, ['/account/profile'])
+					)
+				}
 			];
 		}
-		return [{ title: 'Login', href: '/account/login' }];
+		return [{ title: 'Login', href: hrefWithCallback('/account/login', here) }];
 	});
 
 	const appLinks = $derived.by((): MenuLink[] => {

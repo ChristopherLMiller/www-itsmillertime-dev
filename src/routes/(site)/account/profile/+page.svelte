@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth/client';
 	import Panel from '$lib/components/Panel';
@@ -289,7 +289,7 @@
 			await authClient.signOut({
 				fetchOptions: {
 					onSuccess: () => {
-						goto('/account/login');
+						window.location.href = '/';
 					}
 				}
 			});
