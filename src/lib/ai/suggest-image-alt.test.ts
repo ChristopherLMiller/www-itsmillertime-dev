@@ -178,11 +178,13 @@ describe('suggestImageAlt', () => {
 		expect(headers.get('anthropic-version')).toBe('2023-06-01');
 		const body = JSON.parse(String(init.body)) as {
 			model: string;
+			temperature?: number;
 			messages: {
 				content: { type: string; text?: string; source?: { media_type: string; data: string } }[];
 			}[];
 		};
 		expect(body.model).toBe('claude-sonnet-5');
+		expect(body.temperature).toBeUndefined();
 		expect(body.messages[0].content[0].source?.media_type).toBe('image/jpeg');
 		expect(body.messages[0].content[0].source?.data?.length).toBeGreaterThan(10);
 		expect(body.messages[0].content[1].text).toContain('Goshen Airshow');
@@ -202,5 +204,30 @@ describe('suggestImageAlt', () => {
 				fetchFn
 			})
 		).rejects.toMatchObject({ status: 429 } satisfies Partial<SuggestImageAltError>);
+	});
+
+	it('includes Anthropic error detail on a 400', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 400,
+			json: async () => ({
+				error: {
+					type: 'invalid_request_error',
+					message: 'temperature is not supported for this model'
+				}
+			})
+		});
+		const err = await suggestImageAlt({
+			jpegBytes: PNG_1x1,
+			apiKey: 'sk-test',
+			model: 'claude-sonnet-5',
+			fetchFn
+		}).catch((e: unknown) => e);
+		expect(err).toMatchObject({
+			status: 502,
+			message: 'Anthropic request failed: temperature is not supported for this model'
+		});
+		vi.restoreAllMocks();
 	});
 });
