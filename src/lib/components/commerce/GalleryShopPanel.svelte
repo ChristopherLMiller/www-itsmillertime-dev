@@ -208,79 +208,80 @@
 	</div>
 {:else}
 	<form class="shop-panel" onsubmit={addSelected}>
-		{#snippet groupPanel(group: ShopOfferGroup, selectedInGroup: number)}
-			<summary class="shop-panel__summary" id="shop-group-{groupDomId(group.id)}">
-				<span class="shop-panel__name">{group.name}</span>
-				<span class="shop-panel__summary-meta">
-					{#if selectedInGroup > 0}
-						<span class="shop-panel__badge">{selectedInGroup}</span>
+		<div class="shop-panel__catalog">
+			{#snippet offerGroup(group: ShopOfferGroup)}
+				{@const selectedInGroup = groupQty(group)}
+				<section
+					class="shop-panel__group"
+					class:shop-panel__group--digital={group.kind === 'digital'}
+					aria-labelledby="shop-group-{groupDomId(group.id)}"
+				>
+					<div class="shop-panel__heading">
+						<h3 class="shop-panel__name" id="shop-group-{groupDomId(group.id)}">{group.name}</h3>
+						<span
+							class="shop-panel__badge"
+							class:shop-panel__badge--hidden={selectedInGroup === 0}
+							aria-hidden={selectedInGroup === 0}
+						>
+							{selectedInGroup > 0 ? selectedInGroup : ''}
+						</span>
+					</div>
+					{#if group.description}
+						<p class="shop-panel__desc" title={group.description}>{group.description}</p>
 					{/if}
-					<span class="shop-panel__chevron" aria-hidden="true"></span>
-				</span>
-			</summary>
-			{#if group.description}
-				<p class="shop-panel__desc">{group.description}</p>
-			{/if}
-			<ul class="shop-panel__lines">
-				{#each group.offers as offer (offer.variantId)}
-					{@const qty = qtyByVariant[offer.variantId] ?? 0}
-					<li class="shop-panel__line">
-						<label class="shop-panel__line-copy" for={qtyId(offer.variantId)}>
-							<span class="shop-panel__size">{offer.title}</span>
-							{#if typeof offer.priceUSD === 'number'}
-								<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
-							{/if}
-						</label>
-						<div class="shop-panel__stepper">
-							<button
-								class="shop-panel__step"
-								type="button"
-								disabled={busy || qty <= 0}
-								aria-label="Decrease quantity of {group.name} {offer.title}"
-								onclick={() => bumpQty(offer.variantId, -1)}
-							>
-								−
-							</button>
-							<input
-								class="shop-panel__qty"
-								id={qtyId(offer.variantId)}
-								type="number"
-								inputmode="numeric"
-								min="0"
-								max={MAX_CART_QTY}
-								step="1"
-								disabled={busy}
-								value={qty}
-								aria-label="Quantity for {group.name} {offer.title}"
-								oninput={(e) => setQty(offer.variantId, e.currentTarget.valueAsNumber)}
-							/>
-							<button
-								class="shop-panel__step"
-								type="button"
-								disabled={busy || qty >= MAX_CART_QTY}
-								aria-label="Increase quantity of {group.name} {offer.title}"
-								onclick={() => bumpQty(offer.variantId, 1)}
-							>
-								+
-							</button>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		{/snippet}
+					<ul class="shop-panel__lines">
+						{#each group.offers as offer (offer.variantId)}
+							{@const qty = qtyByVariant[offer.variantId] ?? 0}
+							<li class="shop-panel__line">
+								<label class="shop-panel__size" for={qtyId(offer.variantId)}>{offer.title}</label>
+								{#if typeof offer.priceUSD === 'number'}
+									<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
+								{:else}
+									<span class="shop-panel__price" aria-hidden="true"></span>
+								{/if}
+								<div class="shop-panel__stepper">
+									<button
+										class="shop-panel__step"
+										type="button"
+										disabled={busy || qty <= 0}
+										aria-label="Decrease quantity of {group.name} {offer.title}"
+										onclick={() => bumpQty(offer.variantId, -1)}
+									>
+										−
+									</button>
+									<input
+										class="shop-panel__qty"
+										id={qtyId(offer.variantId)}
+										type="number"
+										inputmode="numeric"
+										min="0"
+										max={MAX_CART_QTY}
+										step="1"
+										disabled={busy}
+										value={qty}
+										aria-label="Quantity for {group.name} {offer.title}"
+										oninput={(e) => setQty(offer.variantId, e.currentTarget.valueAsNumber)}
+									/>
+									<button
+										class="shop-panel__step"
+										type="button"
+										disabled={busy || qty >= MAX_CART_QTY}
+										aria-label="Increase quantity of {group.name} {offer.title}"
+										onclick={() => bumpQty(offer.variantId, 1)}
+									>
+										+
+									</button>
+								</div>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/snippet}
 
-		{#each groups as group, i (group.id)}
-			{@const selectedInGroup = groupQty(group)}
-			{#if i === 0}
-				<details class="shop-panel__group" open>
-					{@render groupPanel(group, selectedInGroup)}
-				</details>
-			{:else}
-				<details class="shop-panel__group">
-					{@render groupPanel(group, selectedInGroup)}
-				</details>
-			{/if}
-		{/each}
+			{#each groups as group (group.id)}
+				{@render offerGroup(group)}
+			{/each}
+		</div>
 
 		<div class="shop-panel__footer">
 			<button class="shop-panel__add" type="submit" disabled={busy || selectedCount === 0}>
@@ -307,93 +308,98 @@
 	.shop-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 1.15rem;
+		gap: 0.85rem;
+		min-width: 0;
+		min-height: 0;
+		height: 100%;
+		font-family: var(--font-roboto);
+		container-type: inline-size;
+	}
+
+	.shop-panel__catalog {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		min-width: 0;
+		min-height: 0;
+		flex: 1 1 auto;
+		overflow-x: hidden;
+		overflow-y: auto;
 	}
 
 	.shop-panel__group {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
 		margin: 0;
+		padding: 0.7rem 0.95rem 0.65rem;
+		border: 1px solid var(--color-tertiary-lighter);
+		border-radius: 10px;
+		background: rgba(0, 0, 0, 0.32);
 	}
 
-	.shop-panel__summary {
+	.shop-panel__heading {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
 		margin: 0;
-		padding: 0.35rem 0 0.4rem;
+		padding: 0 0 0.4rem;
 		border-bottom: 1px solid var(--color-tertiary-lighter);
-		color: var(--color-white-lightest);
-		cursor: pointer;
-		list-style: none;
-	}
-
-	.shop-panel__summary::-webkit-details-marker,
-	.shop-panel__summary::marker {
-		display: none;
-		content: '';
-	}
-
-	.shop-panel__summary:focus-visible {
-		outline: 2px solid var(--color-secondary);
-		outline-offset: 2px;
+		min-height: 1.15rem;
 	}
 
 	.shop-panel__name {
-		font-size: 0.95rem;
-		font-weight: 700;
-		letter-spacing: 0.01em;
+		margin: 0;
+		font-family: var(--font-oswald);
+		font-size: 0.78rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		line-height: 1.3;
+		text-transform: uppercase;
+		color: var(--color-secondary);
 	}
 
 	.shop-panel__desc {
-		margin: 0.55rem 0 0.15rem;
-		font-size: calc(var(--fs-xs) * 0.95);
+		margin: 0.5rem 0 0.2rem;
+		font-size: 0.8125rem;
 		line-height: 1.45;
 		color: var(--color-tertiary);
-		white-space: pre-wrap;
-	}
-
-	.shop-panel__summary-meta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		flex-shrink: 0;
 	}
 
 	.shop-panel__badge {
-		min-width: 1.25rem;
-		padding: 0.1rem 0.4rem;
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.15rem;
+		height: 1.15rem;
+		padding: 0 0.35rem;
 		border-radius: 999px;
 		background: var(--color-secondary);
 		color: var(--color-primary-darkest);
-		font-size: calc(var(--fs-xs) * 0.85);
+		font-size: 0.6875rem;
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
+		line-height: 1;
 		text-align: center;
-		line-height: 1.3;
+		flex-shrink: 0;
 	}
 
-	.shop-panel__chevron {
-		width: 0.42rem;
-		height: 0.42rem;
-		border-right: 2px solid var(--color-tertiary);
-		border-bottom: 2px solid var(--color-tertiary);
-		transform: rotate(45deg);
-		transition: transform 150ms ease;
-	}
-
-	.shop-panel__group[open] .shop-panel__chevron {
-		transform: rotate(225deg);
+	.shop-panel__badge--hidden {
+		visibility: hidden;
 	}
 
 	.shop-panel__empty {
 		margin: 0;
-		font-size: calc(var(--fs-xs) * 0.95);
-		line-height: 1.45;
+		font-size: 0.875rem;
+		line-height: 1.5;
 		color: var(--color-tertiary);
 	}
 
 	.shop-panel--request {
 		gap: 0.9rem;
+		height: auto;
 	}
 
 	.shop-panel__request {
@@ -409,7 +415,11 @@
 	}
 
 	.shop-panel__field label {
-		font-size: calc(var(--fs-xs) * 0.92);
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
 		color: var(--color-tertiary);
 	}
 
@@ -417,13 +427,13 @@
 		box-sizing: border-box;
 		width: 100%;
 		margin: 0;
-		padding: 0.5rem 0.65rem;
-		border: 1px solid rgba(255, 255, 255, 0.22);
+		padding: 0.55rem 0.7rem;
+		border: 1px solid rgba(255, 255, 255, 0.18);
 		border-radius: 6px;
-		background: rgba(0, 0, 0, 0.25);
+		background: rgba(0, 0, 0, 0.28);
 		color: var(--color-white-lightest);
 		font-family: inherit;
-		font-size: 0.95rem;
+		font-size: 0.9375rem;
 	}
 
 	.shop-panel__field input:focus-visible {
@@ -437,64 +447,110 @@
 
 	.shop-panel__success {
 		margin: 0;
-		font-size: calc(var(--fs-xs) * 0.95);
-		line-height: 1.45;
+		font-size: 0.875rem;
+		line-height: 1.5;
 		color: var(--color-secondary);
 	}
 
 	.shop-panel__lines {
 		list-style: none;
 		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
+		padding: 0.1rem 0 0;
+		display: grid;
+		grid-template-columns: 1fr;
+		column-gap: 1rem;
+		row-gap: 0;
+		min-height: 0;
 	}
 
 	.shop-panel__line {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-columns: minmax(0, 1fr) 4.25rem auto;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.45rem 0;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		column-gap: 0.55rem;
+		min-width: 0;
+		width: 100%;
+		padding: 0.42rem 0;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 	}
 
 	.shop-panel__line:last-child {
 		border-bottom: none;
+		padding-bottom: 0.15rem;
 	}
 
-	.shop-panel__line-copy {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.75rem;
-		min-width: 0;
-		cursor: pointer;
+	@container (min-width: 28rem) {
+		.shop-panel__lines:not(:has(> :only-child)) {
+			grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+			column-gap: 1.25rem;
+		}
+
+		.shop-panel__group--digital {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			gap: 0.35rem 1.25rem;
+			align-items: center;
+		}
+
+		.shop-panel__group--digital .shop-panel__heading {
+			grid-column: 1 / -1;
+		}
+
+		.shop-panel__group--digital .shop-panel__desc {
+			margin: 0.35rem 0 0;
+		}
+
+		.shop-panel__group--digital .shop-panel__lines {
+			padding: 0.35rem 0 0;
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+			gap: 0.35rem 1rem;
+		}
+
+		.shop-panel__group--digital .shop-panel__line {
+			width: auto;
+			padding: 0;
+			border-bottom: none;
+			grid-template-columns: max-content max-content auto;
+			column-gap: 0.75rem;
+		}
 	}
 
 	.shop-panel__size {
-		font-size: 0.95rem;
-		font-weight: 600;
+		min-width: 0;
+		margin: 0;
+		font-family: var(--font-oswald);
+		font-size: 1rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
 		line-height: 1.2;
+		overflow-wrap: anywhere;
 		color: var(--color-white-lightest);
+		cursor: pointer;
 	}
 
 	.shop-panel__price {
-		flex-shrink: 0;
-		font-size: calc(var(--fs-xs) * 0.98);
-		font-weight: 600;
+		justify-self: end;
+		font-size: 0.875rem;
+		font-weight: 500;
 		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.01em;
+		text-align: right;
 		color: var(--color-secondary);
+		white-space: nowrap;
 	}
 
 	.shop-panel__stepper {
 		display: inline-flex;
 		align-items: stretch;
+		justify-self: end;
 		flex-shrink: 0;
-		border: 1px solid rgba(255, 255, 255, 0.22);
-		border-radius: 6px;
+		height: 2rem;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 999px;
 		overflow: hidden;
-		background: rgba(0, 0, 0, 0.25);
+		background: rgba(0, 0, 0, 0.28);
 	}
 
 	.shop-panel__step {
@@ -508,8 +564,8 @@
 		background: transparent;
 		color: var(--color-white-lightest);
 		font-family: inherit;
-		font-size: 1.05rem;
-		font-weight: 700;
+		font-size: 1rem;
+		font-weight: 500;
 		line-height: 1;
 		cursor: pointer;
 	}
@@ -530,17 +586,17 @@
 
 	.shop-panel__qty {
 		box-sizing: border-box;
-		width: 2.4rem;
+		width: 2.1rem;
 		margin: 0;
-		padding: 0.35rem 0.15rem;
+		padding: 0;
 		border: 0;
-		border-left: 1px solid rgba(255, 255, 255, 0.16);
-		border-right: 1px solid rgba(255, 255, 255, 0.16);
+		border-left: 1px solid rgba(255, 255, 255, 0.12);
+		border-right: 1px solid rgba(255, 255, 255, 0.12);
 		border-radius: 0;
 		background: transparent;
 		color: var(--color-white-lightest);
 		font-family: inherit;
-		font-size: 0.95rem;
+		font-size: 0.875rem;
 		font-variant-numeric: tabular-nums;
 		text-align: center;
 		appearance: textfield;
@@ -562,35 +618,29 @@
 	}
 
 	.shop-panel__footer {
-		position: sticky;
-		bottom: 0;
+		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		margin: 0 -0.15rem;
-		padding: 0.75rem 0.15rem 0.15rem;
-		background: linear-gradient(
-			180deg,
-			transparent 0%,
-			var(--color-tertiary-darker) 0.55rem,
-			var(--color-tertiary-darker) 100%
-		);
-		z-index: 1;
+		padding-top: 0.15rem;
 	}
 
 	.shop-panel__add {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		width: 100%;
 		margin: 0;
-		padding: 0.7rem 1rem;
+		padding: 0.75rem 1rem;
 		border: 1px solid var(--color-secondary);
 		border-radius: 8px;
 		background: var(--color-secondary);
 		color: var(--color-primary-darkest);
-		font-family: inherit;
-		font-size: 0.95rem;
-		font-weight: 700;
+		font-family: var(--font-oswald);
+		font-size: 0.85rem;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		cursor: pointer;
 	}
 
@@ -610,7 +660,48 @@
 
 	.shop-panel__error {
 		margin: 0;
-		font-size: calc(var(--fs-xs) * 0.92);
+		font-size: 0.8125rem;
 		color: #ff6b6b;
+	}
+
+	@media (pointer: coarse) {
+		.shop-panel__line {
+			padding: 0.62rem 0;
+			column-gap: 0.5rem;
+		}
+
+		.shop-panel__size {
+			font-size: 1.05rem;
+		}
+
+		.shop-panel__stepper {
+			height: 2.75rem;
+		}
+
+		.shop-panel__step {
+			width: 2.5rem;
+			font-size: 1.15rem;
+		}
+
+		.shop-panel__qty {
+			width: 2.5rem;
+			font-size: 1rem;
+		}
+
+		.shop-panel__add {
+			min-height: 2.75rem;
+			padding: 0.85rem 1rem;
+		}
+	}
+
+	@media (max-width: 768px) {
+		.shop-panel__lines {
+			grid-template-columns: 1fr;
+		}
+
+		.shop-panel__line {
+			grid-template-columns: minmax(0, 1fr) max-content auto;
+			column-gap: 0.55rem;
+		}
 	}
 </style>

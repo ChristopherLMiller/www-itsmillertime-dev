@@ -25,6 +25,8 @@ export type ImageZoomPanOptions = {
 	 * Hit-testing still uses the node; keep true if the node must grow with scale.
 	 */
 	applyCssTransform?: boolean;
+	/** When false, ignore wheel/pinch/click zoom and reset to identity. */
+	enabled?: boolean;
 };
 
 type Point = { x: number; y: number };
@@ -43,6 +45,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	let onTransform = options.onTransform;
 	let applyCssTransform = options.applyCssTransform ?? true;
 	let handle = options.handle;
+	let enabled = options.enabled ?? true;
 
 	let scale = 1;
 	let tx = 0;
@@ -81,7 +84,15 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 			node.style.transform = '';
 			node.style.willChange = 'auto';
 		}
-		node.style.cursor = scale > 1.001 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in';
+		if (enabled) {
+			node.style.cursor = scale > 1.001 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in';
+			node.style.touchAction = 'none';
+			node.style.userSelect = 'none';
+		} else {
+			node.style.cursor = 'default';
+			node.style.touchAction = 'auto';
+			node.style.userSelect = '';
+		}
 		setZoomed(scale > 1.001);
 		onTransform?.({ scale, tx, ty });
 	}
@@ -157,6 +168,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onWheel(e: WheelEvent) {
+		if (!enabled) return;
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -197,6 +209,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onWindowPointerMove(e: PointerEvent) {
+		if (!enabled) return;
 		if (activePointerId != null && e.pointerId !== activePointerId) return;
 		if (!pointerDownAt && !dragOrigin) return;
 
@@ -228,7 +241,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 		pointers.delete(e.pointerId);
 
 		// Click while showing zoom-in cursor → zoom in toward click.
-		if (wasClick && scale <= 1.001) {
+		if (enabled && wasClick && scale <= 1.001) {
 			zoomAt(clickX, clickY, Math.min(maxScale, clickZoomScale));
 		} else {
 			apply();
@@ -239,6 +252,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onPointerDown(e: PointerEvent) {
+		if (!enabled) return;
 		if (e.pointerType === 'mouse' && e.button !== 0) return;
 		e.stopPropagation();
 
@@ -280,6 +294,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onPointerMove(e: PointerEvent) {
+		if (!enabled) return;
 		if (!pointers.has(e.pointerId)) return;
 		pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -313,6 +328,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onDblClick(e: MouseEvent) {
+		if (!enabled) return;
 		// Single-click already zooms in; dblclick toggles reset when zoomed.
 		e.preventDefault();
 		e.stopPropagation();
@@ -320,10 +336,12 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onTouchStart(e: TouchEvent) {
+		if (!enabled) return;
 		if (scale > 1 || e.touches.length > 1) e.stopPropagation();
 	}
 
 	function onTouchMove(e: TouchEvent) {
+		if (!enabled) return;
 		if (scale > 1 || e.touches.length > 1) {
 			e.stopPropagation();
 			if (e.cancelable) e.preventDefault();
@@ -331,10 +349,12 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	}
 
 	function onTouchEnd(e: TouchEvent) {
+		if (!enabled) return;
 		if (scale > 1 || movedDuringPointer) e.stopPropagation();
 	}
 
 	function onKeyDown(e: KeyboardEvent) {
+		if (!enabled) return;
 		if (e.key !== 'Escape' || scale <= 1.001) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
@@ -370,11 +390,18 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 			applyCssTransform = nextApplyCss;
 			handle = next.handle;
 			bindHandle();
+			const nextEnabled = next.enabled ?? true;
+			const enabledChanged = nextEnabled !== enabled;
+			enabled = nextEnabled;
+			if (!enabled) {
+				reset();
+				return;
+			}
 			if (scale < minScale || scale > maxScale) {
 				scale = Math.min(maxScale, Math.max(minScale, scale));
 				clampPan();
 				apply();
-			} else if (cssModeChanged) {
+			} else if (cssModeChanged || enabledChanged) {
 				apply();
 			}
 		},
