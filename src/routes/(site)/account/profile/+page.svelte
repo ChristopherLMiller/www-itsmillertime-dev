@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { authClient } from '$lib/auth/client';
+	import { sanitizeLogoutReturnUrl } from '$lib/auth/returnTo';
 	import Panel from '$lib/components/Panel';
 	import { getAvatarUrl, gravatarProfileUrl, hashEmailForGravatar } from '$lib/utils/avatar';
 	import type { PageData } from './$types';
@@ -285,11 +286,12 @@
 
 	async function handleSignOut() {
 		signingOut = true;
+		const dest = sanitizeLogoutReturnUrl(null, window.location.origin, document.referrer || null);
 		try {
 			await authClient.signOut({
 				fetchOptions: {
 					onSuccess: () => {
-						window.location.href = '/';
+						window.location.href = dest;
 					}
 				}
 			});

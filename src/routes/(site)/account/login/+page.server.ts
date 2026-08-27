@@ -1,5 +1,5 @@
 import { loadSession } from '$lib/auth/loadSession.server';
-import { sanitizeReturnUrl, urlToPath } from '$lib/auth/returnTo';
+import { headerReferer, resolveReturnUrl, urlToPath } from '$lib/auth/returnTo';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -8,13 +8,14 @@ export const load: PageServerLoad = async ({ parent, fetch, request, url }) => {
 	const session =
 		(parentData.session as Awaited<ReturnType<typeof loadSession>>) ??
 		(await loadSession(fetch, request));
+	const returnTo = urlToPath(
+		resolveReturnUrl(url.origin, '/account/profile', [
+			url.searchParams.get('callbackURL'),
+			headerReferer(request.headers)
+		])
+	);
 	if (session?.user) {
-		redirect(
-			302,
-			urlToPath(
-				sanitizeReturnUrl(url.searchParams.get('callbackURL'), url.origin, '/account/profile')
-			)
-		);
+		redirect(302, returnTo);
 	}
-	return {};
+	return { returnTo };
 };

@@ -9,7 +9,8 @@
 	onMount(async () => {
 		const dest = sanitizeLogoutReturnUrl(
 			page.url.searchParams.get('callbackURL'),
-			window.location.origin
+			window.location.origin,
+			document.referrer || null
 		);
 
 		try {

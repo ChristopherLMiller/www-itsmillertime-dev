@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	currentReturnPath,
+	headerReferer,
 	hrefWithCallback,
+	parseReturnUrl,
+	resolveReturnUrl,
 	sanitizeLogoutReturnUrl,
 	sanitizeReturnUrl,
 	urlToPath
@@ -23,9 +26,48 @@ describe('returnTo', () => {
 		expect(sanitizeReturnUrl('/account/logout', origin, '/')).toBe(`${origin}/`);
 	});
 
-	it('sends logout away from profile', () => {
+	it('parses a referrer URL and skips auth pages', () => {
+		expect(parseReturnUrl(`${origin}/galleries/stephanie`, origin)).toBe(
+			`${origin}/galleries/stephanie`
+		);
+		expect(parseReturnUrl(`${origin}/account/login`, origin)).toBeNull();
+		expect(parseReturnUrl('https://evil.example/steal', origin)).toBeNull();
+		expect(parseReturnUrl('', origin)).toBeNull();
+	});
+
+	it('prefers callbackURL, then referrer, then the fallback', () => {
+		expect(
+			resolveReturnUrl(origin, '/account/profile', [
+				'/galleries/album',
+				`${origin}/articles/hello`
+			])
+		).toBe(`${origin}/galleries/album`);
+		expect(
+			resolveReturnUrl(origin, '/account/profile', [null, `${origin}/articles/hello`])
+		).toBe(`${origin}/articles/hello`);
+		expect(resolveReturnUrl(origin, '/account/profile', [null, '/account/login'])).toBe(
+			`${origin}/account/profile`
+		);
+		expect(resolveReturnUrl(origin, '/', [])).toBe(`${origin}/`);
+	});
+
+	it('sends logout away from profile, otherwise back to the referrer', () => {
 		expect(sanitizeLogoutReturnUrl('/account/profile', origin)).toBe(`${origin}/`);
-		expect(sanitizeLogoutReturnUrl('/gallery/album', origin)).toBe(`${origin}/gallery/album`);
+		expect(sanitizeLogoutReturnUrl(null, origin, `${origin}/account/profile`)).toBe(`${origin}/`);
+		expect(sanitizeLogoutReturnUrl(null, origin, `${origin}/gallery/album`)).toBe(
+			`${origin}/gallery/album`
+		);
+		expect(sanitizeLogoutReturnUrl(null, origin, null)).toBe(`${origin}/`);
+	});
+
+	it('reads the Referer header', () => {
+		expect(headerReferer(new Headers({ referer: `${origin}/articles/x` }))).toBe(
+			`${origin}/articles/x`
+		);
+		expect(headerReferer(new Headers({ referrer: `${origin}/articles/x` }))).toBe(
+			`${origin}/articles/x`
+		);
+		expect(headerReferer(new Headers())).toBeNull();
 	});
 
 	it('omits a return path on auth pages', () => {
