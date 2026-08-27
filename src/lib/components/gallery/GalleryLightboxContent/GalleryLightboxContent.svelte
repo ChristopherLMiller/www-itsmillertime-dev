@@ -490,15 +490,29 @@
 	let draftCaption = $state('');
 	let metaSaveError = $state<string | null>(null);
 	let metaSaving = $state(false);
+	let altSuggesting = $state(false);
+	let altSuggestion = $state<string | null>(null);
+	let altSuggestError = $state<string | null>(null);
+	let altSuggestAbort: AbortController | null = null;
+
+	function resetAltSuggestion() {
+		altSuggestAbort?.abort();
+		altSuggestAbort = null;
+		altSuggesting = false;
+		altSuggestion = null;
+		altSuggestError = null;
+	}
 
 	$effect(() => {
 		void slideIdentity;
 		editingMeta = false;
 		metaSaveError = null;
 		metaSaving = false;
+		resetAltSuggestion();
 	});
 
 	function startEditingMeta() {
+		resetAltSuggestion();
 		draftAlt = image?.alt ?? '';
 		draftCaption = captionText ?? '';
 		metaSaveError = null;
@@ -506,12 +520,61 @@
 	}
 
 	function cancelEditingMeta() {
+		resetAltSuggestion();
 		editingMeta = false;
 		metaSaveError = null;
 	}
 
+	async function suggestAltText() {
+		if (!isAdmin || galleryImageId == null || isVideo || altSuggesting || metaSaving) return;
+		altSuggestAbort?.abort();
+		const ac = new AbortController();
+		altSuggestAbort = ac;
+		altSuggesting = true;
+		altSuggestError = null;
+		altSuggestion = null;
+		try {
+			const res = await fetch(`/api/gallery/images/${galleryImageId}/suggest-alt`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ albumTitle: gallery.title }),
+				signal: ac.signal
+			});
+			const payload = (await res.json().catch(() => null)) as {
+				alt?: string;
+				error?: string;
+			} | null;
+			if (ac.signal.aborted) return;
+			if (!res.ok) {
+				altSuggestError = payload?.error ?? `Suggestion failed (${res.status})`;
+				return;
+			}
+			const alt = payload?.alt?.trim() ?? '';
+			if (!alt) {
+				altSuggestError = 'No suggestion returned';
+				return;
+			}
+			altSuggestion = alt;
+		} catch {
+			if (ac.signal.aborted) return;
+			altSuggestError = 'Could not suggest alt text';
+		} finally {
+			if (altSuggestAbort === ac) {
+				altSuggesting = false;
+				altSuggestAbort = null;
+			}
+		}
+	}
+
+	function insertAltSuggestion() {
+		if (!altSuggestion) return;
+		draftAlt = altSuggestion;
+		altSuggestion = null;
+		altSuggestError = null;
+	}
+
 	async function saveMediaMeta() {
-		if (!isAdmin || galleryImageId == null || metaSaving) return;
+		if (!isAdmin || galleryImageId == null || metaSaving || altSuggesting) return;
 		metaSaving = true;
 		metaSaveError = null;
 		const caption = plainTextToLexical(draftCaption) as GalleryImage['caption'] | null;
@@ -535,6 +598,7 @@
 				alt: payload?.alt ?? alt,
 				caption: payload?.caption ?? caption
 			});
+			resetAltSuggestion();
 			editingMeta = false;
 		} catch {
 			metaSaveError = 'Could not save changes';
@@ -1162,32 +1226,70 @@
 								onclick={(e) => e.stopPropagation()}
 								onkeydown={(e) => e.stopPropagation()}
 							>
-								<label class="gallery-lightbox__meta-field">
-									<span class="gallery-lightbox__meta-field-label">Title</span>
+								<div class="gallery-lightbox__meta-field">
+									<div class="gallery-lightbox__meta-field-head">
+										<label class="gallery-lightbox__meta-field-label" for="lightbox-image-title">
+											Title
+										</label>
+										{#if !isVideo}
+											<button
+												type="button"
+												class="gallery-lightbox__meta-edit-btn"
+												disabled={metaSaving || altSuggesting}
+												aria-busy={altSuggesting}
+												onclick={(e) => {
+													e.stopPropagation();
+													void suggestAltText();
+												}}
+											>
+												{altSuggesting ? 'Suggesting…' : 'Suggest with AI'}
+											</button>
+										{/if}
+									</div>
 									<input
+										id="lightbox-image-title"
 										class="gallery-lightbox__meta-input"
 										type="text"
 										bind:value={draftAlt}
-										disabled={metaSaving}
+										disabled={metaSaving || altSuggesting}
 										autocomplete="off"
 										placeholder="Short title for this image"
 									/>
 									<span class="gallery-lightbox__meta-hint">Stored as the image alt text</span>
-								</label>
+									{#if altSuggestError}
+										<p class="gallery-lightbox__meta-error" role="alert">{altSuggestError}</p>
+									{/if}
+									{#if altSuggestion}
+										<div class="gallery-lightbox__alt-suggestion" aria-live="polite">
+											<p class="gallery-lightbox__alt-suggestion-text">{altSuggestion}</p>
+											<button
+												type="button"
+												class="gallery-lightbox__meta-save"
+												onclick={insertAltSuggestion}
+											>
+												Insert
+											</button>
+										</div>
+									{/if}
+								</div>
 								<label class="gallery-lightbox__meta-field">
 									<span class="gallery-lightbox__meta-field-label">Description</span>
 									<textarea
 										class="gallery-lightbox__meta-textarea"
 										rows="4"
 										bind:value={draftCaption}
-										disabled={metaSaving}
+										disabled={metaSaving || altSuggesting}
 										placeholder="Optional longer description"></textarea>
 								</label>
 								{#if metaSaveError}
 									<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>
 								{/if}
 								<div class="gallery-lightbox__meta-actions">
-									<button type="submit" class="gallery-lightbox__meta-save" disabled={metaSaving}>
+									<button
+										type="submit"
+										class="gallery-lightbox__meta-save"
+										disabled={metaSaving || altSuggesting}
+									>
 										{metaSaving ? 'Saving…' : 'Save'}
 									</button>
 									<button
@@ -1867,6 +1969,41 @@
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		color: var(--color-tertiary);
+	}
+
+	.gallery-lightbox__meta-field-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.gallery-lightbox__meta-field-head .gallery-lightbox__meta-field-label {
+		margin: 0;
+	}
+
+	.gallery-lightbox__alt-suggestion {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.45rem;
+		padding: 0.55rem 0.65rem;
+		border: 1px solid rgba(255, 255, 255, 0.16);
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.28);
+	}
+
+	.gallery-lightbox__alt-suggestion-text {
+		margin: 0;
+		font-size: 0.8125rem;
+		line-height: 1.4;
+		color: var(--color-white-lightest);
+		text-wrap: pretty;
+	}
+
+	.gallery-lightbox__alt-suggestion .gallery-lightbox__meta-save {
+		padding: 0.3rem 0.7rem;
+		font-size: 0.75rem;
 	}
 
 	.gallery-lightbox__meta-hint {
