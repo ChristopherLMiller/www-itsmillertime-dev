@@ -56,6 +56,99 @@ describe('parseStoreProduct', () => {
 		expect(parsed?.variants[1]?.paper).toBeNull();
 	});
 
+	it('reads Prodigi finish and hides the Standard placeholder', () => {
+		const parsed = parseStoreProduct({
+			product: {
+				id: 'prod_finish',
+				variants: [
+					{
+						id: 'v-gloss',
+						title: 'Photo Rag · 4x6 · Gloss',
+						options: [
+							{ value: 'Photo Rag', option: { title: 'Paper' } },
+							{ value: '4x6', option: { title: 'Format' } },
+							{ value: 'Gloss', option: { title: 'Finish' } }
+						],
+						calculated_price: { calculated_amount: 12 }
+					},
+					{
+						id: 'v-standard',
+						title: 'Photo Rag · 8x10',
+						options: [
+							{ value: 'Photo Rag', option: { title: 'Paper' } },
+							{ value: '8x10', option: { title: 'Format' } },
+							{ value: 'Standard', option: { title: 'Finish' } }
+						],
+						calculated_price: { calculated_amount: 18 }
+					},
+					{
+						id: 'v-meta',
+						title: 'Lustre · 5x7 · Lustre',
+						options: [
+							{ value: 'Lustre', option: { title: 'Paper' } },
+							{ value: '5x7', option: { title: 'Format' } }
+						],
+						metadata: { prodigi_finish: 'Lustre' },
+						prices: [{ amount: 14 }]
+					}
+				]
+			}
+		});
+		expect(parsed?.variants[0]).toMatchObject({ finish: 'Gloss', paper: 'Photo Rag' });
+		expect(parsed?.variants[1]?.finish).toBeNull();
+		expect(parsed?.variants[2]?.finish).toBe('Lustre');
+	});
+
+	it('title-cases lowercase Prodigi finish values', () => {
+		const parsed = parseStoreProduct({
+			product: {
+				id: 'prod_ctype',
+				variants: [
+					{
+						id: 'v-gloss',
+						title: 'C-Type · 4x6 · gloss',
+						options: [
+							{ value: 'Continuous-tone silver halide photo print', option: { title: 'Paper' } },
+							{ value: '4x6', option: { title: 'Format' } },
+							{ value: 'gloss', option: { title: 'Finish' } }
+						]
+					}
+				]
+			}
+		});
+		expect(parsed?.variants[0]).toMatchObject({
+			finish: 'Gloss',
+			paper: 'Continuous-tone silver halide photo print',
+			priceUSD: null
+		});
+	});
+
+	it('treats missing or zero prices as null', () => {
+		const parsed = parseStoreProduct({
+			product: {
+				id: 'prod_unpriced',
+				variants: [
+					{
+						id: 'v-none',
+						title: 'Photo Rag · 4x6 · Gloss',
+						options: [
+							{ value: 'Photo Rag', option: { title: 'Paper' } },
+							{ value: '4x6', option: { title: 'Format' } },
+							{ value: 'Gloss', option: { title: 'Finish' } }
+						]
+					},
+					{
+						id: 'v-zero',
+						title: 'Photo Rag · 5x7 · Matte',
+						calculated_price: { calculated_amount: 0 }
+					}
+				]
+			}
+		});
+		expect(parsed?.variants[0]?.priceUSD).toBeNull();
+		expect(parsed?.variants[1]?.priceUSD).toBeNull();
+	});
+
 	it('treats manage_inventory: false as a legacy digital variant', () => {
 		const parsed = parseStoreProduct({
 			id: 'prod_legacy',
@@ -115,9 +208,7 @@ describe('readOfferingSets / applyOfferingSetDescriptions', () => {
 		const withCopy = applyOfferingSetDescriptions(parsed!, [
 			{ name: 'Photo Rag', description: 'Cotton rag with a soft matte surface.' }
 		]);
-		expect(withCopy.variants[0]?.paperDescription).toBe(
-			'Cotton rag with a soft matte surface.'
-		);
+		expect(withCopy.variants[0]?.paperDescription).toBe('Cotton rag with a soft matte surface.');
 		expect(withCopy.variants[1]?.paperDescription).toBeNull();
 	});
 });
