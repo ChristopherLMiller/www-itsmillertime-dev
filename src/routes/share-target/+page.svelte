@@ -47,8 +47,8 @@
 
 		{#if !data.session?.user}
 			<p class="warn">
-				You are not signed in. <a href="/account/login">Sign in</a> with an administrator account before
-				sharing images.
+				You are not signed in. <a href="/account/login?callbackURL=/share-target">Sign in</a> with an
+				administrator account before sharing images.
 			</p>
 		{/if}
 

@@ -1,4 +1,5 @@
 import { AUTHENTIK_PROVIDER_ID } from '$lib/auth/authentik-constants';
+import { headerReferer, hrefWithCallback, resolveReturnUrl, urlToPath } from '$lib/auth/returnTo';
 import { redirectHtml, sameOriginReturnUrl } from '$lib/auth/sameOriginReturnUrl';
 import type { RequestHandler } from './$types';
 
@@ -9,15 +10,14 @@ import type { RequestHandler } from './$types';
  */
 export const GET: RequestHandler = async ({ url, fetch, request }) => {
 	const origin = url.origin;
-	const callbackURL = sameOriginReturnUrl(
+	const callbackURL = resolveReturnUrl(origin, '/account/profile', [
 		url.searchParams.get('callbackURL'),
-		origin,
-		'/account/profile'
-	);
+		headerReferer(request.headers)
+	]);
 	const errorCallbackURL = sameOriginReturnUrl(
 		url.searchParams.get('errorCallbackURL'),
 		origin,
-		'/account/login'
+		hrefWithCallback('/account/login', urlToPath(callbackURL))
 	);
 
 	const start = await fetch('/api/auth/sign-in/oauth2', {

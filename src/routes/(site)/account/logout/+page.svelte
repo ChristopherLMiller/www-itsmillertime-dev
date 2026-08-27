@@ -1,18 +1,21 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth/client';
+	import { sanitizeLogoutReturnUrl } from '$lib/auth/returnTo';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 
 	let error = $state<string | null>(null);
 
 	onMount(async () => {
-		const referrer = document.referrer;
-		const fallback = '/';
-		const redirectTo =
-			referrer && new URL(referrer).origin === window.location.origin ? referrer : fallback;
+		const dest = sanitizeLogoutReturnUrl(
+			page.url.searchParams.get('callbackURL'),
+			window.location.origin,
+			document.referrer || null
+		);
 
 		try {
 			await authClient.signOut();
-			window.location.href = redirectTo;
+			window.location.href = dest;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to sign out.';
 		}

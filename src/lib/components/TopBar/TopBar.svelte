@@ -10,6 +10,7 @@
 		title: string;
 		href: string;
 		external?: boolean;
+		reload?: boolean;
 	};
 
 	const siteLayout = getSiteLayoutContext();
@@ -34,10 +35,10 @@
 		if (isLoggedIn) {
 			return [
 				{ title: 'Profile', href: '/account/profile' },
-				{ title: 'Sign Out', href: '/account/logout' }
+				{ title: 'Sign Out', href: '/account/logout', reload: true }
 			];
 		}
-		return [{ title: 'Login', href: '/account/login' }];
+		return [{ title: 'Login', href: '/account/login', reload: true }];
 	});
 
 	const appLinks = $derived.by((): MenuLink[] => {
@@ -179,6 +180,7 @@
 										class="menu-dialog__link"
 										class:menu-dialog__link--active={isActive(link.href)}
 										href={link.href}
+										data-sveltekit-reload={link.reload || undefined}
 									>
 										{link.title}
 									</a>
