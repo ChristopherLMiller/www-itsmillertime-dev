@@ -35,7 +35,7 @@
 				server.
 			</p>
 			<p class="actions">
-				<a class="btn" href="/account/login">Sign in</a>
+				<a class="btn" href="/account/login?callbackURL=/share-target/review">Sign in</a>
 				<a class="btn secondary" href="/share-target">Back</a>
 			</p>
 		{:else if data.draft}

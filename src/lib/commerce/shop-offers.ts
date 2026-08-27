@@ -24,7 +24,12 @@ const SIZE_PATTERN = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i;
 export function displaySizeLabel(value: string | null | undefined): string {
 	const raw = (value ?? '').trim();
 	if (!raw) return 'Print';
-	return raw.replace(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/g, '$1×$2');
+	const sizePart = (raw.split(/\s*[·•|]\s*/)[0] ?? raw).trim();
+	return sizePart
+		.replace(/(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+(?:\.\d+)?)/g, '$1×$2')
+		.replace(/[""″]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
 }
 
 function sizeSortKey(label: string): number {

@@ -78,4 +78,10 @@ describe('displaySizeLabel', () => {
 		expect(displaySizeLabel('8x10')).toBe('8×10');
 		expect(displaySizeLabel('11X14')).toBe('11×14');
 	});
+
+	it('keeps only the size when Medusa format includes paper codes', () => {
+		expect(displaySizeLabel('4×6″ · HPR · 308gsm')).toBe('4×6');
+		expect(displaySizeLabel('5×7" · LPP · 240gsm')).toBe('5×7');
+		expect(displaySizeLabel('30.5×38.1 cm · LPP · 240gsm')).toBe('30.5×38.1 cm');
+	});
 });

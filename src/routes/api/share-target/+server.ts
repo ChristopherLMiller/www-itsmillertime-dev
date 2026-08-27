@@ -17,7 +17,7 @@ function escapeHtml(s: string): string {
 }
 
 function shareResultHtml(title: string, body: string, status: number): Response {
-	const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:1.5rem;max-width:40rem;margin:auto"><h1 style="font-size:1.25rem">${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="/share-target">Share target</a> · <a href="/account/login">Sign in</a></p></body></html>`;
+	const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;padding:1.5rem;max-width:40rem;margin:auto"><h1 style="font-size:1.25rem">${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="/share-target">Share target</a> · <a href="/account/login?callbackURL=/share-target">Sign in</a></p></body></html>`;
 	return new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 

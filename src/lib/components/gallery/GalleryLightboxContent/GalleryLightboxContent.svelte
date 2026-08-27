@@ -67,6 +67,7 @@
 	}
 
 	let activeSidebarTab = $state<SidebarTab>('information');
+	const shopTabActive = $derived(activeSidebarTab === 'shop');
 	/** When true, hide the details panel so the image fills the viewport. */
 	let infoCollapsed = $state(false);
 
@@ -248,6 +249,7 @@
 		clickZoomScale: 2.5,
 		// Keep CSS transform so the frame's hit region scales with zoom; canvas paints sharp pixels on top.
 		applyCssTransform: true,
+		enabled: !shopCatalogOpen,
 		onZoomChange,
 		onTransform: onZoomTransform
 	});
@@ -538,6 +540,8 @@
 		}
 		return [];
 	});
+	const shopHasProducts = $derived(shopVariants.length > 0);
+	const shopCatalogOpen = $derived(shopTabActive && shopHasProducts);
 
 	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
 
@@ -755,6 +759,7 @@
 	<div
 		class="gallery-lightbox__body"
 		class:gallery-lightbox__body--info-collapsed={infoCollapsed}
+		class:gallery-lightbox__body--shop={shopCatalogOpen}
 	>
 		<!-- Image pane: grows to fill when the info panel is collapsed -->
 		<div class="gallery-lightbox__image-pane" bind:this={imagePaneEl}>
@@ -763,6 +768,8 @@
 				onclick={onClose}
 				aria-label="Close lightbox"
 				type="button"
+				tabindex={shopCatalogOpen ? -1 : 0}
+				inert={shopCatalogOpen || undefined}
 			></button>
 
 			<canvas
@@ -837,6 +844,7 @@
 				<div
 					class="gallery-lightbox__image-frame gallery-lightbox__image-frame--zoomable"
 					class:gallery-lightbox__image-frame--zoomed={imageZoomed}
+					class:gallery-lightbox__image-frame--zoom-off={shopCatalogOpen}
 					bind:this={imageFrameEl}
 					style:aspect-ratio={imageAspectRatio}
 					role="presentation"
@@ -959,6 +967,7 @@
 		<aside
 			id="gallery-lightbox-info"
 			class="gallery-lightbox__info"
+			class:gallery-lightbox__info--shop={shopCatalogOpen}
 			aria-hidden={infoCollapsed}
 			inert={infoCollapsed || undefined}
 		>
@@ -1271,21 +1280,18 @@
 
 				<div
 					id="gallery-lightbox-panel-shop"
-					class="gallery-lightbox__tab-panel"
+					class="gallery-lightbox__tab-panel gallery-lightbox__tab-panel--shop"
 					role="tabpanel"
 					aria-labelledby="gallery-lightbox-tab-shop"
 					hidden={activeSidebarTab !== 'shop'}
 				>
-					<section class="gallery-lightbox__section">
-						<h3 class="gallery-lightbox__section-title">Prints &amp; Products</h3>
-						{#key galleryImageId}
-							<GalleryShopPanel
-								variants={shopVariants}
-								{galleryImageId}
-								albumSlug={gallery.slug}
-							/>
-						{/key}
-					</section>
+					{#key galleryImageId}
+						<GalleryShopPanel
+							variants={shopVariants}
+							{galleryImageId}
+							albumSlug={gallery.slug}
+						/>
+					{/key}
 				</div>
 
 				{#if isAdmin}
@@ -1535,6 +1541,15 @@
 		-webkit-user-drag: none;
 	}
 
+	.gallery-lightbox__image-frame--zoom-off {
+		cursor: default;
+		touch-action: auto;
+	}
+
+	.gallery-lightbox__body--shop .gallery-lightbox__backdrop {
+		pointer-events: none;
+	}
+
 	.gallery-lightbox__image-frame--zoomed {
 		z-index: 2;
 	}
@@ -1671,6 +1686,13 @@
 			border-color 180ms ease;
 	}
 
+	/* Half the lightbox when Shop has products so papers can sit side by side.
+	   Empty/request Shop stays at Information's 25%. */
+	.gallery-lightbox__info--shop {
+		flex-basis: 50%;
+		overflow: hidden;
+	}
+
 	.gallery-lightbox__body--info-collapsed .gallery-lightbox__info {
 		flex-basis: 0;
 		flex-grow: 0;
@@ -1724,6 +1746,7 @@
 		flex-direction: column;
 		gap: 1.25rem;
 		min-height: 0;
+		flex: 1 1 auto;
 	}
 
 	.gallery-lightbox__tab-panel {
@@ -1734,6 +1757,17 @@
 
 	.gallery-lightbox__tab-panel[hidden] {
 		display: none;
+	}
+
+	.gallery-lightbox__tab-panel--shop {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.gallery-lightbox__tab-panel--shop :global(.shop-panel) {
+		flex: 1 1 auto;
+		min-height: 0;
 	}
 
 	@keyframes infoPanelFade {
@@ -2187,6 +2221,17 @@
 			flex: 0 0 auto;
 			max-height: 45vh;
 			border-top: none;
+		}
+
+		.gallery-lightbox__body--shop .gallery-lightbox__image-pane {
+			min-height: 32vh;
+			flex: 1 1 32vh;
+		}
+
+		.gallery-lightbox__info--shop {
+			flex-basis: auto;
+			max-height: 62vh;
+			overflow: hidden;
 		}
 
 		.gallery-lightbox__body--info-collapsed .gallery-lightbox__image-pane {

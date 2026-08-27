@@ -461,7 +461,9 @@
 								<p class="admin-dock-section-lead">This site and SEO endpoints.</p>
 								<ul class="admin-dock-links">
 									<li><a href="/account/profile">Profile</a></li>
-									<li><a href="/account/logout">Sign out</a></li>
+									<li>
+										<a href="/account/logout" data-sveltekit-reload>Sign out</a>
+									</li>
 									<li><a href="{PUBLIC_URL}/sitemap.xml">Sitemap</a></li>
 									<li><a href="{PUBLIC_URL}/robots.txt">robots.txt</a></li>
 								</ul>
