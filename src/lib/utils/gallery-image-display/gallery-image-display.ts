@@ -17,6 +17,8 @@ export type GalleryCommerceVariant = {
 	paperDescription?: string | null;
 	/** Size / format (e.g. "11x14"). */
 	format?: string | null;
+	/** Prodigi paper finish (e.g. "Gloss"). Null when Standard or unset. */
+	finish?: string | null;
 };
 
 export type GalleryCommerce = {
@@ -38,8 +40,22 @@ export type GalleryGridMedia = Media & {
 	commerce?: GalleryCommerce | null;
 };
 
-function readCommerce(doc: object): GalleryCommerce | null {
-	return (doc as { commerce?: GalleryCommerce }).commerce ?? null;
+function readCommerce(doc: object): GalleryCommerce | null | undefined {
+	if (!('commerce' in doc)) return undefined;
+	return (doc as { commerce?: GalleryCommerce | null }).commerce ?? null;
+}
+
+/** Polaroid `basic` fetches omit commerce; don't let them wipe a full fetch or fake "not for sale". */
+export function mergeGalleryGridMedia(
+	existing: GalleryGridMedia | undefined,
+	incoming: GalleryGridMedia
+): GalleryGridMedia {
+	const commerce = incoming.commerce !== undefined ? incoming.commerce : existing?.commerce;
+	return {
+		...existing,
+		...incoming,
+		...(commerce !== undefined ? { commerce } : {})
+	};
 }
 
 /** Attach live Medusa store data onto a gallery-image API document. */
@@ -102,8 +118,7 @@ function stripProcessingTokens(tokens: string[]): string[] {
  * extension stripped). Those aren't real titles even when we don't have the
  * stored filename to compare against.
  */
-const CAMERA_FILENAME_ALT =
-	/^(img|dsc|dscn|dscf|pict|_?mg)(?:\s+\d+){1,2}$/i;
+const CAMERA_FILENAME_ALT = /^(img|dsc|dscn|dscf|pict|_?mg)(?:\s+\d+){1,2}$/i;
 
 export function looksLikeCameraFilenameAlt(alt: string | null | undefined): boolean {
 	const tokens = stripProcessingTokens(filenameTokens(alt ?? ''));
@@ -202,13 +217,15 @@ export function galleryImageDocToDisplayMedia(
 	const needsProxy = mediaRequiresAuthProxy(imageDoc.settings) || albumIsNsfw;
 	const galleryImageId = imageDoc.id;
 
+	const commerce = readCommerce(imageDoc);
+
 	if ('url' in imageDoc && 'id' in imageDoc) {
 		return {
 			...(imageDoc as Media),
 			isNsfw: docIsNsfw,
 			needsProxy,
 			galleryImageId,
-			commerce: readCommerce(imageDoc)
+			...(commerce !== undefined ? { commerce } : {})
 		};
 	}
 
@@ -220,7 +237,7 @@ export function galleryImageDocToDisplayMedia(
 				isNsfw: docIsNsfw,
 				needsProxy,
 				galleryImageId,
-				commerce: readCommerce(imageDoc)
+				...(commerce !== undefined ? { commerce } : {})
 			};
 		}
 	}

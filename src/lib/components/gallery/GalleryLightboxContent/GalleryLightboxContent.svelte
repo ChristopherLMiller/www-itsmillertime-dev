@@ -610,6 +610,7 @@
 	// Commerce: Medusa is the source of truth. Products may have a digital
 	// download plus print variants (Paper × Format); list all of them.
 	const commerce = $derived((image as { commerce?: GalleryCommerce | null } | undefined)?.commerce);
+	const shopCatalogPending = $derived(image != null && !Object.hasOwn(image, 'commerce'));
 	const shopVariants = $derived.by((): GalleryCommerceVariant[] => {
 		const listed = (commerce?.variants ?? []).filter((v) => v.variantId);
 		if (listed.length > 0) return listed;
@@ -822,17 +823,40 @@
 		}
 	});
 
+	/** Only reset the sidebar when the photo actually changes — not when the same
+	 *  image upgrades from a polaroid preview to a full commerce payload. */
+	let lastSidebarPhotoId: number | null = null;
+
 	$effect(() => {
-		const id = galleryImageId;
-		activeSidebarTab = 'information';
-		tracking = normalizeGalleryImageTracking(undefined);
-		userVote = id != null ? getStoredGalleryImageVote(id) : null;
-		if (!browser || id == null) return;
+		const id = galleryImageId ?? null;
+		const previous = lastSidebarPhotoId;
+		const photoChanged = id != null && previous != null && id !== previous;
+		const opened = id != null && previous == null;
+		if (id != null) lastSidebarPhotoId = id;
+
+		if (photoChanged) {
+			activeSidebarTab = 'information';
+		}
+
+		if (!browser) return;
+
+		if (id == null) {
+			tracking = normalizeGalleryImageTracking(undefined);
+			userVote = null;
+			return;
+		}
+
+		if (photoChanged || opened) {
+			tracking = normalizeGalleryImageTracking(undefined);
+			userVote = getStoredGalleryImageVote(id);
+		}
 
 		let cancelled = false;
-		void ensureGalleryImageTrackingOnOpen(id).then((counts) => {
-			if (!cancelled && counts) applyTracking(counts);
-		});
+		if (photoChanged || opened) {
+			void ensureGalleryImageTrackingOnOpen(id).then((counts) => {
+				if (!cancelled && counts) applyTracking(counts);
+			});
+		}
 
 		return () => {
 			cancelled = true;
@@ -1406,6 +1430,7 @@
 					{#key galleryImageId}
 						<GalleryShopPanel
 							variants={shopVariants}
+							pending={shopCatalogPending}
 							{galleryImageId}
 							albumSlug={gallery.slug}
 							imageWidth={image?.width}

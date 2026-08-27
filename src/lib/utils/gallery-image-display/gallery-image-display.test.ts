@@ -5,7 +5,8 @@ import {
 	buildPlaceholderGalleryMedia,
 	displayableImageTitle,
 	galleryImageDocToDisplayMedia,
-	looksLikeCameraFilenameAlt
+	looksLikeCameraFilenameAlt,
+	mergeGalleryGridMedia
 } from './gallery-image-display';
 
 describe('altMatchesFilename / displayableImageTitle', () => {
@@ -167,5 +168,71 @@ describe('galleryImageDocToDisplayMedia', () => {
 		const m = galleryImageDocToDisplayMedia(doc, false);
 		expect(m?.commerce?.variantId).toBe('variant_digital');
 		expect(m?.commerce?.variants).toHaveLength(1);
+	});
+
+	it('omits commerce when the gallery-image doc has none', () => {
+		const m = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/x.jpg',
+				alt: '',
+				width: 1,
+				height: 1,
+				updatedAt: '',
+				createdAt: ''
+			},
+			false
+		);
+		expect(m && 'commerce' in m).toBe(false);
+	});
+});
+
+describe('mergeGalleryGridMedia', () => {
+	it('keeps a full-fetch commerce when a polaroid basic payload has none', () => {
+		const existing = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				commerce: { forSale: true, variantId: 'v1', variants: [] },
+				url: '/full.jpg',
+				alt: '',
+				width: 1,
+				height: 1,
+				updatedAt: '',
+				createdAt: ''
+			},
+			false
+		);
+		const incoming = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/basic.jpg',
+				alt: '',
+				width: 1,
+				height: 1,
+				updatedAt: '',
+				createdAt: ''
+			},
+			false
+		);
+		const merged = mergeGalleryGridMedia(existing ?? undefined, incoming!);
+		expect(merged.commerce?.variantId).toBe('v1');
+		expect(merged.url).toBe('/basic.jpg');
+	});
+
+	it('does not treat a missing commerce field as not-for-sale', () => {
+		const incoming = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/basic.jpg',
+				alt: '',
+				width: 1,
+				height: 1,
+				updatedAt: '',
+				createdAt: ''
+			},
+			false
+		);
+		const merged = mergeGalleryGridMedia(undefined, incoming!);
+		expect(merged && 'commerce' in merged).toBe(false);
 	});
 });

@@ -142,7 +142,7 @@ export async function getStoreProduct(
 	// Paper/Format offering-set shape landed.
 	const query = new URLSearchParams({
 		fields:
-			'*variants.calculated_price,*variants,*variants.metadata,*variants.options,*variants.options.option,+variants.manage_inventory'
+			'*variants.calculated_price,*variants.prices,*variants,*variants.metadata,*variants.options,*variants.options.option,+variants.manage_inventory'
 	});
 	if (cfg.regionId) query.set('region_id', cfg.regionId);
 

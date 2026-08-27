@@ -8,7 +8,7 @@
 	import GalleryAlbumPolaroid from '$lib/components/gallery/GalleryAlbumPolaroid';
 	import Lightbox from '$lib/components/gallery/Lightbox';
 	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
-	import type { GalleryGridMedia } from '$lib/utils/gallery-image-display';
+	import { mergeGalleryGridMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
 	import {
 		fetchGalleryImageFullForLightbox,
 		fetchGalleryImageFullForPolaroid
@@ -66,6 +66,8 @@
 	let directLinkDismissed = $state(false);
 	let directLinkResolving = $state(false);
 	let directLinkFailed = $state(false);
+	/** Close can update `lightboxOpen` before `replaceState` clears `?selected=`. Ignore that stale URL. */
+	let suppressSelectedUrlOpen = false;
 
 	const showAlbumChrome = $derived(!isDirectLinkEntry || directLinkDismissed);
 
@@ -75,22 +77,19 @@
 
 	function findGalleryImageIndex(selectedId: number): number {
 		return galleryImages.findIndex(
-			(m) => m.id === selectedId || m.galleryImageId === selectedId || galleryImageLinkId(m) === selectedId
+			(m) =>
+				m.id === selectedId ||
+				m.galleryImageId === selectedId ||
+				galleryImageLinkId(m) === selectedId
 		);
-	}
-
-	function mergeSlotMedia(existing: GalleryGridMedia | undefined, incoming: GalleryGridMedia) {
-		return {
-			...existing,
-			...incoming,
-			// Polaroid `basic` fetches omit commerce; don't let them wipe a full fetch.
-			commerce: incoming.commerce ?? existing?.commerce ?? null
-		};
 	}
 
 	function injectResolvedMedia(media: GalleryGridMedia) {
 		const galleryImageId = galleryImageLinkId(media);
-		slotMedia = { ...slotMedia, [galleryImageId]: mergeSlotMedia(slotMedia[galleryImageId], media) };
+		slotMedia = {
+			...slotMedia,
+			[galleryImageId]: mergeGalleryGridMedia(slotMedia[galleryImageId], media)
+		};
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 
 		if (!galleryImageSlots.some((slot) => slot.id === galleryImageId)) {
@@ -109,13 +108,13 @@
 
 	function setSelectedUrl(selectedId: number | null) {
 		if (!browser) return;
-		const nextUrl = new URL(window.location.href);
+		const nextUrl = new URL(page.url);
 		if (selectedId == null) {
 			nextUrl.searchParams.delete('selected');
 		} else {
 			nextUrl.searchParams.set('selected', String(selectedId));
 		}
-		replaceState(nextUrl, page.state);
+		replaceState(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`, page.state);
 	}
 
 	const visibleSlots = $derived(
@@ -134,6 +133,7 @@
 	function openLightboxForItem(item: GalleryGridMedia) {
 		const idx = findGalleryImageIndex(galleryImageLinkId(item));
 		if (idx === -1) return;
+		suppressSelectedUrlOpen = false;
 		pinnedLightboxFileMediaId = galleryImageLinkId(item);
 		lightboxIndex = idx;
 		lightboxOpen = true;
@@ -141,6 +141,7 @@
 	}
 
 	function closeLightbox() {
+		suppressSelectedUrlOpen = true;
 		lightboxOpen = false;
 		pinnedLightboxFileMediaId = null;
 		directLinkDismissed = true;
@@ -225,7 +226,11 @@
 		if (!browser) return;
 
 		const raw = page.url.searchParams.get('selected');
-		if (raw == null) return;
+		if (raw == null) {
+			suppressSelectedUrlOpen = false;
+			return;
+		}
+		if (suppressSelectedUrlOpen) return;
 
 		const selectedId = Number(raw);
 		if (!Number.isFinite(selectedId) || selectedId <= 0) return;
@@ -249,7 +254,7 @@
 	function handlePolaroidResolved(galleryImageId: number, media: GalleryGridMedia) {
 		slotMedia = {
 			...slotMedia,
-			[galleryImageId]: mergeSlotMedia(slotMedia[galleryImageId], media)
+			[galleryImageId]: mergeGalleryGridMedia(slotMedia[galleryImageId], media)
 		};
 	}
 

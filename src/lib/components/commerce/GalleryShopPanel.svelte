@@ -8,7 +8,17 @@
 		printFitDetails,
 		type PrintFitDetails
 	} from '$lib/commerce/print-size';
-	import { formatUsd, groupShopOffers, type ShopOfferGroup } from '$lib/commerce/shop-offers';
+	import {
+		defaultFinishForOffers,
+		finishOptionsForOffers,
+		formatUsd,
+		groupShopOffers,
+		listingsForGroup,
+		offerForFinish,
+		uniqueSizeCount,
+		type ShopOffer,
+		type ShopOfferGroup
+	} from '$lib/commerce/shop-offers';
 	import type { GalleryCommerceVariant } from '$lib/utils/gallery-image-display';
 
 	let {
@@ -17,7 +27,8 @@
 		albumSlug,
 		imageWidth = null,
 		imageHeight = null,
-		imageSrc = null
+		imageSrc = null,
+		pending = false
 	}: {
 		variants: GalleryCommerceVariant[];
 		galleryImageId?: number | null;
@@ -25,12 +36,14 @@
 		imageWidth?: number | null;
 		imageHeight?: number | null;
 		imageSrc?: string | null;
+		pending?: boolean;
 	} = $props();
 
 	const groups = $derived(groupShopOffers(variants));
 
 	let qtyByVariant = $state<Record<string, number>>({});
 	let openGroups = $state<Record<string, boolean>>({});
+	let finishByListing = $state<Record<string, string>>({});
 	let openFitId = $state<string | null>(null);
 	let busy = $state(false);
 	let errorMsg = $state<string | null>(null);
@@ -40,7 +53,9 @@
 		for (const group of groups) {
 			for (const offer of group.offers) {
 				const quantity = clampQuantity(qtyByVariant[offer.variantId] ?? 0);
-				if (quantity > 0) lines.push({ variantId: offer.variantId, quantity });
+				if (quantity > 0 && offer.purchasable) {
+					lines.push({ variantId: offer.variantId, quantity });
+				}
 			}
 		}
 		return lines;
@@ -54,7 +69,7 @@
 		for (const group of groups) {
 			for (const offer of group.offers) {
 				const quantity = clampQuantity(qtyByVariant[offer.variantId] ?? 0);
-				if (quantity <= 0 || typeof offer.priceUSD !== 'number') continue;
+				if (quantity <= 0 || !offer.purchasable || typeof offer.priceUSD !== 'number') continue;
 				total += offer.priceUSD * quantity;
 				any = true;
 			}
@@ -71,6 +86,39 @@
 
 	function qtyId(variantId: string): string {
 		return `shop-qty-${variantId.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+	}
+
+	function listingKey(groupId: string, title: string): string {
+		return `${groupId}::${title}`;
+	}
+
+	function finishId(groupId: string, title: string): string {
+		return `shop-finish-${groupDomId(listingKey(groupId, title))}`;
+	}
+
+	function selectedFinish(groupId: string, title: string, offers: ShopOffer[]): string {
+		const options = finishOptionsForOffers(offers);
+		if (options.length === 0) return '';
+		const stored = finishByListing[listingKey(groupId, title)];
+		if (stored !== undefined && options.some((option) => option.value === stored)) {
+			return stored;
+		}
+		return defaultFinishForOffers(offers);
+	}
+
+	function setFinish(groupId: string, title: string, value: string) {
+		finishByListing[listingKey(groupId, title)] = value;
+	}
+
+	function activeOffer(groupId: string, title: string, offers: ShopOffer[]): ShopOffer {
+		const options = finishOptionsForOffers(offers);
+		if (options.length === 0) return offers[0]!;
+		return offerForFinish(offers, selectedFinish(groupId, title, offers));
+	}
+
+	function offerQtyContext(group: ShopOfferGroup, offer: ShopOffer): string {
+		const finish = offer.finish ? ` ${offer.finish}` : '';
+		return `${group.name}${finish} ${offer.title}`;
 	}
 
 	function groupQty(group: ShopOfferGroup): number {
@@ -105,19 +153,24 @@
 		return '';
 	}
 
-	function fitPanelId(variantId: string): string {
-		return `shop-fit-${variantId.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+	function fitPanelId(groupId: string, title: string): string {
+		return `shop-fit-${groupDomId(listingKey(groupId, title))}`;
 	}
 
-	function toggleFit(variantId: string) {
-		openFitId = openFitId === variantId ? null : variantId;
+	function toggleFit(groupId: string, title: string) {
+		const id = listingKey(groupId, title);
+		openFitId = openFitId === id ? null : id;
 	}
 
-	function setQty(variantId: string, value: number) {
-		qtyByVariant[variantId] = clampQuantity(value);
+	function setQty(variantId: string, value: number, purchasable = true) {
+		qtyByVariant[variantId] = purchasable ? clampQuantity(value) : 0;
 	}
 
-	function bumpQty(variantId: string, delta: number) {
+	function bumpQty(variantId: string, delta: number, purchasable = true) {
+		if (!purchasable) {
+			qtyByVariant[variantId] = 0;
+			return;
+		}
 		setQty(variantId, (qtyByVariant[variantId] ?? 0) + delta);
 	}
 
@@ -193,7 +246,11 @@
 	}
 </script>
 
-{#if groups.length === 0}
+{#if pending && groups.length === 0}
+	<div class="shop-panel shop-panel--request">
+		<p class="shop-panel__empty" role="status">Checking the shop…</p>
+	</div>
+{:else if groups.length === 0}
 	<div class="shop-panel shop-panel--request">
 		{#if requestOutcome === 'success'}
 			<p class="shop-panel__success" role="status">
@@ -261,6 +318,8 @@
 				{@const open = groupOpen(group)}
 				{@const headingId = `shop-group-${groupDomId(group.id)}`}
 				{@const sizesId = `shop-sizes-${groupDomId(group.id)}`}
+				{@const listings = listingsForGroup(group)}
+				{@const sizeCount = uniqueSizeCount(group.offers)}
 				<section
 					class="shop-panel__group"
 					class:shop-panel__group--digital={group.kind === 'digital'}
@@ -298,8 +357,8 @@
 									</span>
 									{#if !open}
 										<span class="shop-panel__size-count">
-											{group.offers.length}
-											{group.offers.length === 1 ? 'size' : 'sizes'}
+											{sizeCount}
+											{sizeCount === 1 ? 'size' : 'sizes'}
 										</span>
 									{/if}
 									<span
@@ -314,133 +373,167 @@
 					{#if group.description}
 						<p class="shop-panel__desc" title={group.description}>{group.description}</p>
 					{/if}
-					<ul class="shop-panel__lines" id={sizesId} hidden={!open}>
-						{#each group.offers as offer (offer.variantId)}
-							{@const qty = qtyByVariant[offer.variantId] ?? 0}
-							{@const details = offerFit(group.kind, offer.title)}
-							{@const fit = details?.fit ?? 'match'}
-							{@const showCrop = fit === 'crop' || fit === 'far'}
-							{@const showLowRes = details?.lowResolution === true}
-							{@const fitOpen = openFitId === offer.variantId}
-							{@const panelId = fitPanelId(offer.variantId)}
-							<li
-								class="shop-panel__line"
-								class:shop-panel__line--crop={fit === 'crop'}
-								class:shop-panel__line--far={fit === 'far'}
-							>
-								<div class="shop-panel__size-cell">
-									<label class="shop-panel__size" for={qtyId(offer.variantId)}>
-										{offer.title}
-									</label>
-									{#if showCrop || showLowRes}
-										<div class="shop-panel__chips">
-											{#if showCrop}
-												<button
-													class="shop-panel__chip"
-													type="button"
-													aria-expanded={fitOpen}
-													aria-controls={panelId}
-													aria-label="Crop details for {offer.title}"
-													onclick={() => toggleFit(offer.variantId)}
-												>
-													Crop
-												</button>
+					<div class="shop-panel__sizes" id={sizesId} hidden={!open}>
+						<ul class="shop-panel__lines">
+							{#each listings as listing (listing.title)}
+								{@const finishOptions = finishOptionsForOffers(listing.offers)}
+								{@const finishValue = selectedFinish(group.id, listing.title, listing.offers)}
+								{@const offer = activeOffer(group.id, listing.title, listing.offers)}
+								{@const qty = qtyByVariant[offer.variantId] ?? 0}
+								{@const purchasable = offer.purchasable}
+								{@const details = offerFit(group.kind, listing.title)}
+								{@const fit = details?.fit ?? 'match'}
+								{@const showCrop = purchasable && (fit === 'crop' || fit === 'far')}
+								{@const showLowRes = purchasable && details?.lowResolution === true}
+								{@const listingId = listingKey(group.id, listing.title)}
+								{@const fitOpen = openFitId === listingId}
+								{@const panelId = fitPanelId(group.id, listing.title)}
+								<li
+									class="shop-panel__line"
+									class:shop-panel__line--crop={fit === 'crop'}
+									class:shop-panel__line--far={fit === 'far'}
+									class:shop-panel__line--unavailable={!purchasable}
+								>
+									<div class="shop-panel__size-cell">
+										<div class="shop-panel__size-row">
+											<label class="shop-panel__size" for={qtyId(offer.variantId)}>
+												{listing.title}
+											</label>
+											{#if finishOptions.length > 0}
+												<div class="shop-panel__finish">
+													<label
+														class="shop-panel__finish-label"
+														for={finishId(group.id, listing.title)}
+													>
+														Finish
+													</label>
+													<select
+														id={finishId(group.id, listing.title)}
+														value={finishValue}
+														onchange={(e) =>
+															setFinish(group.id, listing.title, e.currentTarget.value)}
+													>
+														{#each finishOptions as option (option.value)}
+															<option value={option.value}>{option.label}</option>
+														{/each}
+													</select>
+												</div>
 											{/if}
-											{#if showLowRes}
-												<button
-													class="shop-panel__chip shop-panel__chip--low"
-													type="button"
-													aria-expanded={fitOpen}
-													aria-controls={panelId}
-													aria-label="Resolution details for {offer.title}"
-													onclick={() => toggleFit(offer.variantId)}
-												>
-													Low res
-												</button>
-											{/if}
+										</div>
+										{#if showCrop || showLowRes}
+											<div class="shop-panel__chips">
+												{#if showCrop}
+													<button
+														class="shop-panel__chip"
+														type="button"
+														aria-expanded={fitOpen}
+														aria-controls={panelId}
+														aria-label="Crop details for {listing.title}"
+														onclick={() => toggleFit(group.id, listing.title)}
+													>
+														Crop
+													</button>
+												{/if}
+												{#if showLowRes}
+													<button
+														class="shop-panel__chip shop-panel__chip--low"
+														type="button"
+														aria-expanded={fitOpen}
+														aria-controls={panelId}
+														aria-label="Resolution details for {listing.title}"
+														onclick={() => toggleFit(group.id, listing.title)}
+													>
+														Low res
+													</button>
+												{/if}
+											</div>
+										{/if}
+									</div>
+									{#if typeof offer.priceUSD === 'number'}
+										<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
+									{:else if !purchasable}
+										<span class="shop-panel__price shop-panel__price--unavailable">Unavailable</span
+										>
+									{:else}
+										<span class="shop-panel__price shop-panel__price--pending">—</span>
+									{/if}
+									<div class="shop-panel__stepper">
+										<button
+											class="shop-panel__step"
+											type="button"
+											disabled={busy || !purchasable || qty <= 0}
+											aria-label="Decrease quantity of {offerQtyContext(group, offer)}{aspectHint(
+												details
+											)}"
+											onclick={() => bumpQty(offer.variantId, -1, purchasable)}
+										>
+											−
+										</button>
+										<input
+											class="shop-panel__qty"
+											id={qtyId(offer.variantId)}
+											type="number"
+											inputmode="numeric"
+											min="0"
+											max={MAX_CART_QTY}
+											step="1"
+											disabled={busy || !purchasable}
+											value={qty}
+											aria-label="Quantity for {offerQtyContext(group, offer)}{aspectHint(details)}"
+											oninput={(e) =>
+												setQty(offer.variantId, e.currentTarget.valueAsNumber, purchasable)}
+										/>
+										<button
+											class="shop-panel__step"
+											type="button"
+											disabled={busy || !purchasable || qty >= MAX_CART_QTY}
+											aria-label="Increase quantity of {offerQtyContext(group, offer)}{aspectHint(
+												details
+											)}"
+											onclick={() => bumpQty(offer.variantId, 1, purchasable)}
+										>
+											+
+										</button>
+									</div>
+									{#if (showCrop || showLowRes) && details && imageWidth && imageHeight}
+										<div
+											class="shop-panel__fit"
+											id={panelId}
+											hidden={!fitOpen}
+											role="region"
+											aria-label="Crop and resolution for {listing.title}"
+										>
+											<div
+												class="shop-panel__photo"
+												style:--photo-ar="{imageWidth} / {imageHeight}"
+												style:--crop-x={details.crop.offsetX}
+												style:--crop-y={details.crop.offsetY}
+												style:--crop-w={details.crop.visibleWidth}
+												style:--crop-h={details.crop.visibleHeight}
+												aria-hidden="true"
+											>
+												{#if imageSrc}
+													<img
+														class="shop-panel__photo-img"
+														src={imageSrc}
+														alt=""
+														width={imageWidth}
+														height={imageHeight}
+														decoding="async"
+													/>
+												{/if}
+												<div class="shop-panel__crop-window"></div>
+											</div>
+											<div class="shop-panel__fit-copy">
+												<p>{printCropCopy(details)}</p>
+												<p>{printDpiCopy(details)}</p>
+											</div>
 										</div>
 									{/if}
-								</div>
-								{#if typeof offer.priceUSD === 'number'}
-									<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
-								{:else}
-									<span class="shop-panel__price" aria-hidden="true"></span>
-								{/if}
-								<div class="shop-panel__stepper">
-									<button
-										class="shop-panel__step"
-										type="button"
-										disabled={busy || qty <= 0}
-										aria-label="Decrease quantity of {group.name} {offer.title}{aspectHint(
-											details
-										)}"
-										onclick={() => bumpQty(offer.variantId, -1)}
-									>
-										−
-									</button>
-									<input
-										class="shop-panel__qty"
-										id={qtyId(offer.variantId)}
-										type="number"
-										inputmode="numeric"
-										min="0"
-										max={MAX_CART_QTY}
-										step="1"
-										disabled={busy}
-										value={qty}
-										aria-label="Quantity for {group.name} {offer.title}{aspectHint(details)}"
-										oninput={(e) => setQty(offer.variantId, e.currentTarget.valueAsNumber)}
-									/>
-									<button
-										class="shop-panel__step"
-										type="button"
-										disabled={busy || qty >= MAX_CART_QTY}
-										aria-label="Increase quantity of {group.name} {offer.title}{aspectHint(
-											details
-										)}"
-										onclick={() => bumpQty(offer.variantId, 1)}
-									>
-										+
-									</button>
-								</div>
-								{#if (showCrop || showLowRes) && details && imageWidth && imageHeight}
-									<div
-										class="shop-panel__fit"
-										id={panelId}
-										hidden={!fitOpen}
-										role="region"
-										aria-label="Crop and resolution for {offer.title}"
-									>
-										<div
-											class="shop-panel__photo"
-											style:--photo-ar="{imageWidth} / {imageHeight}"
-											style:--crop-x={details.crop.offsetX}
-											style:--crop-y={details.crop.offsetY}
-											style:--crop-w={details.crop.visibleWidth}
-											style:--crop-h={details.crop.visibleHeight}
-											aria-hidden="true"
-										>
-											{#if imageSrc}
-												<img
-													class="shop-panel__photo-img"
-													src={imageSrc}
-													alt=""
-													width={imageWidth}
-													height={imageHeight}
-													decoding="async"
-												/>
-											{/if}
-											<div class="shop-panel__crop-window"></div>
-										</div>
-										<div class="shop-panel__fit-copy">
-											<p>{printCropCopy(details)}</p>
-											<p>{printDpiCopy(details)}</p>
-										</div>
-									</div>
-								{/if}
-							</li>
-						{/each}
-					</ul>
+								</li>
+							{/each}
+						</ul>
+					</div>
 				</section>
 			{/snippet}
 
@@ -587,6 +680,53 @@
 		color: var(--color-tertiary);
 	}
 
+	.shop-panel__sizes[hidden] {
+		display: none;
+	}
+
+	.shop-panel__finish {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		flex: 0 0 auto;
+		min-width: 0;
+		margin: 0;
+	}
+
+	.shop-panel__finish-label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.shop-panel__finish select {
+		box-sizing: border-box;
+		width: auto;
+		max-width: 7.5rem;
+		margin: 0;
+		padding: 0.12rem 0.4rem;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 6px;
+		background: rgba(0, 0, 0, 0.28);
+		color: var(--color-white-lightest);
+		font-family: var(--font-oswald);
+		font-size: 0.8125rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		line-height: 1.2;
+	}
+
+	.shop-panel__finish select:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 2px;
+	}
+
 	.shop-panel__badge {
 		box-sizing: border-box;
 		display: inline-flex;
@@ -683,10 +823,6 @@
 		min-height: 0;
 	}
 
-	.shop-panel__lines[hidden] {
-		display: none;
-	}
-
 	.shop-panel__line {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 4.25rem auto;
@@ -708,12 +844,30 @@
 		color: var(--color-tertiary);
 	}
 
+	.shop-panel__line--unavailable {
+		opacity: 0.55;
+	}
+
+	.shop-panel__line--unavailable .shop-panel__size {
+		cursor: default;
+		color: var(--color-tertiary);
+	}
+
 	.shop-panel__size-cell {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 0.22rem;
 		min-width: 0;
+	}
+
+	.shop-panel__size-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem 0.5rem;
+		min-width: 0;
+		width: 100%;
 	}
 
 	.shop-panel__size {
@@ -728,6 +882,11 @@
 		overflow-wrap: anywhere;
 		color: var(--color-white-lightest);
 		cursor: pointer;
+	}
+
+	.shop-panel__size-row .shop-panel__size {
+		flex: 0 1 auto;
+		width: auto;
 	}
 
 	.shop-panel__chips {
@@ -877,6 +1036,10 @@
 			margin: 0.35rem 0 0;
 		}
 
+		.shop-panel__group--digital .shop-panel__sizes {
+			min-width: 0;
+		}
+
 		.shop-panel__group--digital .shop-panel__lines {
 			padding: 0.35rem 0 0;
 			display: flex;
@@ -903,6 +1066,18 @@
 		text-align: right;
 		color: var(--color-secondary);
 		white-space: nowrap;
+	}
+
+	.shop-panel__price--unavailable {
+		color: var(--color-tertiary);
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		font-size: 0.6875rem;
+	}
+
+	.shop-panel__price--pending {
+		color: var(--color-tertiary);
 	}
 
 	.shop-panel__stepper {
@@ -1042,6 +1217,11 @@
 			min-height: 1.5rem;
 			padding: 0.2em 0.5em;
 			font-size: 0.6rem;
+		}
+
+		.shop-panel__finish select {
+			min-height: 2.5rem;
+			font-size: 0.875rem;
 		}
 
 		.shop-panel__size {
