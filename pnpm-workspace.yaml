@@ -2,6 +2,6 @@ allowBuilds:
   esbuild: true
 confirmModulesPurge: false
 minimumReleaseAgeExclude:
-  - '@payloadcms/sdk@3.87.0'
-  - '@payloadcms/translations@3.87.0'
-  - payload@3.87.0
+  - '@payloadcms/sdk@3.88.0'
+  - '@payloadcms/translations@3.88.0'
+  - payload@3.88.0
