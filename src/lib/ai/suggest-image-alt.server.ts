@@ -174,6 +174,14 @@ type AnthropicMessageResponse = {
 	error?: { message?: string; type?: string };
 };
 
+function anthropicErrorDetail(payload: AnthropicMessageResponse | null): string | undefined {
+	const message = payload?.error?.message;
+	if (typeof message !== 'string') return undefined;
+	const trimmed = message.replace(/\s+/g, ' ').trim();
+	if (!trimmed) return undefined;
+	return trimmed.length > 180 ? trimmed.slice(0, 179).trimEnd() + '…' : trimmed;
+}
+
 export async function suggestImageAlt(opts: {
 	jpegBytes: Buffer | Uint8Array;
 	albumTitle?: string;
@@ -187,6 +195,8 @@ export async function suggestImageAlt(opts: {
 		userLines.push(`Album context (optional): ${opts.albumTitle}`);
 	}
 
+	// Do not send temperature/top_p/top_k: Claude Sonnet 5+ rejects non-default
+	// sampling params with HTTP 400.
 	let res: Response;
 	try {
 		res = await fetchFn(ANTHROPIC_MESSAGES_URL, {
@@ -199,7 +209,6 @@ export async function suggestImageAlt(opts: {
 			body: JSON.stringify({
 				model: opts.model,
 				max_tokens: 1024,
-				temperature: 0.2,
 				system: SYSTEM_PROMPT,
 				messages: [
 					{
@@ -227,6 +236,13 @@ export async function suggestImageAlt(opts: {
 		throw new SuggestImageAltError('Could not reach Anthropic', 502);
 	}
 
+	let payload: AnthropicMessageResponse | null;
+	try {
+		payload = (await res.json()) as AnthropicMessageResponse;
+	} catch {
+		payload = null;
+	}
+
 	if (res.status === 429) {
 		throw new SuggestImageAltError('AI is rate limited, try again shortly', 429);
 	}
@@ -234,14 +250,12 @@ export async function suggestImageAlt(opts: {
 		throw new SuggestImageAltError('Anthropic rejected the API key', 503);
 	}
 	if (!res.ok) {
-		throw new SuggestImageAltError('Anthropic request failed', 502);
-	}
-
-	let payload: AnthropicMessageResponse | null;
-	try {
-		payload = (await res.json()) as AnthropicMessageResponse;
-	} catch {
-		payload = null;
+		const detail = anthropicErrorDetail(payload);
+		console.error('[suggest-alt] anthropic', res.status, detail ?? '(no message)');
+		throw new SuggestImageAltError(
+			detail ? `Anthropic request failed: ${detail}` : 'Anthropic request failed',
+			502
+		);
 	}
 
 	const text = (payload?.content ?? [])
