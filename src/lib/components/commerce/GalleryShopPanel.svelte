@@ -2,22 +2,36 @@
 	import { page } from '$app/state';
 	import { addVariantsToCart } from '$lib/commerce/add-to-cart';
 	import { clampQuantity, MAX_CART_QTY, type CartLine } from '$lib/commerce/cart-items';
+	import {
+		printCropCopy,
+		printDpiCopy,
+		printFitDetails,
+		type PrintFitDetails
+	} from '$lib/commerce/print-size';
 	import { formatUsd, groupShopOffers, type ShopOfferGroup } from '$lib/commerce/shop-offers';
 	import type { GalleryCommerceVariant } from '$lib/utils/gallery-image-display';
 
 	let {
 		variants,
 		galleryImageId,
-		albumSlug
+		albumSlug,
+		imageWidth = null,
+		imageHeight = null,
+		imageSrc = null
 	}: {
 		variants: GalleryCommerceVariant[];
 		galleryImageId?: number | null;
 		albumSlug?: string | null;
+		imageWidth?: number | null;
+		imageHeight?: number | null;
+		imageSrc?: string | null;
 	} = $props();
 
 	const groups = $derived(groupShopOffers(variants));
 
 	let qtyByVariant = $state<Record<string, number>>({});
+	let openGroups = $state<Record<string, boolean>>({});
+	let openFitId = $state<string | null>(null);
 	let busy = $state(false);
 	let errorMsg = $state<string | null>(null);
 
@@ -64,6 +78,39 @@
 			(sum, offer) => sum + clampQuantity(qtyByVariant[offer.variantId] ?? 0),
 			0
 		);
+	}
+
+	function groupOpen(group: ShopOfferGroup): boolean {
+		if (group.kind === 'digital') return true;
+		return openGroups[group.id] === true;
+	}
+
+	function toggleGroup(id: string) {
+		openGroups[id] = !openGroups[id];
+	}
+
+	function offerFit(kind: ShopOfferGroup['kind'], title: string): PrintFitDetails | null {
+		if (kind !== 'print') return null;
+		return printFitDetails(title, imageWidth, imageHeight);
+	}
+
+	function aspectHint(details: PrintFitDetails | null): string {
+		if (!details) return '';
+		if (details.lowResolution && details.fit !== 'match') {
+			return ', will crop this photo, below recommended print resolution';
+		}
+		if (details.lowResolution) return ', below recommended print resolution';
+		if (details.fit === 'crop') return ', will crop this photo';
+		if (details.fit === 'far') return ', different aspect ratio';
+		return '';
+	}
+
+	function fitPanelId(variantId: string): string {
+		return `shop-fit-${variantId.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+	}
+
+	function toggleFit(variantId: string) {
+		openFitId = openFitId === variantId ? null : variantId;
 	}
 
 	function setQty(variantId: string, value: number) {
@@ -211,29 +258,109 @@
 		<div class="shop-panel__catalog">
 			{#snippet offerGroup(group: ShopOfferGroup)}
 				{@const selectedInGroup = groupQty(group)}
+				{@const open = groupOpen(group)}
+				{@const headingId = `shop-group-${groupDomId(group.id)}`}
+				{@const sizesId = `shop-sizes-${groupDomId(group.id)}`}
 				<section
 					class="shop-panel__group"
 					class:shop-panel__group--digital={group.kind === 'digital'}
-					aria-labelledby="shop-group-{groupDomId(group.id)}"
+					aria-labelledby={headingId}
 				>
-					<div class="shop-panel__heading">
-						<h3 class="shop-panel__name" id="shop-group-{groupDomId(group.id)}">{group.name}</h3>
-						<span
-							class="shop-panel__badge"
-							class:shop-panel__badge--hidden={selectedInGroup === 0}
-							aria-hidden={selectedInGroup === 0}
-						>
-							{selectedInGroup > 0 ? selectedInGroup : ''}
-						</span>
-					</div>
+					{#if group.kind === 'digital'}
+						<div class="shop-panel__heading">
+							<h3 class="shop-panel__name" id={headingId}>{group.name}</h3>
+							<span
+								class="shop-panel__badge"
+								class:shop-panel__badge--hidden={selectedInGroup === 0}
+								aria-hidden={selectedInGroup === 0}
+							>
+								{selectedInGroup > 0 ? selectedInGroup : ''}
+							</span>
+						</div>
+					{:else}
+						<div class="shop-panel__heading">
+							<button
+								class="shop-panel__toggle"
+								type="button"
+								id={headingId}
+								aria-expanded={open}
+								aria-controls={sizesId}
+								onclick={() => toggleGroup(group.id)}
+							>
+								<span class="shop-panel__name">{group.name}</span>
+								<span class="shop-panel__heading-meta">
+									<span
+										class="shop-panel__badge"
+										class:shop-panel__badge--hidden={selectedInGroup === 0}
+										aria-hidden={selectedInGroup === 0}
+									>
+										{selectedInGroup > 0 ? selectedInGroup : ''}
+									</span>
+									{#if !open}
+										<span class="shop-panel__size-count">
+											{group.offers.length}
+											{group.offers.length === 1 ? 'size' : 'sizes'}
+										</span>
+									{/if}
+									<span
+										class="shop-panel__chevron"
+										class:shop-panel__chevron--open={open}
+										aria-hidden="true"
+									></span>
+								</span>
+							</button>
+						</div>
+					{/if}
 					{#if group.description}
 						<p class="shop-panel__desc" title={group.description}>{group.description}</p>
 					{/if}
-					<ul class="shop-panel__lines">
+					<ul class="shop-panel__lines" id={sizesId} hidden={!open}>
 						{#each group.offers as offer (offer.variantId)}
 							{@const qty = qtyByVariant[offer.variantId] ?? 0}
-							<li class="shop-panel__line">
-								<label class="shop-panel__size" for={qtyId(offer.variantId)}>{offer.title}</label>
+							{@const details = offerFit(group.kind, offer.title)}
+							{@const fit = details?.fit ?? 'match'}
+							{@const showCrop = fit === 'crop' || fit === 'far'}
+							{@const showLowRes = details?.lowResolution === true}
+							{@const fitOpen = openFitId === offer.variantId}
+							{@const panelId = fitPanelId(offer.variantId)}
+							<li
+								class="shop-panel__line"
+								class:shop-panel__line--crop={fit === 'crop'}
+								class:shop-panel__line--far={fit === 'far'}
+							>
+								<div class="shop-panel__size-cell">
+									<label class="shop-panel__size" for={qtyId(offer.variantId)}>
+										{offer.title}
+									</label>
+									{#if showCrop || showLowRes}
+										<div class="shop-panel__chips">
+											{#if showCrop}
+												<button
+													class="shop-panel__chip"
+													type="button"
+													aria-expanded={fitOpen}
+													aria-controls={panelId}
+													aria-label="Crop details for {offer.title}"
+													onclick={() => toggleFit(offer.variantId)}
+												>
+													Crop
+												</button>
+											{/if}
+											{#if showLowRes}
+												<button
+													class="shop-panel__chip shop-panel__chip--low"
+													type="button"
+													aria-expanded={fitOpen}
+													aria-controls={panelId}
+													aria-label="Resolution details for {offer.title}"
+													onclick={() => toggleFit(offer.variantId)}
+												>
+													Low res
+												</button>
+											{/if}
+										</div>
+									{/if}
+								</div>
 								{#if typeof offer.priceUSD === 'number'}
 									<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
 								{:else}
@@ -244,7 +371,9 @@
 										class="shop-panel__step"
 										type="button"
 										disabled={busy || qty <= 0}
-										aria-label="Decrease quantity of {group.name} {offer.title}"
+										aria-label="Decrease quantity of {group.name} {offer.title}{aspectHint(
+											details
+										)}"
 										onclick={() => bumpQty(offer.variantId, -1)}
 									>
 										−
@@ -259,19 +388,56 @@
 										step="1"
 										disabled={busy}
 										value={qty}
-										aria-label="Quantity for {group.name} {offer.title}"
+										aria-label="Quantity for {group.name} {offer.title}{aspectHint(details)}"
 										oninput={(e) => setQty(offer.variantId, e.currentTarget.valueAsNumber)}
 									/>
 									<button
 										class="shop-panel__step"
 										type="button"
 										disabled={busy || qty >= MAX_CART_QTY}
-										aria-label="Increase quantity of {group.name} {offer.title}"
+										aria-label="Increase quantity of {group.name} {offer.title}{aspectHint(
+											details
+										)}"
 										onclick={() => bumpQty(offer.variantId, 1)}
 									>
 										+
 									</button>
 								</div>
+								{#if (showCrop || showLowRes) && details && imageWidth && imageHeight}
+									<div
+										class="shop-panel__fit"
+										id={panelId}
+										hidden={!fitOpen}
+										role="region"
+										aria-label="Crop and resolution for {offer.title}"
+									>
+										<div
+											class="shop-panel__photo"
+											style:--photo-ar="{imageWidth} / {imageHeight}"
+											style:--crop-x={details.crop.offsetX}
+											style:--crop-y={details.crop.offsetY}
+											style:--crop-w={details.crop.visibleWidth}
+											style:--crop-h={details.crop.visibleHeight}
+											aria-hidden="true"
+										>
+											{#if imageSrc}
+												<img
+													class="shop-panel__photo-img"
+													src={imageSrc}
+													alt=""
+													width={imageWidth}
+													height={imageHeight}
+													decoding="async"
+												/>
+											{/if}
+											<div class="shop-panel__crop-window"></div>
+										</div>
+										<div class="shop-panel__fit-copy">
+											<p>{printCropCopy(details)}</p>
+											<p>{printDpiCopy(details)}</p>
+										</div>
+									</div>
+								{/if}
 							</li>
 						{/each}
 					</ul>
@@ -347,6 +513,60 @@
 		padding: 0 0 0.4rem;
 		border-bottom: 1px solid var(--color-tertiary-lighter);
 		min-height: 1.15rem;
+	}
+
+	.shop-panel__toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		width: 100%;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.shop-panel__toggle:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 2px;
+	}
+
+	.shop-panel__heading-meta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.shop-panel__size-count {
+		font-family: var(--font-roboto);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-tertiary);
+		white-space: nowrap;
+	}
+
+	.shop-panel__chevron {
+		box-sizing: border-box;
+		width: 0.42rem;
+		height: 0.42rem;
+		margin: 0 0.15rem 0.12rem;
+		border-right: 2px solid var(--color-secondary);
+		border-bottom: 2px solid var(--color-secondary);
+		transform: rotate(45deg);
+		transition: transform 0.15s ease;
+	}
+
+	.shop-panel__chevron--open {
+		margin-bottom: 0;
+		margin-top: 0.12rem;
+		transform: rotate(-135deg);
 	}
 
 	.shop-panel__name {
@@ -463,6 +683,10 @@
 		min-height: 0;
 	}
 
+	.shop-panel__lines[hidden] {
+		display: none;
+	}
+
 	.shop-panel__line {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 4.25rem auto;
@@ -477,6 +701,159 @@
 	.shop-panel__line:last-child {
 		border-bottom: none;
 		padding-bottom: 0.15rem;
+	}
+
+	.shop-panel__line--far .shop-panel__size,
+	.shop-panel__line--far .shop-panel__price {
+		color: var(--color-tertiary);
+	}
+
+	.shop-panel__size-cell {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.22rem;
+		min-width: 0;
+	}
+
+	.shop-panel__size {
+		display: block;
+		min-width: 0;
+		margin: 0;
+		font-family: var(--font-oswald);
+		font-size: 1rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		line-height: 1.2;
+		overflow-wrap: anywhere;
+		color: var(--color-white-lightest);
+		cursor: pointer;
+	}
+
+	.shop-panel__chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.22rem;
+	}
+
+	.shop-panel__chip {
+		display: inline-flex;
+		align-items: center;
+		margin: 0;
+		padding: 0.1em 0.42em 0.08em;
+		border: 1px solid var(--color-secondary);
+		border-radius: 3px;
+		background: transparent;
+		font-family: var(--font-oswald);
+		font-size: 0.55rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		line-height: 1.2;
+		text-transform: uppercase;
+		color: var(--color-secondary);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.shop-panel__chip:hover {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.shop-panel__chip:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 2px;
+	}
+
+	.shop-panel__chip[aria-expanded='true'] {
+		background: var(--color-secondary);
+		color: var(--color-primary-darkest);
+	}
+
+	.shop-panel__chip--low {
+		border-color: #e8a54b;
+		color: #e8a54b;
+	}
+
+	.shop-panel__chip--low[aria-expanded='true'] {
+		background: #e8a54b;
+		color: var(--color-primary-darkest);
+	}
+
+	.shop-panel__fit {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: 0.7rem;
+		align-items: center;
+		margin-top: 0.15rem;
+		padding: 0.55rem 0.6rem;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 6px;
+		background: rgba(0, 0, 0, 0.32);
+	}
+
+	.shop-panel__photo {
+		position: relative;
+		box-sizing: border-box;
+		height: 4.6rem;
+		aspect-ratio: var(--photo-ar);
+		max-width: 7.75rem;
+		overflow: hidden;
+		border-radius: 3px;
+		background: rgba(255, 255, 255, 0.16);
+		flex-shrink: 0;
+	}
+
+	.shop-panel__photo-img {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: fill;
+		pointer-events: none;
+	}
+
+	.shop-panel__crop-window {
+		position: absolute;
+		top: calc(var(--crop-y) * 100%);
+		left: calc(var(--crop-x) * 100%);
+		width: calc(var(--crop-w) * 100%);
+		height: calc(var(--crop-h) * 100%);
+		box-sizing: border-box;
+		border: 1.5px solid var(--color-secondary);
+		box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.48);
+		pointer-events: none;
+	}
+
+	.shop-panel__fit-copy {
+		min-width: 0;
+		font-size: 0.75rem;
+		line-height: 1.4;
+		color: var(--color-tertiary);
+	}
+
+	.shop-panel__fit-copy p {
+		margin: 0 0 0.4rem;
+	}
+
+	.shop-panel__fit-copy p:last-child {
+		margin: 0;
+	}
+
+	.shop-panel__fit[hidden] {
+		display: none;
+	}
+
+	@container (max-width: 20rem) {
+		.shop-panel__fit {
+			grid-template-columns: 1fr;
+		}
+
+		.shop-panel__photo {
+			height: 4.1rem;
+			max-width: 100%;
+		}
 	}
 
 	@container (min-width: 28rem) {
@@ -515,19 +892,6 @@
 			grid-template-columns: max-content max-content auto;
 			column-gap: 0.75rem;
 		}
-	}
-
-	.shop-panel__size {
-		min-width: 0;
-		margin: 0;
-		font-family: var(--font-oswald);
-		font-size: 1rem;
-		font-weight: 500;
-		letter-spacing: 0.04em;
-		line-height: 1.2;
-		overflow-wrap: anywhere;
-		color: var(--color-white-lightest);
-		cursor: pointer;
 	}
 
 	.shop-panel__price {
@@ -665,9 +1029,19 @@
 	}
 
 	@media (pointer: coarse) {
+		.shop-panel__toggle {
+			min-height: 2.75rem;
+		}
+
 		.shop-panel__line {
 			padding: 0.62rem 0;
 			column-gap: 0.5rem;
+		}
+
+		.shop-panel__chip {
+			min-height: 1.5rem;
+			padding: 0.2em 0.5em;
+			font-size: 0.6rem;
 		}
 
 		.shop-panel__size {

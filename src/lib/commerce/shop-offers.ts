@@ -1,8 +1,12 @@
 import type { GalleryCommerceVariant } from '$lib/utils/gallery-image-display';
+import { formatPrintOfferLabel } from './print-size';
+
+export type { PrintAspectFit } from './print-size';
+export { imageAspectRatioNormalized, printSizeAspectFit, printSizeAspectRatio } from './print-size';
 
 export type ShopOffer = {
 	variantId: string;
-	/** Size / format shown on the button (e.g. "8×10"). */
+	/** Variant size label shown in the shop (e.g. "4×6″ · 240gsm"). */
 	title: string;
 	priceUSD: number | null;
 };
@@ -22,14 +26,19 @@ export const DIGITAL_DOWNLOAD_DESCRIPTION =
 const SIZE_PATTERN = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i;
 
 export function displaySizeLabel(value: string | null | undefined): string {
-	const raw = (value ?? '').trim();
-	if (!raw) return 'Print';
-	const sizePart = (raw.split(/\s*[·•|]\s*/)[0] ?? raw).trim();
-	return sizePart
-		.replace(/(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+(?:\.\d+)?)/g, '$1×$2')
-		.replace(/[""″]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim();
+	return formatPrintOfferLabel(value);
+}
+
+function isSizeFirstLabel(value: string): boolean {
+	return SIZE_PATTERN.test(value) && /^\d/.test(value);
+}
+
+/** Prefer the saved variant title when it is the size label, not the short Format option. */
+function printSizeSource(variant: GalleryCommerceVariant): string | null | undefined {
+	const title = variant.title?.trim() ?? '';
+	const format = variant.format?.trim() ?? '';
+	if (isSizeFirstLabel(title) && title.length >= format.length) return title;
+	return format || title || null;
 }
 
 function sizeSortKey(label: string): number {
@@ -52,16 +61,17 @@ function paperGroupName(variant: GalleryCommerceVariant): string {
 
 function sizeLabel(variant: GalleryCommerceVariant): string {
 	if (variant.digital) {
-		const format = displaySizeLabel(variant.format);
-		if (!variant.format || /digital/i.test(variant.format)) return 'Download';
-		return format;
+		const format = (variant.format ?? '').trim();
+		if (!format || /digital/i.test(format)) return 'Download';
+		return formatPrintOfferLabel(format);
 	}
-	return displaySizeLabel(variant.format ?? variant.title);
+	return formatPrintOfferLabel(printSizeSource(variant));
 }
 
 /**
- * Group store variants by paper / offering set. Format becomes the size
- * buttons inside each group. Digital is treated as its own paper type.
+ * Group store variants by paper / offering set. Size buttons use the saved
+ * variant title when it is a size label; otherwise the Format option. Digital
+ * is treated as its own paper type.
  */
 export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGroup[] {
 	const byPaper = new Map<string, ShopOfferGroup>();
