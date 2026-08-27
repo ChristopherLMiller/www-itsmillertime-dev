@@ -16,10 +16,19 @@
 	} from '$lib/utils/gallery-image-tracking/types';
 	import { preventContextMenu } from '$lib/utils/prevent-context-menu';
 	import { lexicalToPlainText, plainTextToLexical } from '$lib/utils/lexical-to-text';
-	import { getMediaUrl, getLightboxPaintUrl, getLightboxZoomUrl, isVideoMedia } from '$lib/utils/media-url';
+	import {
+		getMediaUrl,
+		getLightboxPaintUrl,
+		getLightboxZoomUrl,
+		isVideoMedia
+	} from '$lib/utils/media-url';
 	import Lexical from '$lib/components/Lexical';
 	import type { GalleryImage } from '$lib/types/payload-types';
-	import { imageZoomPan, type ImageZoomPanHandle, type ImageZoomPanTransform } from '$lib/utils/image-zoom-pan';
+	import {
+		imageZoomPan,
+		type ImageZoomPanHandle,
+		type ImageZoomPanTransform
+	} from '$lib/utils/image-zoom-pan';
 	import {
 		createLightboxZoomCanvasController,
 		type LightboxZoomCanvasPaintInput
@@ -118,10 +127,7 @@
 		gallery: GalleryAlbum;
 		galleryImageId?: number;
 		useProxy?: boolean;
-		onMediaMetaUpdated?: (patch: {
-			alt: string;
-			caption: GalleryImage['caption'] | null;
-		}) => void;
+		onMediaMetaUpdated?: (patch: { alt: string; caption: GalleryImage['caption'] | null }) => void;
 	} = $props();
 
 	const cmsImageEditHref = $derived(
@@ -138,9 +144,7 @@
 			(image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
 	);
 	/** Full original for sharp zoom bitmap. */
-	const zoomSourceSrc = $derived(
-		getLightboxZoomUrl(image, useProxy ?? false) ?? resolvedImageSrc
-	);
+	const zoomSourceSrc = $derived(getLightboxZoomUrl(image, useProxy ?? false) ?? resolvedImageSrc);
 	/**
 	 * Stable per-photo identity. Lightbox `index` shifts as polaroids resolve into the images
 	 * array — resetting on index caused blur→loaded→blur pulsing for the same photo.
@@ -312,6 +316,18 @@
 		return fallbackSize ? getMediaUrl(fallbackSize, useProxy ?? false) : null;
 	});
 
+	/** Full-frame preview for shop crop diagrams (avoid square crops). */
+	const shopCropPreviewSrc = $derived.by(() => {
+		if (!image) return null;
+		const raw =
+			image.sizes?.small?.url ??
+			image.sizes?.thumbnail?.url ??
+			image.sizes?.medium?.url ??
+			image.url ??
+			null;
+		return raw ? getMediaUrl(raw, useProxy ?? false) : null;
+	});
+
 	/** Load state for the main <img>; parent isLoaded probes src only and is not used here */
 	let mainImageLoaded = $state(false);
 	let mainImgReadyNotified = false;
@@ -394,9 +410,12 @@
 		const src = zoomSourceSrc;
 		const ric = window.requestIdleCallback?.bind(window);
 		if (ric) {
-			const id = ric(() => {
-				if (zoomSourceSrc === src) ensureZoomBitmap();
-			}, { timeout: 1500 });
+			const id = ric(
+				() => {
+					if (zoomSourceSrc === src) ensureZoomBitmap();
+				},
+				{ timeout: 1500 }
+			);
 			return () => window.cancelIdleCallback?.(id);
 		}
 		const t = setTimeout(() => {
@@ -462,7 +481,9 @@
 	const imageTitle = $derived(displayableImageTitle(image?.alt, image?.filename));
 	const captionText = $derived(image?.caption ? lexicalToPlainText(image.caption) : null);
 	const hasLexicalCaption = $derived(Boolean(captionText && captionText.trim()));
-	const shareTitle = $derived(imageTitle || captionText?.trim() || gallery.title || 'Gallery image');
+	const shareTitle = $derived(
+		imageTitle || captionText?.trim() || gallery.title || 'Gallery image'
+	);
 
 	let editingMeta = $state(false);
 	let draftAlt = $state('');
@@ -1160,18 +1181,13 @@
 										rows="4"
 										bind:value={draftCaption}
 										disabled={metaSaving}
-										placeholder="Optional longer description"
-									></textarea>
+										placeholder="Optional longer description"></textarea>
 								</label>
 								{#if metaSaveError}
 									<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>
 								{/if}
 								<div class="gallery-lightbox__meta-actions">
-									<button
-										type="submit"
-										class="gallery-lightbox__meta-save"
-										disabled={metaSaving}
-									>
+									<button type="submit" class="gallery-lightbox__meta-save" disabled={metaSaving}>
 										{metaSaving ? 'Saving…' : 'Save'}
 									</button>
 									<button
@@ -1290,6 +1306,9 @@
 							variants={shopVariants}
 							{galleryImageId}
 							albumSlug={gallery.slug}
+							imageWidth={image?.width}
+							imageHeight={image?.height}
+							imageSrc={shopCropPreviewSrc}
 						/>
 					{/key}
 				</div>
@@ -1778,7 +1797,6 @@
 			opacity: 1;
 		}
 	}
-
 
 	.gallery-lightbox__section {
 		display: flex;
