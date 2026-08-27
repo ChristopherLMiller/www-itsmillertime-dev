@@ -18,6 +18,8 @@ export type StoreCommerceVariant = {
 	paperDescription: string | null;
 	/** Size / format (e.g. "11x14"). */
 	format: string | null;
+	/** Prodigi paper finish (e.g. "Gloss"). Null when Standard or unset. */
+	finish: string | null;
 };
 
 export type PublicProduct = {
@@ -43,20 +45,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function positiveAmount(value: unknown): number | null {
+	if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
+	return value;
+}
+
 function readAmount(variant: Record<string, unknown>): number | null {
 	const cp = variant.calculated_price;
 	if (isRecord(cp)) {
 		for (const key of PROCESSING_PRICE_KEYS) {
-			const n = cp[key];
-			if (typeof n === 'number' && Number.isFinite(n)) return n;
+			const n = positiveAmount(cp[key]);
+			if (n != null) return n;
 		}
 	}
 	const prices = variant.prices;
 	if (Array.isArray(prices)) {
 		for (const price of prices) {
-			if (isRecord(price) && typeof price.amount === 'number' && Number.isFinite(price.amount)) {
-				return price.amount;
-			}
+			if (!isRecord(price)) continue;
+			const n = positiveAmount(price.amount);
+			if (n != null) return n;
 		}
 	}
 	return null;
@@ -95,31 +102,59 @@ function optionValues(variant: Record<string, unknown>): string[] {
 	return optionEntries(variant).map((e) => e.value);
 }
 
+function isFinishAxis(axis: string | null | undefined): boolean {
+	const value = axis?.toLowerCase() ?? '';
+	return value === 'finish' || value === 'paper finish';
+}
+
+/** Placeholder Medusa uses when a product has Finish but this SKU has none. */
+const HIDDEN_FINISH = /^(standard|none|n\/a|default)$/i;
+
+function titleCaseFinish(value: string): string {
+	return value.replace(
+		/\S+/g,
+		(word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+	);
+}
+
+export function displayFinish(finish: string | null | undefined): string | null {
+	const value = finish?.trim() ?? '';
+	if (!value || HIDDEN_FINISH.test(value)) return null;
+	return titleCaseFinish(value);
+}
+
 export function paperAndFormat(
 	variant: Record<string, unknown>,
 	digital: boolean
-): { paper: string | null; format: string | null } {
+): { paper: string | null; format: string | null; finish: string | null } {
 	const entries = optionEntries(variant);
 	let paper: string | null = null;
 	let format: string | null = null;
+	let finish: string | null = null;
 	for (const entry of entries) {
 		const axis = entry.title?.toLowerCase();
 		if (axis === 'paper') paper = entry.value;
 		if (axis === 'format') format = entry.value;
+		if (isFinishAxis(axis)) finish = entry.value;
 	}
 	if (!paper && !format) {
 		const values = entries
 			.map((e) => e.value)
 			.filter((v) => {
 				const lower = v.toLowerCase();
-				return lower !== 'paper' && lower !== 'format';
+				return lower !== 'paper' && lower !== 'format' && !isFinishAxis(lower);
 			});
 		if (values.length >= 2) {
 			paper = values[0] ?? null;
 			format = values[1] ?? null;
+			finish = values[2] ?? finish;
 		} else if (values.length === 1) {
 			format = values[0] ?? null;
 		}
+	}
+	if (!finish && isRecord(variant.metadata)) {
+		const metaFinish = variant.metadata.prodigi_finish;
+		if (typeof metaFinish === 'string' && metaFinish.trim()) finish = metaFinish.trim();
 	}
 	if (digital) {
 		return {
@@ -127,14 +162,16 @@ export function paperAndFormat(
 			format:
 				format && format.toLowerCase() !== 'digital' && format.toLowerCase() !== 'digital download'
 					? format
-					: 'Digital download'
+					: 'Digital download',
+			finish: null
 		};
 	}
 	if (paper && paper.toLowerCase() === 'digital') paper = null;
 	const title = typeof variant.title === 'string' ? variant.title.trim() : '';
 	return {
 		paper,
-		format: format ?? (title && title.toLowerCase() !== 'default' ? title : null)
+		format: format ?? (title && title.toLowerCase() !== 'default' ? title : null),
+		finish: displayFinish(finish)
 	};
 }
 
@@ -192,7 +229,8 @@ export function parseStoreProduct(payload: unknown): PublicProduct | null {
 			digital,
 			paper: axes.paper,
 			paperDescription: null,
-			format: axes.format
+			format: axes.format,
+			finish: axes.finish
 		});
 	}
 

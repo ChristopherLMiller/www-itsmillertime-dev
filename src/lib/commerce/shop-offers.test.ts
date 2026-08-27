@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	DIGITAL_DOWNLOAD_DESCRIPTION,
+	defaultFinishForOffers,
 	displaySizeLabel,
+	finishOptionsForOffers,
 	groupShopOffers,
-	printSizeAspectFit
+	listingsForGroup,
+	offerForFinish,
+	printSizeAspectFit,
+	uniqueSizeCount
 } from './shop-offers';
 
 describe('groupShopOffers', () => {
@@ -52,6 +57,136 @@ describe('groupShopOffers', () => {
 		expect(groups[0]?.offers.map((o) => o.title)).toEqual(['Download']);
 		expect(groups[1]?.offers.map((o) => o.title)).toEqual(['8×10″']);
 		expect(groups[2]?.offers.map((o) => o.title)).toEqual(['8×10″', '11×14″']);
+		expect(groups[2]?.offers.every((o) => o.purchasable)).toBe(true);
+	});
+
+	it('keeps the same paper together and lists finishes on the offers', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-gloss',
+				title: 'Photo Rag · 4x6 · Gloss',
+				paper: 'Photo Rag',
+				format: '4x6',
+				finish: 'Gloss',
+				digital: false,
+				priceUSD: 12
+			},
+			{
+				variantId: 'v-matte',
+				title: 'Photo Rag · 4x6 · Matte',
+				paper: 'Photo Rag',
+				format: '4x6',
+				finish: 'Matte',
+				digital: false,
+				priceUSD: null
+			},
+			{
+				variantId: 'v-metallic',
+				title: 'Photo Rag · 4x6 · Metallic',
+				paper: 'Photo Rag',
+				format: '4x6',
+				finish: 'Metallic',
+				digital: false,
+				priceUSD: 16
+			},
+			{
+				variantId: 'v-standard',
+				title: 'Photo Rag · 8x10',
+				paper: 'Photo Rag',
+				format: '8x10',
+				finish: 'Standard',
+				digital: false,
+				priceUSD: 18
+			}
+		]);
+		expect(groups.map((g) => g.name)).toEqual(['Photo Rag']);
+		const listings = listingsForGroup(groups[0]!);
+		expect(listings.map((listing) => listing.title)).toEqual(['4×6″', '8×10″']);
+		expect(finishOptionsForOffers(listings[0]!.offers)).toEqual([
+			{ value: 'Gloss', label: 'Gloss' },
+			{ value: 'Matte', label: 'Matte' },
+			{ value: 'Metallic', label: 'Metallic' }
+		]);
+		expect(defaultFinishForOffers(listings[0]!.offers)).toBe('Gloss');
+		expect(offerForFinish(listings[0]!.offers, 'Matte')).toMatchObject({
+			variantId: 'v-matte',
+			purchasable: false
+		});
+		expect(finishOptionsForOffers(listings[1]!.offers)).toEqual([]);
+		expect(uniqueSizeCount(groups[0]!.offers)).toBe(2);
+	});
+
+	it('shows a finish picker on a size even when it has only one finish', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-gloss',
+				title: 'C-Type · 4x6 · Gloss',
+				paper: 'Continuous-tone silver halide photo print',
+				format: '4x6',
+				finish: 'Gloss',
+				digital: false,
+				priceUSD: 22
+			}
+		]);
+		expect(finishOptionsForOffers(groups[0]!.offers)).toEqual([{ value: 'Gloss', label: 'Gloss' }]);
+		expect(groups[0]?.offers[0]?.finish).toBe('Gloss');
+	});
+
+	it('gives each size its own finish options including a single metallic listing', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-gloss',
+				title: 'C-Type · 4x6 · Gloss',
+				paper: 'Continuous-tone silver halide photo print',
+				format: '4x6',
+				finish: 'Gloss',
+				digital: false,
+				priceUSD: null
+			},
+			{
+				variantId: 'v-lustre',
+				title: 'C-Type · 4x6 · Lustre',
+				paper: 'Continuous-tone silver halide photo print',
+				format: '4x6',
+				finish: 'Lustre',
+				digital: false,
+				priceUSD: null
+			},
+			{
+				variantId: 'v-metallic',
+				title: 'C-Type · 5x7 · Metallic',
+				paper: 'Continuous-tone silver halide photo print',
+				format: '5x7',
+				finish: 'Metallic',
+				digital: false,
+				priceUSD: null
+			}
+		]);
+		const listings = listingsForGroup(groups[0]!);
+		expect(listings.map((listing) => listing.title)).toEqual(['4×6″', '5×7″']);
+		expect(finishOptionsForOffers(listings[0]!.offers)).toEqual([
+			{ value: 'Gloss', label: 'Gloss' },
+			{ value: 'Lustre', label: 'Lustre' }
+		]);
+		expect(finishOptionsForOffers(listings[1]!.offers)).toEqual([
+			{ value: 'Metallic', label: 'Metallic' }
+		]);
+	});
+
+	it('keeps digital buyable when the store price is still missing', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-dig',
+				title: 'Digital Download',
+				digital: true,
+				priceUSD: null
+			}
+		]);
+		expect(groups[0]?.offers[0]).toMatchObject({
+			title: 'Download',
+			purchasable: true,
+			priceUSD: null
+		});
 	});
 
 	it('uses Medusa copy for digital when an offering-set description is present', () => {

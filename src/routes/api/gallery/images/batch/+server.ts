@@ -60,16 +60,16 @@ export const GET: RequestHandler = async (event) => {
 		await Promise.all(
 			allowed.map(async (doc) => {
 				const productId = (doc as { medusaProductId?: string | null }).medusaProductId;
-				if (!productId) return;
-				try {
-					const product = await getStoreProduct(getStoreConfig(), productId);
-					const commerce = product ? commerceFromStoreProduct(product) : null;
-					if (commerce) {
-						(doc as unknown as Record<string, unknown>).commerce = commerce;
+				let commerce = null;
+				if (productId) {
+					try {
+						const product = await getStoreProduct(getStoreConfig(), productId);
+						commerce = product ? commerceFromStoreProduct(product) : null;
+					} catch {
+						/* Medusa optional */
 					}
-				} catch {
-					/* Medusa optional */
 				}
+				(doc as unknown as Record<string, unknown>).commerce = commerce;
 			})
 		);
 	}

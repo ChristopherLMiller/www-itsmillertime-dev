@@ -51,17 +51,16 @@ export const GET: RequestHandler = async (event) => {
 		// price. We only carry a `medusaProductId` pointer in Payload; resolve the
 		// live product (published + priced) so the lightbox can show a buy button.
 		const productId = (doc as { medusaProductId?: string | null }).medusaProductId;
+		let commerce = null;
 		if (productId) {
 			try {
 				const product = await getStoreProduct(getStoreConfig(), productId);
-				const commerce = product ? commerceFromStoreProduct(product) : null;
-				if (commerce) {
-					(doc as unknown as Record<string, unknown>).commerce = commerce;
-				}
+				commerce = product ? commerceFromStoreProduct(product) : null;
 			} catch {
-				// Medusa not configured or unreachable: just omit commerce.
+				// Medusa not configured or unreachable: treat as not for sale.
 			}
 		}
+		(doc as unknown as Record<string, unknown>).commerce = commerce;
 		return json(doc);
 	}
 
