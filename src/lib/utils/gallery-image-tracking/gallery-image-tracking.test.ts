@@ -1,6 +1,54 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureGalleryImageTrackingOnOpen, recordGalleryImageTracking } from './client';
 import { normalizeGalleryImageTracking, TRACKING_EVENT_TO_FIELD } from './types';
+
+vi.mock('$app/environment', () => ({
+	browser: true,
+	building: false,
+	dev: true,
+	version: 'test'
+}));
+
+function memoryStorage(): Storage {
+	const store = new Map<string, string>();
+	return {
+		get length() {
+			return store.size;
+		},
+		clear() {
+			store.clear();
+		},
+		getItem(key) {
+			return store.has(key) ? store.get(key)! : null;
+		},
+		key(index) {
+			return [...store.keys()][index] ?? null;
+		},
+		removeItem(key) {
+			store.delete(key);
+		},
+		setItem(key, value) {
+			store.set(key, String(value));
+		}
+	};
+}
+
+const sessionStore = memoryStorage();
+const localStore = memoryStorage();
+
+function stubBrowserStorage() {
+	vi.stubGlobal('sessionStorage', sessionStore);
+	vi.stubGlobal('localStorage', localStore);
+	sessionStore.clear();
+	localStore.clear();
+}
+
+function restoreBrowserStorage() {
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
+	sessionStore.clear();
+	localStore.clear();
+}
 
 describe('normalizeGalleryImageTracking', () => {
 	it('fills missing fields with zero', () => {
@@ -23,11 +71,8 @@ describe('TRACKING_EVENT_TO_FIELD', () => {
 });
 
 describe('ensureGalleryImageTrackingOnOpen', () => {
-	afterEach(() => {
-		vi.unstubAllGlobals();
-		vi.restoreAllMocks();
-		sessionStorage.clear();
-	});
+	beforeEach(stubBrowserStorage);
+	afterEach(restoreBrowserStorage);
 
 	it('issues a single POST for concurrent opens of the same image', async () => {
 		let fetchCalls = 0;
@@ -93,12 +138,8 @@ describe('ensureGalleryImageTrackingOnOpen', () => {
 });
 
 describe('recordGalleryImageTracking', () => {
-	afterEach(() => {
-		vi.unstubAllGlobals();
-		vi.restoreAllMocks();
-		sessionStorage.clear();
-		localStorage.clear();
-	});
+	beforeEach(stubBrowserStorage);
+	afterEach(restoreBrowserStorage);
 
 	it('does not POST a view twice in one session', async () => {
 		const fetchMock = vi.fn(() =>
