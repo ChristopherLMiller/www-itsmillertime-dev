@@ -93,27 +93,41 @@ function normalizeMultiply(value: string): string {
 		.trim();
 }
 
-function stripPaperCodeTokens(value: string): string {
-	const parts = value.split(/\s*[·•|]\s*/).filter((part) => {
-		const token = part.trim();
-		if (!token) return false;
-		if (PAPER_CODE.test(token)) return false;
-		if (SHORT_PAPER_TOKEN.test(token) && !GSM_PATTERN.test(token)) return false;
-		return true;
-	});
-	return parts.join(' · ');
+function isSizeOrWeightToken(token: string): boolean {
+	return SIZE_PATTERN.test(token) || GSM_PATTERN.test(token);
 }
 
-/** Size with unit and paper weight, without Prodigi paper codes (HPR, LPP, …). */
+function isProdigiPaperCode(token: string): boolean {
+	return PAPER_CODE.test(token) || (SHORT_PAPER_TOKEN.test(token) && !GSM_PATTERN.test(token));
+}
+
+/** Human paper names from a label (e.g. "Archival Professional"), not HPR/LPP codes. */
+export function extraPrintLabelParts(value: string): string[] {
+	const parts: string[] = [];
+	const seen = new Set<string>();
+	for (const raw of value.split(/\s*[·•|]\s*/)) {
+		const token = raw.trim();
+		if (!token || isSizeOrWeightToken(token) || isProdigiPaperCode(token)) continue;
+		const key = token.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		parts.push(token);
+	}
+	return parts;
+}
+
+/** Size and paper weight for the shop size row — not Prodigi codes or paper names. */
 export function formatPrintOfferLabel(value: string | null | undefined): string {
 	const raw = (value ?? '').trim();
 	if (!raw) return 'Print';
 	const parsed = parsePrintSize(raw);
-	if (!parsed) return normalizeMultiply(stripPaperCodeTokens(raw)) || 'Print';
+	if (!parsed) {
+		const extras = extraPrintLabelParts(raw);
+		return normalizeMultiply(extras.join(' · ')) || 'Print';
+	}
 	const unit = parsed.unit === 'cm' ? ' cm' : '″';
 	const size = `${parsed.widthLabel}×${parsed.heightLabel}${unit}`;
-	if (parsed.gsm != null) return `${size} · ${parsed.gsm}gsm`;
-	return size;
+	return parsed.gsm != null ? `${size} · ${parsed.gsm}gsm` : size;
 }
 
 /** Larger/smaller so 4×6 and 6×4 compare the same. */

@@ -21,7 +21,8 @@
 		offerForFinish,
 		uniqueSizeCount,
 		type ShopOffer,
-		type ShopOfferGroup
+		type ShopOfferGroup,
+		type ShopSizeListing
 	} from '$lib/commerce/shop-offers';
 	import type { GalleryCommerceVariant } from '$lib/utils/gallery-image-display';
 
@@ -31,6 +32,8 @@
 		albumSlug,
 		imageWidth = null,
 		imageHeight = null,
+		printWidth = null,
+		printHeight = null,
 		imageSrc = null,
 		pending = false
 	}: {
@@ -39,6 +42,8 @@
 		albumSlug?: string | null;
 		imageWidth?: number | null;
 		imageHeight?: number | null;
+		printWidth?: number | null;
+		printHeight?: number | null;
 		imageSrc?: string | null;
 		pending?: boolean;
 	} = $props();
@@ -100,37 +105,42 @@
 		return `shop-qty-${variantId.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
 	}
 
-	function listingKey(groupId: string, title: string): string {
-		return `${groupId}::${title}`;
+	type ListingRef = Pick<ShopSizeListing, 'title' | 'paperNote'>;
+
+	function listingKey(groupId: string, listing: ListingRef): string {
+		return listing.paperNote
+			? `${groupId}::${listing.title}::${listing.paperNote}`
+			: `${groupId}::${listing.title}`;
 	}
 
-	function finishId(groupId: string, title: string): string {
-		return `shop-finish-${groupDomId(listingKey(groupId, title))}`;
+	function finishId(groupId: string, listing: ListingRef): string {
+		return `shop-finish-${groupDomId(listingKey(groupId, listing))}`;
 	}
 
-	function selectedFinish(groupId: string, title: string, offers: ShopOffer[]): string {
+	function selectedFinish(groupId: string, listing: ListingRef, offers: ShopOffer[]): string {
 		const options = finishOptionsForOffers(offers);
 		if (options.length === 0) return '';
-		const stored = finishByListing[listingKey(groupId, title)];
+		const stored = finishByListing[listingKey(groupId, listing)];
 		if (stored !== undefined && options.some((option) => option.value === stored)) {
 			return stored;
 		}
 		return defaultFinishForOffers(offers);
 	}
 
-	function setFinish(groupId: string, title: string, value: string) {
-		finishByListing[listingKey(groupId, title)] = value;
+	function setFinish(groupId: string, listing: ListingRef, value: string) {
+		finishByListing[listingKey(groupId, listing)] = value;
 	}
 
-	function activeOffer(groupId: string, title: string, offers: ShopOffer[]): ShopOffer {
+	function activeOffer(groupId: string, listing: ListingRef, offers: ShopOffer[]): ShopOffer {
 		const options = finishOptionsForOffers(offers);
 		if (options.length === 0) return offers[0]!;
-		return offerForFinish(offers, selectedFinish(groupId, title, offers));
+		return offerForFinish(offers, selectedFinish(groupId, listing, offers));
 	}
 
 	function offerQtyContext(group: ShopOfferGroup, offer: ShopOffer): string {
 		const finish = offer.finish ? ` ${offer.finish}` : '';
-		return `${group.name}${finish} ${offer.title}`;
+		const note = offer.paperNote ? ` ${offer.paperNote}` : '';
+		return `${group.name}${finish} ${offer.title}${note}`;
 	}
 
 	function groupQty(group: ShopOfferGroup): number {
@@ -151,7 +161,7 @@
 
 	function offerFit(kind: ShopOfferGroup['kind'], title: string): PrintFitDetails | null {
 		if (kind !== 'print') return null;
-		return printFitDetails(title, imageWidth, imageHeight);
+		return printFitDetails(title, printWidth ?? imageWidth, printHeight ?? imageHeight);
 	}
 
 	function aspectHint(details: PrintFitDetails | null): string {
@@ -165,12 +175,12 @@
 		return '';
 	}
 
-	function fitPanelId(groupId: string, title: string): string {
-		return `shop-fit-${groupDomId(listingKey(groupId, title))}`;
+	function fitPanelId(groupId: string, listing: ListingRef): string {
+		return `shop-fit-${groupDomId(listingKey(groupId, listing))}`;
 	}
 
-	function toggleFit(groupId: string, title: string) {
-		const id = listingKey(groupId, title);
+	function toggleFit(groupId: string, listing: ListingRef) {
+		const id = listingKey(groupId, listing);
 		openFitId = openFitId === id ? null : id;
 	}
 
@@ -396,19 +406,19 @@
 					{/if}
 					<div class="shop-panel__sizes" id={sizesId} hidden={!open}>
 						<ul class="shop-panel__lines">
-							{#each listings as listing (listing.title)}
+							{#each listings as listing (listingKey(group.id, listing))}
 								{@const finishOptions = finishOptionsForOffers(listing.offers)}
-								{@const finishValue = selectedFinish(group.id, listing.title, listing.offers)}
-								{@const offer = activeOffer(group.id, listing.title, listing.offers)}
+								{@const finishValue = selectedFinish(group.id, listing, listing.offers)}
+								{@const offer = activeOffer(group.id, listing, listing.offers)}
 								{@const qty = qtyByVariant[offer.variantId] ?? 0}
 								{@const purchasable = offer.purchasable}
 								{@const details = offerFit(group.kind, listing.title)}
 								{@const fit = details?.fit ?? 'match'}
 								{@const showCrop = purchasable && (fit === 'crop' || fit === 'far')}
 								{@const showLowRes = purchasable && details?.lowResolution === true}
-								{@const listingId = listingKey(group.id, listing.title)}
+								{@const listingId = listingKey(group.id, listing)}
 								{@const fitOpen = openFitId === listingId}
-								{@const panelId = fitPanelId(group.id, listing.title)}
+								{@const panelId = fitPanelId(group.id, listing)}
 								<li
 									class="shop-panel__line"
 									class:shop-panel__line--crop={fit === 'crop'}
@@ -424,15 +434,15 @@
 												<div class="shop-panel__finish">
 													<label
 														class="shop-panel__finish-label"
-														for={finishId(group.id, listing.title)}
+														for={finishId(group.id, listing)}
 													>
 														Finish
 													</label>
 													<select
-														id={finishId(group.id, listing.title)}
+														id={finishId(group.id, listing)}
 														value={finishValue}
 														onchange={(e) =>
-															setFinish(group.id, listing.title, e.currentTarget.value)}
+															setFinish(group.id, listing, e.currentTarget.value)}
 													>
 														{#each finishOptions as option (option.value)}
 															<option value={option.value}>{option.label}</option>
@@ -441,6 +451,9 @@
 												</div>
 											{/if}
 										</div>
+										{#if listing.paperNote}
+											<p class="shop-panel__paper-note">{listing.paperNote}</p>
+										{/if}
 										{#if showCrop || showLowRes}
 											<div class="shop-panel__chips">
 												{#if showCrop}
@@ -450,7 +463,7 @@
 														aria-expanded={fitOpen}
 														aria-controls={panelId}
 														aria-label="Crop details for {listing.title}"
-														onclick={() => toggleFit(group.id, listing.title)}
+														onclick={() => toggleFit(group.id, listing)}
 													>
 														Crop
 													</button>
@@ -462,7 +475,7 @@
 														aria-expanded={fitOpen}
 														aria-controls={panelId}
 														aria-label="Resolution details for {listing.title}"
-														onclick={() => toggleFit(group.id, listing.title)}
+														onclick={() => toggleFit(group.id, listing)}
 													>
 														Low res
 													</button>
@@ -1019,6 +1032,18 @@
 	.shop-panel__size-row .shop-panel__size {
 		flex: 0 1 auto;
 		width: auto;
+	}
+
+	.shop-panel__paper-note {
+		margin: 0;
+		max-width: 100%;
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
+		font-weight: 400;
+		letter-spacing: 0.04em;
+		line-height: 1.25;
+		color: var(--color-white-darker);
+		overflow-wrap: anywhere;
 	}
 
 	.shop-panel__chips {

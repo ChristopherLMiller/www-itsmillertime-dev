@@ -40,7 +40,8 @@
 	import {
 		displayableImageTitle,
 		type GalleryCommerce,
-		type GalleryCommerceVariant
+		type GalleryCommerceVariant,
+		type GalleryGridMedia
 	} from '$lib/utils/gallery-image-display';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
@@ -114,7 +115,7 @@
 		hasShopListing = null,
 		initialSidebarTab = 'information'
 	}: {
-		image: Media | undefined;
+		image: (Media & Pick<GalleryGridMedia, 'printWidth' | 'printHeight'>) | undefined;
 		index: number;
 		total: number;
 		imageSrc: string | null;
@@ -1450,6 +1451,8 @@
 							albumSlug={gallery.slug}
 							imageWidth={image?.width}
 							imageHeight={image?.height}
+							printWidth={image?.printWidth}
+							printHeight={image?.printHeight}
 							imageSrc={shopCropPreviewSrc}
 						/>
 					{/key}

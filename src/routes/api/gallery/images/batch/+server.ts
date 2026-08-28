@@ -3,7 +3,7 @@ import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { canAccessGallerySettings } from '$lib/utils/gallery-access';
-import { commerceFromStoreProduct } from '$lib/utils/gallery-image-display';
+import { commerceFromStoreProduct, stampPrintPixelsAndRedactMaster } from '$lib/utils/gallery-image-display';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -70,6 +70,7 @@ export const GET: RequestHandler = async (event) => {
 					}
 				}
 				(doc as unknown as Record<string, unknown>).commerce = commerce;
+				stampPrintPixelsAndRedactMaster(doc as unknown as Record<string, unknown>);
 			})
 		);
 	}

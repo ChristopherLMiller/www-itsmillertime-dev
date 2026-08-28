@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	formatPrintOfferLabel,
+	extraPrintLabelParts,
 	parsePrintSize,
 	printCropCopy,
 	printDpiCopy,
@@ -24,6 +25,16 @@ describe('formatPrintOfferLabel', () => {
 
 	it('omits weight when gsm is missing', () => {
 		expect(formatPrintOfferLabel('8×10″ · LPP')).toBe('8×10″');
+	});
+});
+
+describe('extraPrintLabelParts', () => {
+	it('keeps a human paper name that is not a Prodigi code', () => {
+		expect(extraPrintLabelParts('4×6″ · Archival Professional · 240gsm')).toEqual([
+			'Archival Professional'
+		]);
+		expect(extraPrintLabelParts('4×6″ · Archival Professional')).toEqual(['Archival Professional']);
+		expect(extraPrintLabelParts('4×6″ · LPP · 240gsm')).toEqual([]);
 	});
 });
 

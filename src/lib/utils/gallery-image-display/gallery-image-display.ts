@@ -38,6 +38,9 @@ export type GalleryGridMedia = Media & {
 	needsProxy: boolean;
 	galleryImageId?: number;
 	commerce?: GalleryCommerce | null;
+	/** Pixel size of the private master file, when Payload populated it. Used for print DPI. */
+	printWidth?: number | null;
+	printHeight?: number | null;
 };
 
 /** Payload `medusaProductId` pointer — a listing exists; Medusa is still source of truth for sale. */
@@ -56,10 +59,14 @@ export function mergeGalleryGridMedia(
 	incoming: GalleryGridMedia
 ): GalleryGridMedia {
 	const commerce = incoming.commerce !== undefined ? incoming.commerce : existing?.commerce;
+	const printWidth = incoming.printWidth ?? existing?.printWidth;
+	const printHeight = incoming.printHeight ?? existing?.printHeight;
 	return {
 		...existing,
 		...incoming,
-		...(commerce !== undefined ? { commerce } : {})
+		...(commerce !== undefined ? { commerce } : {}),
+		...(printWidth != null ? { printWidth } : {}),
+		...(printHeight != null ? { printHeight } : {})
 	};
 }
 
@@ -207,6 +214,52 @@ export function buildPlaceholderGalleryMedia(options: {
 	};
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function positivePixelSize(value: unknown): { width: number; height: number } | null {
+	if (!isRecord(value)) return null;
+	const width = value.width;
+	const height = value.height;
+	if (typeof width === 'number' && width > 0 && typeof height === 'number' && height > 0) {
+		return { width, height };
+	}
+	return null;
+}
+
+/** Master-file pixels for print DPI. Does not expose the master URL. */
+export function printPixelSizeFromGalleryDoc(doc: unknown): { width: number; height: number } | null {
+	if (!isRecord(doc)) return null;
+	return (
+		positivePixelSize({ width: doc.printWidth, height: doc.printHeight }) ??
+		positivePixelSize(doc.master)
+	);
+}
+
+/** Copy master pixels onto the gallery-image JSON and drop the private master file. */
+export function stampPrintPixelsAndRedactMaster(doc: Record<string, unknown>): void {
+	const print = printPixelSizeFromGalleryDoc(doc);
+	delete doc.master;
+	if (print) {
+		doc.printWidth = print.width;
+		doc.printHeight = print.height;
+	}
+}
+
+function withoutMaster<T extends object>(media: T): T {
+	if (!('master' in media)) return media;
+	const { master: _master, ...rest } = media as T & { master?: unknown };
+	return rest as T;
+}
+
+function withPrintPixels(media: GalleryGridMedia, doc: object): GalleryGridMedia {
+	const stripped = withoutMaster(media);
+	const print = printPixelSizeFromGalleryDoc(doc);
+	if (!print) return stripped;
+	return { ...stripped, printWidth: print.width, printHeight: print.height };
+}
+
 /**
  * Maps a Payload gallery-image document (depth ≥ 1 for nested `image` media) to the
  * `Media` shape used by Polaroid / Lightbox, with NSFW and gallery row id.
@@ -225,25 +278,31 @@ export function galleryImageDocToDisplayMedia(
 	const commerce = readCommerce(imageDoc);
 
 	if ('url' in imageDoc && 'id' in imageDoc) {
-		return {
-			...(imageDoc as Media),
-			isNsfw: docIsNsfw,
-			needsProxy,
-			galleryImageId,
-			...(commerce !== undefined ? { commerce } : {})
-		};
+		return withPrintPixels(
+			{
+				...(imageDoc as Media),
+				isNsfw: docIsNsfw,
+				needsProxy,
+				galleryImageId,
+				...(commerce !== undefined ? { commerce } : {})
+			},
+			imageDoc
+		);
 	}
 
 	if ('image' in imageDoc) {
 		const candidate = (imageDoc as { image?: unknown }).image;
 		if (typeof candidate === 'object' && candidate !== null && 'id' in candidate) {
-			return {
-				...(candidate as Media),
-				isNsfw: docIsNsfw,
-				needsProxy,
-				galleryImageId,
-				...(commerce !== undefined ? { commerce } : {})
-			};
+			return withPrintPixels(
+				{
+					...(candidate as Media),
+					isNsfw: docIsNsfw,
+					needsProxy,
+					galleryImageId,
+					...(commerce !== undefined ? { commerce } : {})
+				},
+				imageDoc
+			);
 		}
 	}
 
