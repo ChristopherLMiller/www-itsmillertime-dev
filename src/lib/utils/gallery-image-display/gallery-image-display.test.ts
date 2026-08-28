@@ -5,9 +5,20 @@ import {
 	buildPlaceholderGalleryMedia,
 	displayableImageTitle,
 	galleryImageDocToDisplayMedia,
+	isShopListingPointer,
 	looksLikeCameraFilenameAlt,
 	mergeGalleryGridMedia
 } from './gallery-image-display';
+
+describe('isShopListingPointer', () => {
+	it('is true for a non-empty product id', () => {
+		expect(isShopListingPointer('prod_123')).toBe(true);
+		expect(isShopListingPointer('  ')).toBe(false);
+		expect(isShopListingPointer('')).toBe(false);
+		expect(isShopListingPointer(null)).toBe(false);
+		expect(isShopListingPointer(undefined)).toBe(false);
+	});
+});
 
 describe('altMatchesFilename / displayableImageTitle', () => {
 	it('matches filename with or without extension', () => {

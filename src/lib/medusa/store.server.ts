@@ -1,5 +1,9 @@
 import { env } from '$env/dynamic/private';
 import {
+	parseEcommerceEnvironment,
+	type EcommerceEnvironmentStatus
+} from '$lib/commerce/ecommerce-environment';
+import {
 	applyOfferingSetDescriptions,
 	parseStoreProduct,
 	readOfferingSets,
@@ -155,6 +159,18 @@ export async function getStoreProduct(
 		if (!parsed) return null;
 		const sets = linkedSets.length > 0 ? linkedSets : readOfferingSets(payload);
 		return applyOfferingSetDescriptions(parsed, sets);
+	} catch {
+		return null;
+	}
+}
+
+/** Public sandbox/live flags for Stripe and Prodigi. Does not expose keys. */
+export async function getEcommerceEnvironment(
+	cfg: StoreConfig
+): Promise<EcommerceEnvironmentStatus | null> {
+	try {
+		const payload = await storeFetch<unknown>(cfg, '/store/ecommerce-environment');
+		return parseEcommerceEnvironment(payload);
 	} catch {
 		return null;
 	}

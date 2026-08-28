@@ -25,8 +25,12 @@
 		/** Called after the preview request finishes (success or failure). */
 		onFetchEnd?: () => void;
 		onClick?: (media: GalleryGridMedia) => void;
+		/** Open lightbox on the shop tab (fold control). */
+		onShopClick?: (media: GalleryGridMedia) => void;
 		/** Tighter HTML `sizes` for grid srcset selection */
 		responsiveSizes?: string;
+		/** CMS shop listing pointer — no Medusa fetch on the grid */
+		hasShopListing?: boolean;
 	};
 
 	const {
@@ -42,7 +46,9 @@
 		onResolved,
 		onFetchEnd,
 		onClick,
-		responsiveSizes = '(max-width: 900px) 100vw, min(500px, 45vw)'
+		onShopClick,
+		responsiveSizes = '(max-width: 900px) 100vw, min(500px, 45vw)',
+		hasShopListing = false
 	}: GalleryAlbumPolaroidProps = $props();
 
 	let media = $state<GalleryGridMedia | null>(null);
@@ -102,40 +108,73 @@
 {#if loadError}
 	<div class="gallery-album-polaroid__error" role="status">{loadError}</div>
 {:else}
-	<button
-		type="button"
-		class="gallery-album-polaroid__hit"
-		class:gallery-album-polaroid__hit--pending={!media}
-		aria-busy={!media}
-		aria-label={media ? `View ${media.alt || 'image'} in lightbox` : 'Loading image'}
-		onclick={() => {
-			if (media) onClick?.(media);
-		}}
-	>
-		{#key `${displayMedia.id}-${displayMedia.url ?? ''}-${displayMedia.needsProxy ? 'p' : 'd'}`}
-			<Polaroid
-				media={displayMedia}
-				caption={displayableImageTitle(displayMedia.alt, displayMedia.filename) || undefined}
-				interactive={false}
-				clickable={false}
-				enableViewTransition={false}
-				adaptiveHeight={true}
-				useProxy={useProxy || displayMedia.needsProxy}
-				isNsfw={displayMedia.isNsfw}
-				{priority}
-				{responsiveSizes}
-				disableContextMenu={true}
-			/>
-		{/key}
-		{#if !media}
-			<span class="gallery-album-polaroid__skeleton" aria-hidden="true">
-				<span class="gallery-album-polaroid__skeleton-shine"></span>
-			</span>
+	<div class="gallery-album-polaroid">
+		<button
+			type="button"
+			class="gallery-album-polaroid__hit"
+			class:gallery-album-polaroid__hit--pending={!media}
+			aria-busy={!media}
+			aria-label={media ? `View ${media.alt || 'image'} in lightbox` : 'Loading image'}
+			onclick={() => {
+				if (media) onClick?.(media);
+			}}
+		>
+			{#key `${displayMedia.id}-${displayMedia.url ?? ''}-${displayMedia.needsProxy ? 'p' : 'd'}`}
+				<Polaroid
+					media={displayMedia}
+					caption={displayableImageTitle(displayMedia.alt, displayMedia.filename) || undefined}
+					interactive={false}
+					clickable={false}
+					enableViewTransition={false}
+					adaptiveHeight={true}
+					useProxy={useProxy || displayMedia.needsProxy}
+					isNsfw={displayMedia.isNsfw}
+					{priority}
+					{responsiveSizes}
+					disableContextMenu={true}
+				/>
+			{/key}
+			{#if !media}
+				<span class="gallery-album-polaroid__skeleton" aria-hidden="true">
+					<span class="gallery-album-polaroid__skeleton-shine"></span>
+				</span>
+			{/if}
+		</button>
+		{#if hasShopListing && media}
+			<button
+				type="button"
+				class="gallery-album-polaroid__shop"
+				aria-label={`Open shop for ${media.alt || 'this image'}`}
+				onclick={() => {
+					(onShopClick ?? onClick)?.(media);
+				}}
+			>
+				<span class="gallery-album-polaroid__shop-flap" aria-hidden="true"></span>
+				<svg
+					class="gallery-album-polaroid__shop-icon"
+					viewBox="0 0 16 16"
+					width="16"
+					height="16"
+					focusable="false"
+					aria-hidden="true"
+				>
+					<path
+						fill="currentColor"
+						fill-rule="evenodd"
+						d="M8 1.35 13.35 6.7v7.7H2.65V6.7L8 1.35Zm0 3.55a1.2 1.2 0 1 0 .001 2.401A1.2 1.2 0 0 0 8 4.9Z"
+					/>
+				</svg>
+			</button>
 		{/if}
-	</button>
+	</div>
 {/if}
 
 <style lang="postcss">
+	.gallery-album-polaroid {
+		position: relative;
+		width: 100%;
+	}
+
 	.gallery-album-polaroid__hit {
 		position: relative;
 		display: block;
@@ -187,6 +226,54 @@
 		color: var(--color-tertiary);
 		text-align: center;
 		padding: 2rem 0.5rem;
+	}
+
+	.gallery-album-polaroid__shop {
+		position: absolute;
+		z-index: 3;
+		top: 0;
+		right: 0;
+		width: 2.5rem;
+		height: 2.5rem;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+		clip-path: polygon(0 0, 100% 0, 100% 100%);
+		filter: drop-shadow(-1px 2px 1.5px rgba(47, 43, 37, 0.28));
+	}
+
+	.gallery-album-polaroid__shop-flap {
+		position: absolute;
+		inset: 0;
+		background: var(--color-secondary);
+		clip-path: polygon(0 0, 100% 0, 100% 100%);
+	}
+
+	.gallery-album-polaroid__shop-icon {
+		position: absolute;
+		top: 0.28rem;
+		right: 0.22rem;
+		display: block;
+		width: 0.95rem;
+		height: 0.95rem;
+		color: #fff;
+		pointer-events: none;
+		transform-origin: 50% 42%;
+		transform: rotate(45deg);
+	}
+
+	.gallery-album-polaroid__shop:hover .gallery-album-polaroid__shop-flap,
+	.gallery-album-polaroid__shop:focus-visible .gallery-album-polaroid__shop-flap {
+		background: var(--color-secondary-lighter, var(--color-secondary));
+	}
+
+	.gallery-album-polaroid__shop:focus-visible {
+		outline: none;
+	}
+
+	.gallery-album-polaroid__shop:focus-visible .gallery-album-polaroid__shop-flap {
+		box-shadow: inset 0 0 0 2px #fff;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -8,11 +8,12 @@
 	import GalleryAlbumPolaroid from '$lib/components/gallery/GalleryAlbumPolaroid';
 	import Lightbox from '$lib/components/gallery/Lightbox';
 	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
-	import { mergeGalleryGridMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
 	import {
-		fetchGalleryImageFullForLightbox,
-		fetchGalleryImageFullForPolaroid
-	} from '$lib/utils/gallery-image-full-fetch';
+		isShopListingPointer,
+		mergeGalleryGridMedia,
+		type GalleryGridMedia
+	} from '$lib/utils/gallery-image-display';
+	import { fetchGalleryImageFullForLightbox } from '$lib/utils/gallery-image-full-fetch';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 
@@ -45,10 +46,33 @@
 		width?: number | null;
 		height?: number | null;
 		blurhash?: string | null;
+		hasShopListing?: boolean;
 	};
+
+	type AlbumImageDoc = {
+		id: number;
+		width?: number | null;
+		height?: number | null;
+		blurhash?: string | null;
+		medusaProductId?: string | null;
+		settings?: { isNsfw?: boolean };
+	};
+
+	function slotFromDoc(d: AlbumImageDoc): ImageSlot {
+		return {
+			id: d.id,
+			width: d.width,
+			height: d.height,
+			blurhash: d.blurhash,
+			isNsfw: d.settings?.isNsfw === true || albumIsNsfw,
+			hasShopListing: isShopListingPointer(d.medusaProductId)
+		};
+	}
 
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
+	/** When opening from the polaroid shop fold, land on the shop tab. */
+	let lightboxInitialTab = $state<'information' | 'shop'>('information');
 	/** File media id for the open lightbox; keeps index stable as async previews resolve */
 	let pinnedLightboxFileMediaId = $state<number | null>(null);
 	let galleryImageSlots = $state<ImageSlot[]>([]);
@@ -99,10 +123,19 @@
 					width: media.width,
 					height: media.height,
 					blurhash: media.blurhash,
-					isNsfw: media.isNsfw
+					isNsfw: media.isNsfw,
+					hasShopListing:
+						isShopListingPointer(media.commerce?.productId) || media.commerce?.forSale === true
 				},
 				...galleryImageSlots
 			];
+		} else if (
+			(isShopListingPointer(media.commerce?.productId) || media.commerce?.forSale === true) &&
+			galleryImageSlots.some((slot) => slot.id === galleryImageId && slot.hasShopListing !== true)
+		) {
+			galleryImageSlots = galleryImageSlots.map((slot) =>
+				slot.id === galleryImageId ? { ...slot, hasShopListing: true } : slot
+			);
 		}
 	}
 
@@ -130,12 +163,14 @@
 			: galleryImages.length
 	);
 
-	function openLightboxForItem(item: GalleryGridMedia) {
+	function openLightboxForItem(item: GalleryGridMedia, opts?: { shop?: boolean }) {
 		const idx = findGalleryImageIndex(galleryImageLinkId(item));
 		if (idx === -1) return;
 		suppressSelectedUrlOpen = false;
 		pinnedLightboxFileMediaId = galleryImageLinkId(item);
 		lightboxIndex = idx;
+		lightboxInitialTab = opts?.shop ? 'shop' : 'information';
+		prefetchLightboxAround(pinnedLightboxFileMediaId);
 		lightboxOpen = true;
 		setSelectedUrl(galleryImageLinkId(item));
 	}
@@ -144,6 +179,7 @@
 		suppressSelectedUrlOpen = true;
 		lightboxOpen = false;
 		pinnedLightboxFileMediaId = null;
+		lightboxInitialTab = 'information';
 		directLinkDismissed = true;
 		setSelectedUrl(null);
 	}
@@ -169,21 +205,7 @@
 
 			const payload = await res.json();
 			const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
-			const newSlots: ImageSlot[] = nextDocs.map(
-				(d: {
-					id: number;
-					width?: number | null;
-					height?: number | null;
-					blurhash?: string | null;
-					settings?: { isNsfw?: boolean };
-				}) => ({
-					id: d.id,
-					width: d.width,
-					height: d.height,
-					blurhash: d.blurhash,
-					isNsfw: d.settings?.isNsfw === true || albumIsNsfw
-				})
-			);
+			const newSlots: ImageSlot[] = nextDocs.map((d: AlbumImageDoc) => slotFromDoc(d));
 			galleryImageSlots = [...galleryImageSlots, ...newSlots];
 			loadedPage = Number(payload?.page ?? nextPage);
 			hasNextPage = Boolean(payload?.hasNextPage);
@@ -262,23 +284,30 @@
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 	}
 
+	function prefetchLightboxAround(galleryImageId: number) {
+		if (!browser) return;
+		const slotIdx = visibleSlots.findIndex((s) => s.id === galleryImageId);
+		const neighborIds =
+			slotIdx === -1
+				? []
+				: [visibleSlots[slotIdx - 1]?.id, visibleSlots[slotIdx + 1]?.id].filter(
+						(id): id is number => typeof id === 'number'
+					);
+
+		for (const id of [galleryImageId, ...neighborIds]) {
+			void fetchGalleryImageFullForLightbox(id, albumIsNsfw).then((media) => {
+				if (media) injectResolvedMedia(media);
+			});
+		}
+	}
+
 	/** While lightbox is open, upgrade current ±1 to full docs (commerce/exif) and keep next/prev ready. */
 	$effect(() => {
 		if (!browser || !lightboxOpen || pinnedLightboxFileMediaId == null) return;
 
 		const currentId = pinnedLightboxFileMediaId;
 		const slotIdx = visibleSlots.findIndex((s) => s.id === currentId);
-		if (slotIdx === -1) return;
-
-		const neighborIds = [visibleSlots[slotIdx - 1]?.id, visibleSlots[slotIdx + 1]?.id].filter(
-			(id): id is number => typeof id === 'number'
-		);
-
-		for (const id of [currentId, ...neighborIds]) {
-			void fetchGalleryImageFullForLightbox(id, albumIsNsfw).then((media) => {
-				if (media) injectResolvedMedia(media);
-			});
-		}
+		prefetchLightboxAround(currentId);
 
 		// Approaching the end of known slots — page in more ids for continuous next.
 		if (hasNextPage && !isLoadingMore && slotIdx >= visibleSlots.length - 2) {
@@ -290,13 +319,7 @@
 	// arbitrary data refreshes — that was wiping resolved polaroids.
 	$effect(() => {
 		const galleryId = data.gallery.id;
-		const docs = (data.gallery.images?.docs ?? []) as {
-			id: number;
-			width?: number | null;
-			height?: number | null;
-			blurhash?: string | null;
-			settings?: { isNsfw?: boolean };
-		}[];
+		const docs = (data.gallery.images?.docs ?? []) as AlbumImageDoc[];
 
 		if (syncedGalleryId === galleryId) return;
 
@@ -304,13 +327,7 @@
 		directLinkDismissed = false;
 		directLinkResolving = false;
 		directLinkFailed = false;
-		galleryImageSlots = docs.map((d) => ({
-			id: d.id,
-			width: d.width,
-			height: d.height,
-			blurhash: d.blurhash,
-			isNsfw: d.settings?.isNsfw === true || albumIsNsfw
-		}));
+		galleryImageSlots = docs.map((d) => slotFromDoc(d));
 		loadedPage = data.gallery.images?.page ?? 1;
 		hasNextPage = data.gallery.images?.hasNextPage ?? false;
 		slotMedia = {};
@@ -416,9 +433,11 @@
 							{albumIsNsfw}
 							{useProxy}
 							priority={idx < 6}
+							hasShopListing={slot.hasShopListing === true}
 							onResolved={(m) => handlePolaroidResolved(slot.id, m)}
 							onFetchEnd={() => markSlotFetchDone(slot.id)}
 							onClick={openLightboxForItem}
+							onShopClick={(item) => openLightboxForItem(item, { shop: true })}
 						/>
 					</div>
 				</div>
@@ -502,6 +521,10 @@
 				{hasNext}
 				gallery={data.gallery as unknown as GalleryAlbum}
 				{galleryImageId}
+				hasShopListing={galleryImageId != null
+					? (visibleSlots.find((s) => s.id === galleryImageId)?.hasShopListing ?? null)
+					: null}
+				initialSidebarTab={lightboxInitialTab}
 				{useProxy}
 				onMediaMetaUpdated={(patch) => {
 					if (galleryImageId == null) return;

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { addVariantToCart } from '$lib/commerce/add-to-cart';
+	import { cartUi } from '$lib/commerce/cart-session.svelte';
+	import { SHOP_CART_WINDOW } from '$lib/commerce/cart-session';
 	import { formatUsd } from '$lib/commerce/shop-offers';
 
 	interface Props {
@@ -12,6 +14,7 @@
 
 	let busy = $state(false);
 	let errorMsg = $state<string | null>(null);
+	let justAdded = $state(false);
 
 	const priceLabel = $derived(typeof priceUSD === 'number' ? formatUsd(priceUSD) : null);
 
@@ -19,11 +22,11 @@
 		if (busy) return;
 		busy = true;
 		errorMsg = null;
+		justAdded = false;
 		try {
-			const { redirectUrl } = await addVariantToCart(variantId);
-			if (redirectUrl) {
-				window.location.href = redirectUrl;
-			} else {
+			const summary = await addVariantToCart(variantId);
+			justAdded = true;
+			if (!summary.cartUrl) {
 				errorMsg = 'Added to cart, but the shop URL is not configured.';
 			}
 		} catch {
@@ -42,8 +45,14 @@
 		<p class="buy__price">{priceLabel}</p>
 	{/if}
 	<button class="buy__btn" type="button" onclick={addToCart} disabled={busy}>
-		{busy ? 'Adding…' : 'Add to cart'}
+		{busy ? 'Adding…' : justAdded ? 'Added to cart' : 'Add to cart'}
 	</button>
+	{#if cartUi.itemCount > 0 && cartUi.cartUrl}
+		<a class="buy__cart" href={cartUi.cartUrl} target={SHOP_CART_WINDOW} rel="noreferrer">
+			View cart · {cartUi.itemCount}
+			{cartUi.itemCount === 1 ? 'item' : 'items'}
+		</a>
+	{/if}
 	{#if errorMsg}
 		<p class="buy__error" role="alert">{errorMsg}</p>
 	{/if}
@@ -96,6 +105,17 @@
 	.buy__btn:disabled {
 		opacity: 0.6;
 		cursor: default;
+	}
+
+	.buy__cart {
+		color: var(--color-secondary);
+		font-size: calc(var(--fs-xs) * 0.92);
+		text-decoration: none;
+	}
+
+	.buy__cart:hover {
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
 	}
 
 	.buy__error {

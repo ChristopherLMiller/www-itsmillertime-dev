@@ -110,7 +110,9 @@
 		gallery,
 		galleryImageId,
 		useProxy,
-		onMediaMetaUpdated
+		onMediaMetaUpdated,
+		hasShopListing = null,
+		initialSidebarTab = 'information'
 	}: {
 		image: Media | undefined;
 		index: number;
@@ -127,6 +129,10 @@
 		gallery: GalleryAlbum;
 		galleryImageId?: number;
 		useProxy?: boolean;
+		/** CMS listing pointer; false skips shop “checking…” while full fetch runs */
+		hasShopListing?: boolean | null;
+		/** When the lightbox mounts from a shop-fold click, land on the shop tab. */
+		initialSidebarTab?: SidebarTab;
 		onMediaMetaUpdated?: (patch: { alt: string; caption: GalleryImage['caption'] | null }) => void;
 	} = $props();
 
@@ -610,7 +616,9 @@
 	// Commerce: Medusa is the source of truth. Products may have a digital
 	// download plus print variants (Paper × Format); list all of them.
 	const commerce = $derived((image as { commerce?: GalleryCommerce | null } | undefined)?.commerce);
-	const shopCatalogPending = $derived(image != null && !Object.hasOwn(image, 'commerce'));
+	const shopCatalogPending = $derived(
+		image != null && !Object.hasOwn(image, 'commerce') && hasShopListing !== false
+	);
 	const shopVariants = $derived.by((): GalleryCommerceVariant[] => {
 		const listed = (commerce?.variants ?? []).filter((v) => v.variantId);
 		if (listed.length > 0) return listed;
@@ -820,6 +828,12 @@
 	$effect(() => {
 		if (!sidebarTabs.includes(activeSidebarTab)) {
 			activeSidebarTab = 'information';
+		}
+	});
+
+	$effect.pre(() => {
+		if (initialSidebarTab === 'shop' && sidebarTabs.includes('shop')) {
+			activeSidebarTab = 'shop';
 		}
 	});
 

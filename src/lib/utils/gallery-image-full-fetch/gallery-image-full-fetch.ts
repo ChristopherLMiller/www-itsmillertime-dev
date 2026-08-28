@@ -1,4 +1,7 @@
-import { galleryImageDocToDisplayMedia, type GalleryGridMedia } from '$lib/utils/gallery-image-display';
+import {
+	galleryImageDocToDisplayMedia,
+	type GalleryGridMedia
+} from '$lib/utils/gallery-image-display';
 
 const inflightBasic = new Map<number, Promise<GalleryGridMedia | null>>();
 const inflightFull = new Map<number, Promise<GalleryGridMedia | null>>();
@@ -19,8 +22,8 @@ const queue: QueueItem[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlightBatches = 0;
 
-function scheduleFlush() {
-	if (queue.length >= BATCH_SIZE) {
+function scheduleFlush(immediate = false) {
+	if (immediate || queue.length >= BATCH_SIZE) {
 		if (flushTimer != null) {
 			clearTimeout(flushTimer);
 			flushTimer = null;
@@ -37,7 +40,10 @@ function scheduleFlush() {
 }
 
 async function flushBatches() {
-	while (queue.length > 0 && inFlightBatches < MAX_IN_FLIGHT_BATCHES) {
+	while (queue.length > 0) {
+		const nextIsFull = queue[0]?.data === 'full';
+		const cap = nextIsFull ? MAX_IN_FLIGHT_BATCHES + 1 : MAX_IN_FLIGHT_BATCHES;
+		if (inFlightBatches >= cap) break;
 		// Keep basic and full requests in separate HTTP batches.
 		const mode = queue[0]?.data ?? 'basic';
 		const batch: QueueItem[] = [];
@@ -94,8 +100,13 @@ function enqueue(
 	if (existing) return existing;
 
 	const promise = new Promise<GalleryGridMedia | null>((resolve) => {
-		queue.push({ id: galleryImageId, albumIsNsfw, data, resolve });
-		scheduleFlush();
+		const item: QueueItem = { id: galleryImageId, albumIsNsfw, data, resolve };
+		if (data === 'full') {
+			queue.unshift(item);
+		} else {
+			queue.push(item);
+		}
+		scheduleFlush(data === 'full');
 	}).finally(() => {
 		inflight.delete(galleryImageId);
 	});

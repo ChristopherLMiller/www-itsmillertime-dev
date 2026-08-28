@@ -42,6 +42,11 @@ export function parseCartAddBody(body: unknown): CartLine[] | null {
 	return null;
 }
 
+/** Total quantity across lines (clamped per line). */
+export function cartQuantity(lines: CartLine[]): number {
+	return lines.reduce((sum, line) => sum + clampQuantity(line.quantity), 0);
+}
+
 /** Combine line groups by variant, clamping each qty. */
 export function mergeCartLines(...groups: CartLine[][]): CartLine[] {
 	const byVariant = new Map<string, number>();

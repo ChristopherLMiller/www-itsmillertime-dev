@@ -1,6 +1,12 @@
-import { env as pub } from '$env/dynamic/public';
 import { json } from '@sveltejs/kit';
 import {
+	CART_COOKIE,
+	CART_COOKIE_MAX_AGE,
+	cartCookieDomain,
+	shopCartUrl
+} from '$lib/commerce/cart-http.server';
+import {
+	cartQuantity,
 	isPaymentSessionStuckError,
 	mergeCartLines,
 	parseCartAddBody,
@@ -18,34 +24,18 @@ import {
 import type { RequestHandler } from './$types';
 
 /**
- * Add a Medusa product variant to the shopper's cart, then hand off to the
- * storefront for checkout.
+ * Add a Medusa product variant to the shopper's cart.
  *
- * Cookie sharing is best-effort (`_medusa_cart_id` on `.itsmillertime.dev`).
+ * The site stays put after add. `redirectUrl` is for an explicit “View cart”
+ * handoff. Cookie sharing is best-effort (`_medusa_cart_id` on `.itsmillertime.dev`).
  * Local www → production shop cannot see that cookie, and the shop's own
- * host-only cart cookie will shadow it, so the redirect also passes `cart_id`.
+ * host-only cart cookie will shadow it, so the URL also passes `cart_id`.
  */
 
-const CART_COOKIE = '_medusa_cart_id';
-const THIRTY_DAYS = 60 * 60 * 24 * 30;
-
-async function addLines(
-	cfg: ReturnType<typeof getStoreConfig>,
-	cartId: string,
-	items: CartLine[]
-) {
+async function addLines(cfg: ReturnType<typeof getStoreConfig>, cartId: string, items: CartLine[]) {
 	for (const item of items) {
 		await addLineItem(cfg, cartId, item.variantId, item.quantity);
 	}
-}
-
-/** Share the cart cookie across subdomains in production; omit on localhost. */
-function cookieDomain(host: string): string | undefined {
-	const hostname = host.split(':')[0];
-	if (hostname.endsWith('itsmillertime.dev')) {
-		return '.itsmillertime.dev';
-	}
-	return undefined;
 }
 
 export const POST: RequestHandler = async ({ request, cookies, url }) => {
@@ -74,11 +64,12 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 	try {
 		let cartId = cookies.get(CART_COOKIE) ?? null;
 		let existing = cartId ? await getCart(cfg, cartId) : null;
+		const priorLines = existing && !cartIsCompleted(existing) ? linesFromStoreCart(existing) : [];
 
 		// Completed carts cannot take new items. Carts that already started
 		// checkout often cannot delete payment sessions, so adding a line 500s.
 		if (existing && (cartIsCompleted(existing) || cartHasPaymentSessions(existing))) {
-			const snapshot = cartIsCompleted(existing) ? [] : linesFromStoreCart(existing);
+			const snapshot = cartIsCompleted(existing) ? [] : priorLines;
 			cartId = await createCart(cfg);
 			await addLines(cfg, cartId, mergeCartLines(snapshot, items));
 		} else {
@@ -107,16 +98,16 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 			httpOnly: true,
 			sameSite: 'lax',
 			secure: url.protocol === 'https:',
-			domain: cookieDomain(url.host),
-			maxAge: THIRTY_DAYS
+			domain: cartCookieDomain(url.host),
+			maxAge: CART_COOKIE_MAX_AGE
 		});
 
-		const shopUrl = (pub.PUBLIC_SHOP_URL ?? '').replace(/\/$/, '');
-		const redirectUrl = shopUrl
-			? `${shopUrl}/cart?cart_id=${encodeURIComponent(cartId)}`
-			: null;
-
-		return json({ ok: true, cartId, redirectUrl });
+		return json({
+			ok: true,
+			cartId,
+			itemCount: cartQuantity(mergeCartLines(priorLines, items)),
+			redirectUrl: shopCartUrl(cartId)
+		});
 	} catch (err) {
 		console.error('[cart/add]', err);
 		return json({ error: 'Failed to add to cart' }, { status: 502 });

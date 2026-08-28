@@ -74,9 +74,9 @@
 		useProxy ||
 			Boolean(
 				currentImage &&
-					typeof currentImage === 'object' &&
-					'needsProxy' in currentImage &&
-					(currentImage as { needsProxy?: boolean }).needsProxy === true
+				typeof currentImage === 'object' &&
+				'needsProxy' in currentImage &&
+				(currentImage as { needsProxy?: boolean }).needsProxy === true
 			)
 	);
 
@@ -208,10 +208,7 @@
 	}
 
 	function mediaNeedsProxy(image: (Media & { needsProxy?: boolean }) | undefined): boolean {
-		return (
-			useProxy ||
-			Boolean(image && typeof image === 'object' && image.needsProxy === true)
-		);
+		return useProxy || Boolean(image && typeof image === 'object' && image.needsProxy === true);
 	}
 
 	function preloadByIndex(index: number) {
@@ -428,6 +425,7 @@
 	.lightbox {
 		position: fixed;
 		inset: 0;
+		top: var(--top-bar-offset);
 		z-index: 9999;
 		display: flex;
 		align-items: center;

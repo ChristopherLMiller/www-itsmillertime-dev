@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPaymentSessionStuckError, mergeCartLines, parseCartAddBody } from './cart-items';
+import {
+	cartQuantity,
+	isPaymentSessionStuckError,
+	mergeCartLines,
+	parseCartAddBody
+} from './cart-items';
 
 describe('parseCartAddBody', () => {
 	it('parses a batch of line items and drops qty 0', () => {
@@ -59,5 +64,16 @@ describe('isPaymentSessionStuckError', () => {
 			)
 		).toBe(true);
 		expect(isPaymentSessionStuckError(new Error('Failed to add to cart'))).toBe(false);
+	});
+});
+
+describe('cartQuantity', () => {
+	it('sums clamped line quantities', () => {
+		expect(
+			cartQuantity([
+				{ variantId: 'a', quantity: 2 },
+				{ variantId: 'b', quantity: 3 }
+			])
+		).toBe(5);
 	});
 });

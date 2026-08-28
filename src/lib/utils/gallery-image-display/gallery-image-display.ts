@@ -40,6 +40,11 @@ export type GalleryGridMedia = Media & {
 	commerce?: GalleryCommerce | null;
 };
 
+/** Payload `medusaProductId` pointer — a listing exists; Medusa is still source of truth for sale. */
+export function isShopListingPointer(medusaProductId: unknown): boolean {
+	return typeof medusaProductId === 'string' && medusaProductId.trim().length > 0;
+}
+
 function readCommerce(doc: object): GalleryCommerce | null | undefined {
 	if (!('commerce' in doc)) return undefined;
 	return (doc as { commerce?: GalleryCommerce | null }).commerce ?? null;

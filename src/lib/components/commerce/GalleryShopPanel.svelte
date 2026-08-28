@@ -1,7 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { addVariantsToCart } from '$lib/commerce/add-to-cart';
 	import { clampQuantity, MAX_CART_QTY, type CartLine } from '$lib/commerce/cart-items';
+	import { cartUi } from '$lib/commerce/cart-session.svelte';
+	import { shopEnvironment, hydrateShopEnvironment } from '$lib/commerce/ecommerce-environment.svelte';
+	import { SHOP_CART_WINDOW } from '$lib/commerce/cart-session';
 	import {
 		printCropCopy,
 		printDpiCopy,
@@ -39,6 +43,10 @@
 		pending?: boolean;
 	} = $props();
 
+	onMount(() => {
+		void hydrateShopEnvironment();
+	});
+
 	const groups = $derived(groupShopOffers(variants));
 
 	let qtyByVariant = $state<Record<string, number>>({});
@@ -47,6 +55,10 @@
 	let openFitId = $state<string | null>(null);
 	let busy = $state(false);
 	let errorMsg = $state<string | null>(null);
+	let addedForImageId = $state<number | null | 'none'>('none');
+	const justAdded = $derived(
+		addedForImageId !== 'none' && addedForImageId === (galleryImageId ?? null)
+	);
 
 	const selected = $derived.by((): CartLine[] => {
 		const lines: CartLine[] = [];
@@ -179,13 +191,14 @@
 		if (busy || selected.length === 0) return;
 		busy = true;
 		errorMsg = null;
+		addedForImageId = 'none';
 		try {
-			const { redirectUrl } = await addVariantsToCart(selected);
-			if (redirectUrl) {
-				window.location.href = redirectUrl;
-				return;
+			const summary = await addVariantsToCart(selected);
+			qtyByVariant = {};
+			addedForImageId = galleryImageId ?? null;
+			if (!summary.cartUrl) {
+				errorMsg = 'Added to cart, but the shop URL is not configured.';
 			}
-			errorMsg = 'Added to cart, but the shop URL is not configured.';
 		} catch {
 			errorMsg = 'Could not add to cart. Please try again.';
 		} finally {
@@ -246,9 +259,17 @@
 	}
 </script>
 
-{#if pending && groups.length === 0}
-	<div class="shop-panel shop-panel--request">
-		<p class="shop-panel__empty" role="status">Checking the shop…</p>
+<div class="shop-shell">
+	{#if shopEnvironment.isSandbox && shopEnvironment.warning}
+		<aside class="shop-panel__sandbox" role="status">
+			<p class="shop-panel__sandbox-kicker">Test mode</p>
+			<p class="shop-panel__sandbox-copy">{shopEnvironment.warning}</p>
+		</aside>
+	{/if}
+	{#if pending && groups.length === 0}
+	<div class="shop-panel shop-panel--request shop-panel--pending" role="status" aria-busy="true">
+		<span class="shop-panel__spinner" aria-hidden="true"></span>
+		<span class="shop-panel__sr-only">Loading shop listings</span>
 	</div>
 {:else if groups.length === 0}
 	<div class="shop-panel shop-panel--request">
@@ -546,6 +567,8 @@
 			<button class="shop-panel__add" type="submit" disabled={busy || selectedCount === 0}>
 				{#if busy}
 					Adding…
+				{:else if justAdded && selectedCount === 0}
+					Added to cart
 				{:else if selectedCount === 0}
 					Add to cart
 				{:else if selectedTotal != null}
@@ -556,21 +579,94 @@
 					{selectedCount === 1 ? 'item' : 'items'}
 				{/if}
 			</button>
+			{#if cartUi.itemCount > 0 && cartUi.cartUrl}
+				<a
+					class="shop-panel__cart"
+					href={cartUi.cartUrl}
+					target={SHOP_CART_WINDOW}
+					rel="noreferrer"
+				>
+					View cart · {cartUi.itemCount}
+					{cartUi.itemCount === 1 ? 'item' : 'items'}
+				</a>
+			{/if}
 			{#if errorMsg}
 				<p class="shop-panel__error" role="alert">{errorMsg}</p>
 			{/if}
 		</div>
 	</form>
-{/if}
+	{/if}
+</div>
 
 <style>
+	.shop-shell {
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+		min-width: 0;
+		min-height: 0;
+		height: 100%;
+	}
+
+	.shop-panel__sandbox {
+		position: relative;
+		isolation: isolate;
+		overflow: hidden;
+		margin: 0;
+		padding: 0.9rem 1rem 1rem;
+		border-radius: 8px;
+		background-color: #e8a54b;
+		background-image:
+			radial-gradient(ellipse at 20% 0%, rgba(255, 236, 190, 0.35), transparent 55%),
+			radial-gradient(ellipse at 90% 110%, rgba(120, 55, 8, 0.22), transparent 50%);
+		color: var(--color-primary-darkest);
+		flex-shrink: 0;
+	}
+
+	.shop-panel__sandbox::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background-image:
+			url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E"),
+			repeating-radial-gradient(circle at 1px 1px, rgba(60, 22, 0, 0.22) 0 0.55px, transparent 0.7px 2.6px);
+		background-size: 140px 140px, 3px 3px;
+		opacity: 0.55;
+		mix-blend-mode: multiply;
+		pointer-events: none;
+	}
+
+	.shop-panel__sandbox-kicker {
+		position: relative;
+		z-index: 1;
+		margin: 0 0 0.4rem;
+		font-family: var(--font-oswald);
+		font-size: 1.15rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		line-height: 1.2;
+		text-transform: uppercase;
+		text-align: center;
+	}
+
+	.shop-panel__sandbox-copy {
+		position: relative;
+		z-index: 1;
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.45;
+		font-weight: 500;
+		text-align: left;
+	}
+
 	.shop-panel {
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
 		min-width: 0;
 		min-height: 0;
-		height: 100%;
+		flex: 1 1 auto;
 		font-family: var(--font-roboto);
 		container-type: inline-size;
 	}
@@ -677,7 +773,7 @@
 		margin: 0.5rem 0 0.2rem;
 		font-size: 0.8125rem;
 		line-height: 1.45;
-		color: var(--color-tertiary);
+		color: var(--color-white-darker);
 	}
 
 	.shop-panel__sizes[hidden] {
@@ -760,6 +856,42 @@
 	.shop-panel--request {
 		gap: 0.9rem;
 		height: auto;
+	}
+
+	.shop-panel--pending {
+		position: relative;
+		align-items: center;
+		justify-content: center;
+		min-height: 5.5rem;
+		padding: 1.25rem 0;
+	}
+
+	.shop-panel__spinner {
+		width: 1.35rem;
+		height: 1.35rem;
+		border: 2px solid color-mix(in oklch, var(--color-tertiary) 35%, transparent);
+		border-top-color: var(--color-secondary);
+		border-radius: 50%;
+		animation: shop-panel-spin 0.7s linear infinite;
+		flex-shrink: 0;
+	}
+
+	.shop-panel__sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	@keyframes shop-panel-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.shop-panel__request {
@@ -1197,6 +1329,32 @@
 		cursor: default;
 	}
 
+	.shop-panel__cart {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		margin: 0;
+		padding: 0.45rem 0.75rem;
+		color: var(--color-secondary);
+		font-family: var(--font-oswald);
+		font-size: 0.75rem;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		text-decoration: none;
+	}
+
+	.shop-panel__cart:hover {
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	.shop-panel__cart:focus-visible {
+		outline: 2px solid var(--color-secondary);
+		outline-offset: 2px;
+	}
+
 	.shop-panel__error {
 		margin: 0;
 		font-size: 0.8125rem;
@@ -1256,6 +1414,14 @@
 		.shop-panel__line {
 			grid-template-columns: minmax(0, 1fr) max-content auto;
 			column-gap: 0.55rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.shop-panel__spinner {
+			animation: none;
+			border-top-color: var(--color-secondary);
+			opacity: 0.75;
 		}
 	}
 </style>
