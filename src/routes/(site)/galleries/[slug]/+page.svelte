@@ -29,7 +29,6 @@
 	const albumIsNsfw = $derived(data.gallery.settings?.isNsfw === true);
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
-	const isDirectLinkEntry = $derived(data.selectedGalleryImageId != null);
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
 			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
@@ -92,8 +91,9 @@
 	let directLinkFailed = $state(false);
 	/** Close can update `lightboxOpen` before `replaceState` clears `?selected=`. Ignore that stale URL. */
 	let suppressSelectedUrlOpen = false;
+	let loadMoreInFlight: Promise<boolean> | null = null;
 
-	const showAlbumChrome = $derived(!isDirectLinkEntry || directLinkDismissed);
+	const showAlbumChrome = $derived(!directLinkFailed);
 
 	function galleryImageLinkId(media: GalleryGridMedia): number {
 		return media.galleryImageId ?? media.id;
@@ -116,20 +116,7 @@
 		};
 		slotFetchDone = { ...slotFetchDone, [galleryImageId]: true };
 
-		if (!galleryImageSlots.some((slot) => slot.id === galleryImageId)) {
-			galleryImageSlots = [
-				{
-					id: galleryImageId,
-					width: media.width,
-					height: media.height,
-					blurhash: media.blurhash,
-					isNsfw: media.isNsfw,
-					hasShopListing:
-						isShopListingPointer(media.commerce?.productId) || media.commerce?.forSale === true
-				},
-				...galleryImageSlots
-			];
-		} else if (
+		if (
 			(isShopListingPointer(media.commerce?.productId) || media.commerce?.forSale === true) &&
 			galleryImageSlots.some((slot) => slot.id === galleryImageId && slot.hasShopListing !== true)
 		) {
@@ -157,6 +144,14 @@
 	const galleryImages = $derived(
 		visibleSlots.map((s) => slotMedia[s.id]).filter((m): m is GalleryGridMedia => m != null)
 	);
+	/** Lightbox can show a deep-linked photo before its album page has been slotted. */
+	const lightboxImages = $derived.by((): GalleryGridMedia[] => {
+		const pin = pinnedLightboxFileMediaId;
+		if (pin == null) return galleryImages;
+		if (galleryImages.some((m) => galleryImageLinkId(m) === pin)) return galleryImages;
+		const extra = slotMedia[pin];
+		return extra ? [extra] : galleryImages;
+	});
 	const totalImageCount = $derived(
 		typeof data.gallery.images?.totalDocs === 'number'
 			? data.gallery.images.totalDocs
@@ -191,28 +186,51 @@
 		setSelectedUrl(galleryImageLinkId(media));
 	}
 
-	async function loadNextImagePage() {
-		if (!browser || isLoadingMore || !hasNextPage) return;
-		isLoadingMore = true;
-		infiniteLoadError = null;
+	async function loadNextImagePage(): Promise<boolean> {
+		if (!browser || !hasNextPage) return false;
+		if (loadMoreInFlight) return loadMoreInFlight;
+
+		loadMoreInFlight = (async () => {
+			isLoadingMore = true;
+			infiniteLoadError = null;
+
+			try {
+				const nextPage = loadedPage + 1;
+				const res = await fetch(
+					`/api/gallery/albums/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
+				);
+				if (!res.ok) throw new Error(`Failed to load page ${nextPage}`);
+
+				const payload = await res.json();
+				const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
+				const seen = new Set(galleryImageSlots.map((slot) => slot.id));
+				const newSlots: ImageSlot[] = nextDocs
+					.map((d: AlbumImageDoc) => slotFromDoc(d))
+					.filter((slot) => !seen.has(slot.id));
+				galleryImageSlots = [...galleryImageSlots, ...newSlots];
+				loadedPage = Number(payload?.page ?? nextPage);
+				hasNextPage = Boolean(payload?.hasNextPage);
+				return true;
+			} catch {
+				infiniteLoadError = 'Could not load more images. Scroll again to retry.';
+				return false;
+			} finally {
+				isLoadingMore = false;
+			}
+		})();
 
 		try {
-			const nextPage = loadedPage + 1;
-			const res = await fetch(
-				`/api/gallery/albums/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
-			);
-			if (!res.ok) throw new Error(`Failed to load page ${nextPage}`);
-
-			const payload = await res.json();
-			const nextDocs = Array.isArray(payload?.docs) ? payload.docs : [];
-			const newSlots: ImageSlot[] = nextDocs.map((d: AlbumImageDoc) => slotFromDoc(d));
-			galleryImageSlots = [...galleryImageSlots, ...newSlots];
-			loadedPage = Number(payload?.page ?? nextPage);
-			hasNextPage = Boolean(payload?.hasNextPage);
-		} catch {
-			infiniteLoadError = 'Could not load more images. Scroll again to retry.';
+			return await loadMoreInFlight;
 		} finally {
-			isLoadingMore = false;
+			loadMoreInFlight = null;
+		}
+	}
+
+	async function ensureSlotLoaded(galleryImageId: number) {
+		while (!galleryImageSlots.some((slot) => slot.id === galleryImageId)) {
+			if (!hasNextPage) return;
+			const loaded = await loadNextImagePage();
+			if (!loaded) return;
 		}
 	}
 
@@ -231,16 +249,37 @@
 			}
 
 			injectResolvedMedia(media);
-			const idx = findGalleryImageIndex(selectedId);
-			if (idx === -1) return;
-
 			pinnedLightboxFileMediaId = selectedId;
-			lightboxIndex = idx;
 			lightboxOpen = true;
+			const idx = findGalleryImageIndex(selectedId);
+			if (idx !== -1) lightboxIndex = idx;
+			void ensureSlotLoaded(selectedId);
 		} finally {
 			directLinkResolving = false;
 		}
 	}
+
+	// Seed first page from server when the album changes only. Do not clear slotMedia on
+	// arbitrary data refreshes — that was wiping resolved polaroids. Runs before the
+	// ?selected= effect so deep links do not invent a slot at the front of the grid.
+	$effect(() => {
+		const galleryId = data.gallery.id;
+		const docs = (data.gallery.images?.docs ?? []) as AlbumImageDoc[];
+
+		if (syncedGalleryId === galleryId) return;
+
+		syncedGalleryId = galleryId;
+		directLinkDismissed = false;
+		directLinkResolving = false;
+		directLinkFailed = false;
+		galleryImageSlots = docs.map((d) => slotFromDoc(d));
+		loadedPage = data.gallery.images?.page ?? 1;
+		hasNextPage = data.gallery.images?.hasNextPage ?? false;
+		slotMedia = {};
+		slotFetchDone = {};
+		isLoadingMore = false;
+		infiniteLoadError = null;
+	});
 
 	// Open lightbox when ?selected= is in the URL. Use page.url (not load data) so
 	// replaceState on close clears the param and scroll/polaroid resolves cannot reopen it.
@@ -313,27 +352,6 @@
 		if (hasNextPage && !isLoadingMore && slotIdx >= visibleSlots.length - 2) {
 			void loadNextImagePage();
 		}
-	});
-
-	// Seed first page from server when the album changes only. Do not clear slotMedia on
-	// arbitrary data refreshes — that was wiping resolved polaroids.
-	$effect(() => {
-		const galleryId = data.gallery.id;
-		const docs = (data.gallery.images?.docs ?? []) as AlbumImageDoc[];
-
-		if (syncedGalleryId === galleryId) return;
-
-		syncedGalleryId = galleryId;
-		directLinkDismissed = false;
-		directLinkResolving = false;
-		directLinkFailed = false;
-		galleryImageSlots = docs.map((d) => slotFromDoc(d));
-		loadedPage = data.gallery.images?.page ?? 1;
-		hasNextPage = data.gallery.images?.hasNextPage ?? false;
-		slotMedia = {};
-		slotFetchDone = {};
-		isLoadingMore = false;
-		infiniteLoadError = null;
 	});
 
 	// Refresh album image ids when returning to the tab (e.g. after uploading elsewhere).
@@ -480,7 +498,7 @@
 
 {#if !shouldHideAlbum}
 	<Lightbox
-		images={galleryImages}
+		images={lightboxImages}
 		totalCount={totalImageCount}
 		initialIndex={lightboxIndex}
 		bind:open={lightboxOpen}
