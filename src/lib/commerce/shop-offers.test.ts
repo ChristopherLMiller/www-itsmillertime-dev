@@ -239,6 +239,36 @@ describe('groupShopOffers', () => {
 		]);
 		expect(groups[0]?.offers[0]?.title).toBe('4×6″ · 308gsm');
 	});
+
+	it('puts archival paper names on a subtitle so two C-Type 4×6 listings can be told apart', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-plain',
+				title: 'C-Type · 4x6',
+				paper: 'C-Type',
+				format: '4x6',
+				digital: false,
+				priceUSD: 12
+			},
+			{
+				variantId: 'v-archival',
+				title: 'C-Type · 4x6 · Archival Professional',
+				paper: 'C-Type',
+				format: '4×6″ · 240gsm',
+				digital: false,
+				priceUSD: 18
+			}
+		]);
+		expect(groups).toHaveLength(1);
+		expect(groups[0]?.offers.map((offer) => ({ title: offer.title, paperNote: offer.paperNote }))).toEqual([
+			{ title: '4×6″', paperNote: null },
+			{ title: '4×6″ · 240gsm', paperNote: 'Archival Professional' }
+		]);
+		expect(listingsForGroup(groups[0]!).map((listing) => listing.paperNote)).toEqual([
+			null,
+			'Archival Professional'
+		]);
+	});
 });
 
 describe('displaySizeLabel', () => {

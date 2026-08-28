@@ -5,6 +5,7 @@
 	import { navStore, type NavState } from '../../../stores/navigation';
 	import { filterNavItems } from '$lib/components/navigation/visibility';
 	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
+	import CartDock from '$lib/components/commerce/CartDock.svelte';
 
 	type MenuLink = {
 		title: string;
@@ -118,50 +119,71 @@
 		><strong>I</strong>ts<strong>M</strong>iller<strong>T</strong>ime</a
 	>
 
-	<div class="menu-tab-wrap">
-		<button
-			type="button"
-			class="menu-tab"
-			class:menu-tab--open={menuOpen}
-			aria-haspopup="dialog"
-			aria-expanded={menuOpen}
-			onclick={() => navStore.toggleDropdown('mobile')}
-		>
-			Menu
-		</button>
+	<div class="top-bar-element__end">
+		<CartDock />
+		<div class="menu-tab-wrap">
+			<button
+				type="button"
+				class="menu-tab"
+				class:menu-tab--open={menuOpen}
+				aria-haspopup="dialog"
+				aria-expanded={menuOpen}
+				onclick={() => navStore.toggleDropdown('mobile')}
+			>
+				Menu
+			</button>
 
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-		<dialog
-			bind:this={menuDialog}
-			class="menu-dialog"
-			aria-labelledby="menu-dialog-title"
-			onclick={handleDialogClick}
-			onclose={handleDialogClose}
-			oncancel={handleDialogClose}
-		>
-			<div class="menu-dialog__panel">
-				<div class="menu-dialog__header">
-					<h2 class="menu-dialog__title" id="menu-dialog-title">Menu</h2>
-					<button
-						type="button"
-						class="menu-dialog__close"
-						onclick={() => navStore.close()}
-						aria-label="Close menu"
-					>
-						Close
-					</button>
-				</div>
-				<nav class="menu-dialog__nav" aria-labelledby="menu-dialog-title">
-					{#if browseLinks.length > 0}
-						<section class="menu-dialog__section hide-on-desktop" aria-label="Site navigation">
-							<h2 class="menu-dialog__section-title">Browse</h2>
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<dialog
+				bind:this={menuDialog}
+				class="menu-dialog"
+				aria-labelledby="menu-dialog-title"
+				onclick={handleDialogClick}
+				onclose={handleDialogClose}
+				oncancel={handleDialogClose}
+			>
+				<div class="menu-dialog__panel">
+					<div class="menu-dialog__header">
+						<h2 class="menu-dialog__title" id="menu-dialog-title">Menu</h2>
+						<button
+							type="button"
+							class="menu-dialog__close"
+							onclick={() => navStore.close()}
+							aria-label="Close menu"
+						>
+							Close
+						</button>
+					</div>
+					<nav class="menu-dialog__nav" aria-labelledby="menu-dialog-title">
+						{#if browseLinks.length > 0}
+							<section class="menu-dialog__section hide-on-desktop" aria-label="Site navigation">
+								<h2 class="menu-dialog__section-title">Browse</h2>
+								<ul class="menu-dialog__links">
+									{#each browseLinks as link (link.href)}
+										<li>
+											<a
+												class="menu-dialog__link"
+												class:menu-dialog__link--active={isActive(link.href)}
+												href={link.href}
+											>
+												{link.title}
+											</a>
+										</li>
+									{/each}
+								</ul>
+							</section>
+						{/if}
+
+						<section class="menu-dialog__section" aria-label="Account">
+							<h2 class="menu-dialog__section-title">Account</h2>
 							<ul class="menu-dialog__links">
-								{#each browseLinks as link (link.href)}
+								{#each accountLinks as link (link.href)}
 									<li>
 										<a
 											class="menu-dialog__link"
 											class:menu-dialog__link--active={isActive(link.href)}
 											href={link.href}
+											data-sveltekit-reload={link.reload || undefined}
 										>
 											{link.title}
 										</a>
@@ -169,50 +191,11 @@
 								{/each}
 							</ul>
 						</section>
-					{/if}
 
-					<section class="menu-dialog__section" aria-label="Account">
-						<h2 class="menu-dialog__section-title">Account</h2>
-						<ul class="menu-dialog__links">
-							{#each accountLinks as link (link.href)}
-								<li>
-									<a
-										class="menu-dialog__link"
-										class:menu-dialog__link--active={isActive(link.href)}
-										href={link.href}
-										data-sveltekit-reload={link.reload || undefined}
-									>
-										{link.title}
-									</a>
-								</li>
-							{/each}
-						</ul>
-					</section>
-
-					<section class="menu-dialog__section" aria-label="Apps">
-						<h2 class="menu-dialog__section-title">Apps</h2>
-						<ul class="menu-dialog__links">
-							{#each appLinks as link (link.href)}
-								<li>
-									<a
-										class="menu-dialog__link"
-										href={link.href}
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<span>{link.title}</span>
-										<span class="menu-dialog__link-external" aria-hidden="true">↗</span>
-									</a>
-								</li>
-							{/each}
-						</ul>
-					</section>
-
-					{#if manageLinks.length > 0}
-						<section class="menu-dialog__section" aria-label="Site management">
-							<h2 class="menu-dialog__section-title">Manage</h2>
+						<section class="menu-dialog__section" aria-label="Apps">
+							<h2 class="menu-dialog__section-title">Apps</h2>
 							<ul class="menu-dialog__links">
-								{#each manageLinks as link (link.href)}
+								{#each appLinks as link (link.href)}
 									<li>
 										<a
 											class="menu-dialog__link"
@@ -227,10 +210,31 @@
 								{/each}
 							</ul>
 						</section>
-					{/if}
-				</nav>
-			</div>
-		</dialog>
+
+						{#if manageLinks.length > 0}
+							<section class="menu-dialog__section" aria-label="Site management">
+								<h2 class="menu-dialog__section-title">Manage</h2>
+								<ul class="menu-dialog__links">
+									{#each manageLinks as link (link.href)}
+										<li>
+											<a
+												class="menu-dialog__link"
+												href={link.href}
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<span>{link.title}</span>
+												<span class="menu-dialog__link-external" aria-hidden="true">↗</span>
+											</a>
+										</li>
+									{/each}
+								</ul>
+							</section>
+						{/if}
+					</nav>
+				</div>
+			</dialog>
+		</div>
 	</div>
 </div>
 
@@ -252,7 +256,7 @@
 		top: 0;
 		width: 100%;
 		height: var(--top-bar-offset);
-		z-index: 9999;
+		z-index: 10020;
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
@@ -272,6 +276,14 @@
 				font-weight: 400;
 			}
 		}
+	}
+
+	.top-bar-element__end {
+		display: flex;
+		align-items: flex-start;
+		flex-shrink: 0;
+		gap: 0.65rem;
+		padding-inline-end: 0.15rem;
 	}
 
 	.menu-tab-wrap {

@@ -5,9 +5,21 @@ import {
 	buildPlaceholderGalleryMedia,
 	displayableImageTitle,
 	galleryImageDocToDisplayMedia,
+	isShopListingPointer,
 	looksLikeCameraFilenameAlt,
-	mergeGalleryGridMedia
+	mergeGalleryGridMedia,
+	stampPrintPixelsAndRedactMaster
 } from './gallery-image-display';
+
+describe('isShopListingPointer', () => {
+	it('is true for a non-empty product id', () => {
+		expect(isShopListingPointer('prod_123')).toBe(true);
+		expect(isShopListingPointer('  ')).toBe(false);
+		expect(isShopListingPointer('')).toBe(false);
+		expect(isShopListingPointer(null)).toBe(false);
+		expect(isShopListingPointer(undefined)).toBe(false);
+	});
+});
 
 describe('altMatchesFilename / displayableImageTitle', () => {
 	it('matches filename with or without extension', () => {
@@ -185,6 +197,74 @@ describe('galleryImageDocToDisplayMedia', () => {
 		);
 		expect(m && 'commerce' in m).toBe(false);
 	});
+
+	it('uses populated master pixels for print DPI and omits the master file', () => {
+		const m = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/web.jpg',
+				alt: '',
+				width: 800,
+				height: 600,
+				updatedAt: '',
+				createdAt: '',
+				master: {
+					id: 9,
+					alt: '',
+					url: '/secret-master.jpg',
+					width: 5184,
+					height: 3456,
+					updatedAt: '',
+					createdAt: ''
+				}
+			},
+			false
+		);
+		expect(m?.width).toBe(800);
+		expect(m?.printWidth).toBe(5184);
+		expect(m?.printHeight).toBe(3456);
+		expect(m && 'master' in m).toBe(false);
+	});
+
+	it('reads stamped print pixels when the master relation was already redacted', () => {
+		const m = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/web.jpg',
+				alt: '',
+				width: 800,
+				height: 600,
+				printWidth: 5184,
+				printHeight: 3456,
+				updatedAt: '',
+				createdAt: ''
+			},
+			false
+		);
+		expect(m?.printWidth).toBe(5184);
+		expect(m?.printHeight).toBe(3456);
+	});
+
+	it('reads master pixels from a nested gallery-image doc', () => {
+		const m = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				master: { id: 9, alt: '', width: 4000, height: 3000, updatedAt: '', createdAt: '' },
+				image: {
+					id: 99,
+					url: '/nested.jpg',
+					alt: 'n',
+					width: 1,
+					height: 1,
+					updatedAt: '',
+					createdAt: ''
+				}
+			},
+			false
+		);
+		expect(m?.printWidth).toBe(4000);
+		expect(m?.printHeight).toBe(3000);
+	});
 });
 
 describe('mergeGalleryGridMedia', () => {
@@ -219,6 +299,38 @@ describe('mergeGalleryGridMedia', () => {
 		expect(merged.url).toBe('/basic.jpg');
 	});
 
+	it('keeps master print pixels when a polaroid basic payload has none', () => {
+		const existing = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/full.jpg',
+				alt: '',
+				width: 800,
+				height: 600,
+				updatedAt: '',
+				createdAt: '',
+				master: { id: 9, alt: '', width: 5184, height: 3456, updatedAt: '', createdAt: '' }
+			},
+			false
+		);
+		const incoming = galleryImageDocToDisplayMedia(
+			{
+				id: 5,
+				url: '/basic.jpg',
+				alt: '',
+				width: 200,
+				height: 150,
+				updatedAt: '',
+				createdAt: ''
+			},
+			false
+		);
+		const merged = mergeGalleryGridMedia(existing ?? undefined, incoming!);
+		expect(merged.printWidth).toBe(5184);
+		expect(merged.printHeight).toBe(3456);
+		expect(merged.url).toBe('/basic.jpg');
+	});
+
 	it('does not treat a missing commerce field as not-for-sale', () => {
 		const incoming = galleryImageDocToDisplayMedia(
 			{
@@ -234,5 +346,21 @@ describe('mergeGalleryGridMedia', () => {
 		);
 		const merged = mergeGalleryGridMedia(undefined, incoming!);
 		expect(merged && 'commerce' in merged).toBe(false);
+	});
+});
+
+describe('stampPrintPixelsAndRedactMaster', () => {
+	it('keeps master pixels and drops the master file from the payload', () => {
+		const doc: Record<string, unknown> = {
+			id: 5,
+			url: '/web.jpg',
+			width: 800,
+			height: 600,
+			master: { id: 9, url: '/secret-master.jpg', width: 5184, height: 3456 }
+		};
+		stampPrintPixelsAndRedactMaster(doc);
+		expect(doc.printWidth).toBe(5184);
+		expect(doc.printHeight).toBe(3456);
+		expect(doc).not.toHaveProperty('master');
 	});
 });

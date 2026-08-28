@@ -25,3 +25,5 @@
 </script>
 
 <Story name="CachedMedia" />
+
+<Story name="HasShopListing" args={{ hasShopListing: true }} />

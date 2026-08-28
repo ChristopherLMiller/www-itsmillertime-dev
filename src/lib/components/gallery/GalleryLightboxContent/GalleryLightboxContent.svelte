@@ -40,7 +40,8 @@
 	import {
 		displayableImageTitle,
 		type GalleryCommerce,
-		type GalleryCommerceVariant
+		type GalleryCommerceVariant,
+		type GalleryGridMedia
 	} from '$lib/utils/gallery-image-display';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
@@ -110,9 +111,11 @@
 		gallery,
 		galleryImageId,
 		useProxy,
-		onMediaMetaUpdated
+		onMediaMetaUpdated,
+		hasShopListing = null,
+		initialSidebarTab = 'information'
 	}: {
-		image: Media | undefined;
+		image: (Media & Pick<GalleryGridMedia, 'printWidth' | 'printHeight'>) | undefined;
 		index: number;
 		total: number;
 		imageSrc: string | null;
@@ -127,6 +130,10 @@
 		gallery: GalleryAlbum;
 		galleryImageId?: number;
 		useProxy?: boolean;
+		/** CMS listing pointer; false skips shop “checking…” while full fetch runs */
+		hasShopListing?: boolean | null;
+		/** When the lightbox mounts from a shop-fold click, land on the shop tab. */
+		initialSidebarTab?: SidebarTab;
 		onMediaMetaUpdated?: (patch: { alt: string; caption: GalleryImage['caption'] | null }) => void;
 	} = $props();
 
@@ -610,7 +617,9 @@
 	// Commerce: Medusa is the source of truth. Products may have a digital
 	// download plus print variants (Paper × Format); list all of them.
 	const commerce = $derived((image as { commerce?: GalleryCommerce | null } | undefined)?.commerce);
-	const shopCatalogPending = $derived(image != null && !Object.hasOwn(image, 'commerce'));
+	const shopCatalogPending = $derived(
+		image != null && !Object.hasOwn(image, 'commerce') && hasShopListing !== false
+	);
 	const shopVariants = $derived.by((): GalleryCommerceVariant[] => {
 		const listed = (commerce?.variants ?? []).filter((v) => v.variantId);
 		if (listed.length > 0) return listed;
@@ -820,6 +829,12 @@
 	$effect(() => {
 		if (!sidebarTabs.includes(activeSidebarTab)) {
 			activeSidebarTab = 'information';
+		}
+	});
+
+	$effect.pre(() => {
+		if (initialSidebarTab === 'shop' && sidebarTabs.includes('shop')) {
+			activeSidebarTab = 'shop';
 		}
 	});
 
@@ -1077,6 +1092,7 @@
 			id="gallery-lightbox-info"
 			class="gallery-lightbox__info"
 			class:gallery-lightbox__info--shop={shopCatalogOpen}
+			data-lightbox-no-swipe
 			aria-hidden={infoCollapsed}
 			inert={infoCollapsed || undefined}
 		>
@@ -1435,6 +1451,8 @@
 							albumSlug={gallery.slug}
 							imageWidth={image?.width}
 							imageHeight={image?.height}
+							printWidth={image?.printWidth}
+							printHeight={image?.printHeight}
 							imageSrc={shopCropPreviewSrc}
 						/>
 					{/key}
@@ -1819,6 +1837,7 @@
 		padding: 0.875rem 1rem;
 		overflow-x: hidden;
 		overflow-y: auto;
+		touch-action: pan-y;
 		background: var(--color-tertiary-darker);
 		border-left: none;
 		color: var(--color-white-lightest);

@@ -1,6 +1,6 @@
 import type { GalleryCommerceVariant } from '$lib/utils/gallery-image-display';
 import { displayFinish } from '$lib/medusa/store-product';
-import { formatPrintOfferLabel } from './print-size';
+import { extraPrintLabelParts, formatPrintOfferLabel } from './print-size';
 
 export type { PrintAspectFit } from './print-size';
 export { imageAspectRatioNormalized, printSizeAspectFit, printSizeAspectRatio } from './print-size';
@@ -9,6 +9,8 @@ export type ShopOffer = {
 	variantId: string;
 	/** Variant size label shown in the shop (e.g. "4×6″ · 240gsm"). */
 	title: string;
+	/** Human paper subtype from the variant title (e.g. "Archival Professional"). */
+	paperNote: string | null;
 	priceUSD: number | null;
 	/** True when the variant has a positive store price. */
 	purchasable: boolean;
@@ -33,6 +35,7 @@ export type ShopOfferGroup = {
 /** Unique size row in a paper group. Finishes for that size live on the offers. */
 export type ShopSizeListing = {
 	title: string;
+	paperNote: string | null;
 	offers: ShopOffer[];
 };
 
@@ -68,6 +71,8 @@ function compareOffers(a: ShopOffer, b: ShopOffer): number {
 	if (bySize !== 0) return bySize;
 	const byTitle = a.title.localeCompare(b.title);
 	if (byTitle !== 0) return byTitle;
+	const byNote = (a.paperNote ?? '').localeCompare(b.paperNote ?? '');
+	if (byNote !== 0) return byNote;
 	return (a.finish ?? '').localeCompare(b.finish ?? '');
 }
 
@@ -76,13 +81,42 @@ function paperGroupName(variant: GalleryCommerceVariant): string {
 	return paper || (variant.digital ? 'Digital' : 'Prints');
 }
 
+function skipPaperWords(variant: GalleryCommerceVariant): Set<string> {
+	const titlePrefix = (variant.title ?? '').split(/\s*[·•|]\s*/)[0]?.trim() ?? '';
+	return new Set(
+		[variant.paper, variant.finish, isSizeFirstLabel(titlePrefix) ? '' : titlePrefix]
+			.map((value) => value?.trim().toLowerCase())
+			.filter((value): value is string => Boolean(value))
+	);
+}
+
+function printLabelSource(variant: GalleryCommerceVariant): string {
+	return [printSizeSource(variant), variant.title, variant.format]
+		.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+		.join(' · ');
+}
+
 function sizeLabel(variant: GalleryCommerceVariant): string {
 	if (variant.digital) {
 		const format = (variant.format ?? '').trim();
 		if (!format || /digital/i.test(format)) return 'Download';
 		return formatPrintOfferLabel(format);
 	}
-	return formatPrintOfferLabel(printSizeSource(variant));
+	return formatPrintOfferLabel(printLabelSource(variant));
+}
+
+/** Extra paper name from title/format, minus the offering-set name and finish. */
+export function paperNoteForVariant(variant: GalleryCommerceVariant): string | null {
+	if (variant.digital) return null;
+	const skip = skipPaperWords(variant);
+	const kept = extraPrintLabelParts(printLabelSource(variant)).filter(
+		(part) => !skip.has(part.toLowerCase())
+	);
+	return kept.length > 0 ? kept.join(' · ') : null;
+}
+
+function listingIdentity(offer: Pick<ShopOffer, 'title' | 'paperNote'>): string {
+	return offer.paperNote ? `${offer.title}::${offer.paperNote}` : offer.title;
 }
 
 /**
@@ -103,6 +137,7 @@ export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGr
 		const offer: ShopOffer = {
 			variantId: variant.variantId,
 			title: sizeLabel(variant),
+			paperNote: paperNoteForVariant(variant),
 			priceUSD: priced ? variant.priceUSD! : null,
 			// Digital isn't a Prodigi quote — keep it buyable even if calculated_price
 			// is missing for a moment. Unpriced print finishes stay disabled.
@@ -138,15 +173,23 @@ export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGr
 	return groups;
 }
 
-/** One row per unique size, preserving size sort from the grouped offers. */
+/** One row per unique size + paper note, preserving size sort from the grouped offers. */
 export function listingsForGroup(group: ShopOfferGroup): ShopSizeListing[] {
-	const byTitle = new Map<string, ShopOffer[]>();
+	const byKey = new Map<string, ShopSizeListing>();
 	for (const offer of group.offers) {
-		const existing = byTitle.get(offer.title);
-		if (existing) existing.push(offer);
-		else byTitle.set(offer.title, [offer]);
+		const key = listingIdentity(offer);
+		const existing = byKey.get(key);
+		if (existing) {
+			existing.offers.push(offer);
+			continue;
+		}
+		byKey.set(key, {
+			title: offer.title,
+			paperNote: offer.paperNote,
+			offers: [offer]
+		});
 	}
-	return [...byTitle.entries()].map(([title, offers]) => ({ title, offers }));
+	return [...byKey.values()];
 }
 
 /**
@@ -181,7 +224,7 @@ export function defaultFinishForOffers(offers: ShopOffer[]): string {
 }
 
 export function uniqueSizeCount(offers: ShopOffer[]): number {
-	return new Set(offers.map((offer) => offer.title)).size;
+	return new Set(offers.map(listingIdentity)).size;
 }
 
 export function offerIsPurchasable(priceUSD: number | null | undefined): boolean {

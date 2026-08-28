@@ -64,6 +64,7 @@ export const GET: RequestHandler = async (event) => {
 						width: true,
 						height: true,
 						blurhash: true,
+						medusaProductId: true,
 						settings: {
 							isNsfw: true,
 							visibility: true,

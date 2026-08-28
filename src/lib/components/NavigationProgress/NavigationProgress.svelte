@@ -66,7 +66,7 @@
 			var(--color-secondary) 50%,
 			var(--color-primary) 100%
 		);
-		z-index: 10000;
+		z-index: 10030;
 		transition: width 0.2s ease-out;
 		box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 		background-size: 200% 100%;
@@ -80,10 +80,5 @@
 		100% {
 			background-position: 200% 0;
 		}
-	}
-
-	/* Ensure it appears above the top bar */
-	.navigation-progress {
-		z-index: 10001;
 	}
 </style>
