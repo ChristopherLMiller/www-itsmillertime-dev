@@ -1091,6 +1091,7 @@
 			id="gallery-lightbox-info"
 			class="gallery-lightbox__info"
 			class:gallery-lightbox__info--shop={shopCatalogOpen}
+			data-lightbox-no-swipe
 			aria-hidden={infoCollapsed}
 			inert={infoCollapsed || undefined}
 		>
@@ -1833,6 +1834,7 @@
 		padding: 0.875rem 1rem;
 		overflow-x: hidden;
 		overflow-y: auto;
+		touch-action: pan-y;
 		background: var(--color-tertiary-darker);
 		border-left: none;
 		color: var(--color-white-lightest);

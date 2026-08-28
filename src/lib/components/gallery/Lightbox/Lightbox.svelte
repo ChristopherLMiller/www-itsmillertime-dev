@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import type { Media } from '$lib/types/payload-types';
 	import { getMediaUrl, getLightboxPaintUrl, isVideoMedia } from '$lib/utils/media-url';
+	import { lightboxSwipeFromDelta, touchStartedInNoSwipe } from '$lib/utils/lightbox-swipe/lightbox-swipe';
 
 	export type LightboxContentArgs = {
 		image: Media | undefined;
@@ -51,12 +52,13 @@
 
 	let currentIndex = $state(0);
 	let isLoaded = $state(false);
-	let touchStartX = $state(0);
 	let isRequestingMore = $state(false);
 	/** Sticky photo id so densifying `images` (polaroids resolving) does not show the wrong slide. */
 	let viewedGalleryImageId = $state<number | null>(null);
 
-	const SWIPE_THRESHOLD = 50;
+	let touchStartX = 0;
+	let touchStartY = 0;
+	let ignoreLightboxSwipe = false;
 
 	function imageLinkId(
 		image: (Media & { galleryImageId?: number }) | undefined | null
@@ -191,20 +193,23 @@
 	}
 
 	function handleTouchStart(e: TouchEvent) {
-		touchStartX = e.touches[0].clientX;
+		const touch = e.touches[0];
+		if (!touch) return;
+		touchStartX = touch.clientX;
+		touchStartY = touch.clientY;
+		ignoreLightboxSwipe = touchStartedInNoSwipe(e.target);
 	}
 
 	function handleTouchEnd(e: TouchEvent) {
-		const touchEndX = e.changedTouches[0].clientX;
-		const deltaX = touchStartX - touchEndX;
-
-		if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
-
-		if (deltaX > 0) {
-			next();
-		} else {
-			previous();
-		}
+		if (ignoreLightboxSwipe) return;
+		const touch = e.changedTouches[0];
+		if (!touch) return;
+		const swipe = lightboxSwipeFromDelta(
+			touchStartX - touch.clientX,
+			touchStartY - touch.clientY
+		);
+		if (swipe === 'next') next();
+		else if (swipe === 'previous') previous();
 	}
 
 	function mediaNeedsProxy(image: (Media & { needsProxy?: boolean }) | undefined): boolean {
