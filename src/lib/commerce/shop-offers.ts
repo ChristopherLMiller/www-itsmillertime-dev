@@ -9,8 +9,8 @@ export type ShopOffer = {
 	variantId: string;
 	/** Variant size label shown in the shop (e.g. "4×6″ · 240gsm"). */
 	title: string;
-	/** Human paper subtype from the variant title (e.g. "Archival Professional"). */
-	paperNote: string | null;
+	/** Paper type chips from the SKU (lab code or extra name, not both). Empty if none is specified. */
+	paperChips: string[];
 	priceUSD: number | null;
 	/** True when the variant has a positive store price. */
 	purchasable: boolean;
@@ -35,7 +35,7 @@ export type ShopOfferGroup = {
 /** Unique size row in a paper group. Finishes for that size live on the offers. */
 export type ShopSizeListing = {
 	title: string;
-	paperNote: string | null;
+	paperChips: string[];
 	offers: ShopOffer[];
 };
 
@@ -43,6 +43,7 @@ export const DIGITAL_DOWNLOAD_DESCRIPTION =
 	"After checkout, you'll receive an email containing the image(s) you purchased.";
 
 const SIZE_PATTERN = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i;
+const PAPER_CODE = /^(hpr|lpp|gpr|gpp)$/i;
 
 export function displaySizeLabel(value: string | null | undefined): string {
 	return formatPrintOfferLabel(value);
@@ -71,8 +72,8 @@ function compareOffers(a: ShopOffer, b: ShopOffer): number {
 	if (bySize !== 0) return bySize;
 	const byTitle = a.title.localeCompare(b.title);
 	if (byTitle !== 0) return byTitle;
-	const byNote = (a.paperNote ?? '').localeCompare(b.paperNote ?? '');
-	if (byNote !== 0) return byNote;
+	const byChip = a.paperChips.join('·').localeCompare(b.paperChips.join('·'));
+	if (byChip !== 0) return byChip;
 	return (a.finish ?? '').localeCompare(b.finish ?? '');
 }
 
@@ -81,10 +82,9 @@ function paperGroupName(variant: GalleryCommerceVariant): string {
 	return paper || (variant.digital ? 'Digital' : 'Prints');
 }
 
-function skipPaperWords(variant: GalleryCommerceVariant): Set<string> {
-	const titlePrefix = (variant.title ?? '').split(/\s*[·•|]\s*/)[0]?.trim() ?? '';
+function skipPaperChipTokens(variant: GalleryCommerceVariant): Set<string> {
 	return new Set(
-		[variant.paper, variant.finish, isSizeFirstLabel(titlePrefix) ? '' : titlePrefix]
+		[variant.finish, variant.paper]
 			.map((value) => value?.trim().toLowerCase())
 			.filter((value): value is string => Boolean(value))
 	);
@@ -105,18 +105,30 @@ function sizeLabel(variant: GalleryCommerceVariant): string {
 	return formatPrintOfferLabel(printLabelSource(variant));
 }
 
-/** Extra paper name from title/format, minus the offering-set name and finish. */
-export function paperNoteForVariant(variant: GalleryCommerceVariant): string | null {
-	if (variant.digital) return null;
-	const skip = skipPaperWords(variant);
-	const kept = extraPrintLabelParts(printLabelSource(variant)).filter(
-		(part) => !skip.has(part.toLowerCase())
-	);
-	return kept.length > 0 ? kept.join(' · ') : null;
+/**
+ * One paper-type chip from the SKU: the lab code when present (LPP, HPR),
+ * otherwise a human name that is not the offering-set heading. Empty if
+ * nothing extra is specified.
+ */
+export function paperChipsForVariant(variant: GalleryCommerceVariant): string[] {
+	if (variant.digital) return [];
+	const skip = skipPaperChipTokens(variant);
+	const names: string[] = [];
+	const codes: string[] = [];
+	const seen = new Set<string>();
+	for (const part of extraPrintLabelParts(printLabelSource(variant))) {
+		const key = part.toLowerCase();
+		if (skip.has(key) || seen.has(key)) continue;
+		seen.add(key);
+		if (PAPER_CODE.test(part)) codes.push(part.toUpperCase());
+		else names.push(part);
+	}
+	return codes.length > 0 ? codes : names;
 }
 
-function listingIdentity(offer: Pick<ShopOffer, 'title' | 'paperNote'>): string {
-	return offer.paperNote ? `${offer.title}::${offer.paperNote}` : offer.title;
+function listingIdentity(offer: Pick<ShopOffer, 'title' | 'paperChips'>): string {
+	if (offer.paperChips.length === 0) return offer.title;
+	return `${offer.title}::${offer.paperChips.join('·')}`;
 }
 
 /**
@@ -137,7 +149,7 @@ export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGr
 		const offer: ShopOffer = {
 			variantId: variant.variantId,
 			title: sizeLabel(variant),
-			paperNote: paperNoteForVariant(variant),
+			paperChips: paperChipsForVariant(variant),
 			priceUSD: priced ? variant.priceUSD! : null,
 			// Digital isn't a Prodigi quote — keep it buyable even if calculated_price
 			// is missing for a moment. Unpriced print finishes stay disabled.
@@ -173,7 +185,7 @@ export function groupShopOffers(variants: GalleryCommerceVariant[]): ShopOfferGr
 	return groups;
 }
 
-/** One row per unique size + paper note, preserving size sort from the grouped offers. */
+/** One row per unique size + paper chips, preserving size sort from the grouped offers. */
 export function listingsForGroup(group: ShopOfferGroup): ShopSizeListing[] {
 	const byKey = new Map<string, ShopSizeListing>();
 	for (const offer of group.offers) {
@@ -185,7 +197,7 @@ export function listingsForGroup(group: ShopOfferGroup): ShopSizeListing[] {
 		}
 		byKey.set(key, {
 			title: offer.title,
-			paperNote: offer.paperNote,
+			paperChips: offer.paperChips,
 			offers: [offer]
 		});
 	}
@@ -233,4 +245,125 @@ export function offerIsPurchasable(priceUSD: number | null | undefined): boolean
 
 export function formatUsd(amount: number): string {
 	return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+}
+
+export type ShopGlossaryChipKind = 'paper' | 'crop' | 'low';
+
+export type ShopGlossaryItem = {
+	term: string;
+	meaning: string;
+	chipKind?: ShopGlossaryChipKind;
+};
+
+export type ShopGlossaryEntry = {
+	term: string;
+	meaning: string;
+	items?: ShopGlossaryItem[];
+};
+
+const GSM_IN_TITLE = /\d+\s*gsm/i;
+
+const FINISH_COPY: Record<string, string> = {
+	gloss: 'Shiny coating with punchy colour. Shows reflections more easily.',
+	lustre: 'Soft sheen — less glare than gloss, still rich colour.',
+	matte: 'No sheen, so it reads well in bright rooms. Colour is a little softer.',
+	metallic: 'Pearlescent surface that adds shimmer, especially in highlights.',
+	standard: 'The paper’s default surface when no special coating is listed.'
+};
+
+const PAPER_CODE_COPY: Record<string, string> = {
+	lpp: 'Lustre photo paper — the lab’s photographic stock.',
+	hpr: 'Hahnemühle Photo Rag — a heavy cotton fine-art rag.',
+	gpp: 'Gloss photo paper.',
+	gpr: 'Gloss photo rag.'
+};
+
+export function paperChipLabel(chip: string): string {
+	return PAPER_CODE_COPY[chip.toLowerCase()] ?? chip;
+}
+
+function collectFinishes(groups: ShopOfferGroup[]): string[] {
+	const named = new Set<string>();
+	let hasStandard = false;
+	for (const group of groups) {
+		if (group.kind !== 'print') continue;
+		for (const listing of listingsForGroup(group)) {
+			const options = finishOptionsForOffers(listing.offers);
+			if (options.length === 0) continue;
+			for (const option of options) {
+				if (!option.value) hasStandard = true;
+				else named.add(option.label);
+			}
+		}
+	}
+	const labels = [...named].sort((a, b) => a.localeCompare(b));
+	if (hasStandard) labels.push('Standard');
+	return labels;
+}
+
+function examplePaperChip(groups: ShopOfferGroup[]): string | null {
+	for (const group of groups) {
+		if (group.kind !== 'print') continue;
+		for (const offer of group.offers) {
+			if (offer.paperChips[0]) return offer.paperChips[0];
+		}
+	}
+	return null;
+}
+
+/** Terms to explain above the offering sets, based on what this listing actually has. */
+export function shopGlossary(groups: ShopOfferGroup[]): ShopGlossaryEntry[] {
+	const printGroups = groups.filter((group) => group.kind === 'print');
+	if (printGroups.length === 0) return [];
+
+	const entries: ShopGlossaryEntry[] = [];
+
+	const finishes = collectFinishes(printGroups);
+	if (finishes.length > 0) {
+		entries.push({
+			term: 'Finish',
+			meaning: 'The coating on the print. Choose one from the Finish menu after the size.',
+			items: finishes.map((name) => ({
+				term: name,
+				meaning: FINISH_COPY[name.toLowerCase()] ?? 'A surface option for this paper.'
+			}))
+		});
+	}
+
+	if (printGroups.some((group) => group.offers.some((offer) => GSM_IN_TITLE.test(offer.title)))) {
+		entries.push({
+			term: 'gsm',
+			meaning:
+				'Paper weight in grams per square metre. Higher is thicker and stiffer. 240gsm is typical photo paper; 308gsm is a heavier fine-art sheet.'
+		});
+	}
+
+	const paperChip = examplePaperChip(printGroups);
+	const chipItems: ShopGlossaryItem[] = [];
+	if (paperChip) {
+		chipItems.push({
+			term: paperChip,
+			meaning: 'Extra paper type or grade for that size, when the SKU specifies one.',
+			chipKind: 'paper'
+		});
+	}
+	chipItems.push(
+		{
+			term: 'Crop',
+			meaning: 'This size will trim the photo. Tap for a preview.',
+			chipKind: 'crop'
+		},
+		{
+			term: 'Low res',
+			meaning: 'The file is below the recommended print resolution. Tap for a preview.',
+			chipKind: 'low'
+		}
+	);
+	entries.push({
+		term: 'Chips',
+		meaning: 'These labels can appear next to a size.',
+		items: chipItems
+	});
+
+	return entries;
 }

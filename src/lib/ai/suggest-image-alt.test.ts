@@ -179,12 +179,17 @@ describe('suggestImageAlt', () => {
 		const body = JSON.parse(String(init.body)) as {
 			model: string;
 			temperature?: number;
+			system?: string;
 			messages: {
 				content: { type: string; text?: string; source?: { media_type: string; data: string } }[];
 			}[];
 		};
 		expect(body.model).toBe('claude-sonnet-5');
 		expect(body.temperature).toBeUndefined();
+		expect(body.system).toMatch(/aircraft/i);
+		expect(body.system).toMatch(/operator, performer/i);
+		expect(body.system).toMatch(/plant/i);
+		expect(body.system).toMatch(/do not name spectators/i);
 		expect(body.messages[0].content[0].source?.media_type).toBe('image/jpeg');
 		expect(body.messages[0].content[0].source?.data?.length).toBeGreaterThan(10);
 		expect(body.messages[0].content[1].text).toContain('Goshen Airshow');

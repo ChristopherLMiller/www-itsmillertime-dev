@@ -1930,9 +1930,11 @@
 		overflow: hidden;
 	}
 
+	.gallery-lightbox__tab-panel--shop :global(.shop-shell),
 	.gallery-lightbox__tab-panel--shop :global(.shop-panel) {
 		flex: 1 1 auto;
 		min-height: 0;
+		height: 100%;
 	}
 
 	@keyframes infoPanelFade {
