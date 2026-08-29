@@ -4,8 +4,6 @@ export const PRODIGI_RECOMMENDED_DPI = 300;
 const SIZE_PATTERN = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i;
 const SIZE_WITH_UNIT = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(″|"|''|in(?:ch(?:es)?)?|cm)?/i;
 const GSM_PATTERN = /(\d+)\s*gsm/i;
-const PAPER_CODE = /^(hpr|lpp|gpr|gpp)$/i;
-const SHORT_PAPER_TOKEN = /^[A-Z]{2,4}$/;
 
 /** Near-exact print (e.g. 4×6 on a 3:2 photo). */
 const MATCH_TOLERANCE = 0.03;
@@ -97,17 +95,13 @@ function isSizeOrWeightToken(token: string): boolean {
 	return SIZE_PATTERN.test(token) || GSM_PATTERN.test(token);
 }
 
-function isProdigiPaperCode(token: string): boolean {
-	return PAPER_CODE.test(token) || (SHORT_PAPER_TOKEN.test(token) && !GSM_PATTERN.test(token));
-}
-
-/** Human paper names from a label (e.g. "Archival Professional"), not HPR/LPP codes. */
+/** Paper names and codes from a label (e.g. "Archival Professional", "LPP"), not size or gsm. */
 export function extraPrintLabelParts(value: string): string[] {
 	const parts: string[] = [];
 	const seen = new Set<string>();
 	for (const raw of value.split(/\s*[·•|]\s*/)) {
 		const token = raw.trim();
-		if (!token || isSizeOrWeightToken(token) || isProdigiPaperCode(token)) continue;
+		if (!token || isSizeOrWeightToken(token)) continue;
 		const key = token.toLowerCase();
 		if (seen.has(key)) continue;
 		seen.add(key);

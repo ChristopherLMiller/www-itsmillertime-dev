@@ -9,6 +9,8 @@ import {
 	listingsForGroup,
 	offerForFinish,
 	printSizeAspectFit,
+	shopGlossary,
+	paperChipsForVariant,
 	uniqueSizeCount
 } from './shop-offers';
 
@@ -57,6 +59,8 @@ describe('groupShopOffers', () => {
 		expect(groups[0]?.offers.map((o) => o.title)).toEqual(['Download']);
 		expect(groups[1]?.offers.map((o) => o.title)).toEqual(['8×10″']);
 		expect(groups[2]?.offers.map((o) => o.title)).toEqual(['8×10″', '11×14″']);
+		expect(groups[1]?.offers[0]?.paperChips).toEqual([]);
+		expect(groups[2]?.offers.map((o) => o.paperChips)).toEqual([[], []]);
 		expect(groups[2]?.offers.every((o) => o.purchasable)).toBe(true);
 	});
 
@@ -130,6 +134,7 @@ describe('groupShopOffers', () => {
 		]);
 		expect(finishOptionsForOffers(groups[0]!.offers)).toEqual([{ value: 'Gloss', label: 'Gloss' }]);
 		expect(groups[0]?.offers[0]?.finish).toBe('Gloss');
+		expect(groups[0]?.offers[0]?.paperChips).toEqual(['C-Type']);
 	});
 
 	it('gives each size its own finish options including a single metallic listing', () => {
@@ -224,6 +229,7 @@ describe('groupShopOffers', () => {
 			}
 		]);
 		expect(groups[0]?.offers[0]?.title).toBe('4×6″ · 240gsm');
+		expect(groups[0]?.offers[0]?.paperChips).toEqual(['LPP']);
 	});
 
 	it('uses the Format option when that is the saved size label', () => {
@@ -238,9 +244,10 @@ describe('groupShopOffers', () => {
 			}
 		]);
 		expect(groups[0]?.offers[0]?.title).toBe('4×6″ · 308gsm');
+		expect(groups[0]?.offers[0]?.paperChips).toEqual(['HPR']);
 	});
 
-	it('puts archival paper names on a subtitle so two C-Type 4×6 listings can be told apart', () => {
+	it('puts specified paper types on chips and omits a chip when none is on the SKU', () => {
 		const groups = groupShopOffers([
 			{
 				variantId: 'v-plain',
@@ -257,15 +264,45 @@ describe('groupShopOffers', () => {
 				format: '4×6″ · 240gsm',
 				digital: false,
 				priceUSD: 18
+			},
+			{
+				variantId: 'v-bare',
+				title: '8x10',
+				paper: 'C-Type',
+				format: '8x10',
+				digital: false,
+				priceUSD: 20
 			}
 		]);
 		expect(groups).toHaveLength(1);
-		expect(groups[0]?.offers.map((offer) => ({ title: offer.title, paperNote: offer.paperNote }))).toEqual([
-			{ title: '4×6″', paperNote: null },
-			{ title: '4×6″ · 240gsm', paperNote: 'Archival Professional' }
+		expect(
+			groups[0]?.offers.map((offer) => ({ title: offer.title, paperChips: offer.paperChips }))
+		).toEqual([
+			{ title: '4×6″', paperChips: [] },
+			{ title: '4×6″ · 240gsm', paperChips: ['Archival Professional'] },
+			{ title: '8×10″', paperChips: [] }
 		]);
-		expect(listingsForGroup(groups[0]!).map((listing) => listing.paperNote)).toEqual([
-			null,
+		expect(listingsForGroup(groups[0]!).map((listing) => listing.paperChips)).toEqual([
+			[],
+			['Archival Professional'],
+			[]
+		]);
+	});
+
+	it('puts every paper type from a size-first title on chips', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-archival',
+				title: '4×6″ · C-Type · silver halide · Archival Professional',
+				paper: 'Continuous-tone silver halide photo print',
+				format: '4x6',
+				digital: false,
+				priceUSD: 18
+			}
+		]);
+		expect(groups[0]?.offers[0]?.paperChips).toEqual([
+			'C-Type',
+			'silver halide',
 			'Archival Professional'
 		]);
 	});
@@ -315,5 +352,119 @@ describe('printSizeAspectFit', () => {
 	it('does not mark digital or unparseable labels', () => {
 		expect(printSizeAspectFit('Download', landscape3x2.w, landscape3x2.h)).toBe('match');
 		expect(printSizeAspectFit('8×10', null, null)).toBe('match');
+	});
+});
+
+describe('shopGlossary', () => {
+	it('returns nothing for digital-only listings', () => {
+		expect(
+			shopGlossary(
+				groupShopOffers([
+					{ variantId: 'v-dig', title: 'Digital Download', digital: true, priceUSD: 15 }
+				])
+			)
+		).toEqual([]);
+	});
+
+	it('explains finish, paper weight, and chips without lab codes', () => {
+		const groups = groupShopOffers([
+			{
+				variantId: 'v-lpp',
+				title: '4×6″ · LPP · 240gsm',
+				paper: 'Lustre',
+				format: '4x6',
+				finish: 'Gloss',
+				digital: false,
+				priceUSD: 12
+			},
+			{
+				variantId: 'v-hpr',
+				title: 'Photo Rag · 8x10',
+				paper: 'Photo Rag',
+				format: '8×10″ · HPR · 308gsm',
+				digital: false,
+				priceUSD: 25
+			}
+		]);
+		const glossary = shopGlossary(groups);
+		expect(glossary.map((entry) => entry.term)).toEqual(['Finish', 'gsm', 'Chips']);
+		expect(glossary.find((entry) => entry.term === 'Finish')?.items?.map((item) => item.term)).toEqual(
+			['Gloss']
+		);
+		expect(glossary.find((entry) => entry.term === 'gsm')?.meaning).toMatch(/grams per square metre/i);
+		expect(
+			glossary.find((entry) => entry.term === 'Chips')?.items?.map((item) => ({
+				term: item.term,
+				chipKind: item.chipKind
+			}))
+		).toEqual([
+			{ term: 'LPP', chipKind: 'paper' },
+			{ term: 'Crop', chipKind: 'crop' },
+			{ term: 'Low res', chipKind: 'low' }
+		]);
+	});
+
+	it('explains chips even when a print listing has no finish picker or gsm', () => {
+		const glossary = shopGlossary(
+			groupShopOffers([
+				{
+					variantId: 'v-plain',
+					title: '8x10',
+					paper: 'C-Type',
+					format: '8x10',
+					digital: false,
+					priceUSD: 20
+				}
+			])
+		);
+		expect(glossary.map((entry) => entry.term)).toEqual(['Chips']);
+		expect(
+			glossary[0]?.items?.map((item) => ({ term: item.term, chipKind: item.chipKind }))
+		).toEqual([
+			{ term: 'Crop', chipKind: 'crop' },
+			{ term: 'Low res', chipKind: 'low' }
+		]);
+	});
+});
+
+describe('paperChipsForVariant', () => {
+	it('uses every specified paper type as a chip and skips finish, size, and weight', () => {
+		expect(
+			paperChipsForVariant({
+				variantId: 'v-lpp',
+				title: '4×6″ · LPP · 240gsm',
+				paper: 'Lustre',
+				format: '4x6',
+				digital: false
+			})
+		).toEqual(['LPP']);
+		expect(
+			paperChipsForVariant({
+				variantId: 'v-ctype',
+				title: 'C-Type · 4x6 · Archival Professional · Gloss',
+				paper: 'C-Type',
+				finish: 'Gloss',
+				format: '4x6',
+				digital: false
+			})
+		).toEqual(['Archival Professional']);
+		expect(
+			paperChipsForVariant({
+				variantId: 'v-hpr',
+				title: 'Photo Rag · 4x6',
+				paper: 'Photo Rag',
+				format: '4×6″ · HPR · 308gsm',
+				digital: false
+			})
+		).toEqual(['HPR']);
+		expect(
+			paperChipsForVariant({
+				variantId: 'v-bare',
+				title: '8x10',
+				paper: 'Photo Rag',
+				format: '8x10',
+				digital: false
+			})
+		).toEqual([]);
 	});
 });

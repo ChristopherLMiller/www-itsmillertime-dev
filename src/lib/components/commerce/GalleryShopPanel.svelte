@@ -19,6 +19,8 @@
 		groupShopOffers,
 		listingsForGroup,
 		offerForFinish,
+		paperChipLabel,
+		shopGlossary,
 		uniqueSizeCount,
 		type ShopOffer,
 		type ShopOfferGroup,
@@ -53,6 +55,7 @@
 	});
 
 	const groups = $derived(groupShopOffers(variants));
+	const glossary = $derived(shopGlossary(groups));
 
 	let qtyByVariant = $state<Record<string, number>>({});
 	let openGroups = $state<Record<string, boolean>>({});
@@ -105,16 +108,19 @@
 		return `shop-qty-${variantId.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
 	}
 
-	type ListingRef = Pick<ShopSizeListing, 'title' | 'paperNote'>;
+	type ListingRef = Pick<ShopSizeListing, 'title' | 'paperChips'>;
 
 	function listingKey(groupId: string, listing: ListingRef): string {
-		return listing.paperNote
-			? `${groupId}::${listing.title}::${listing.paperNote}`
-			: `${groupId}::${listing.title}`;
+		const chips = listing.paperChips.join('·');
+		return chips ? `${groupId}::${listing.title}::${chips}` : `${groupId}::${listing.title}`;
 	}
 
 	function finishId(groupId: string, listing: ListingRef): string {
 		return `shop-finish-${groupDomId(listingKey(groupId, listing))}`;
+	}
+
+	function sizeLineText(title: string, hasFinish: boolean): string {
+		return hasFinish ? `${title} · Finish` : title;
 	}
 
 	function selectedFinish(groupId: string, listing: ListingRef, offers: ShopOffer[]): string {
@@ -139,8 +145,8 @@
 
 	function offerQtyContext(group: ShopOfferGroup, offer: ShopOffer): string {
 		const finish = offer.finish ? ` ${offer.finish}` : '';
-		const note = offer.paperNote ? ` ${offer.paperNote}` : '';
-		return `${group.name}${finish} ${offer.title}${note}`;
+		const chips = offer.paperChips.length > 0 ? ` ${offer.paperChips.join(' ')}` : '';
+		return `${group.name}${finish} ${offer.title}${chips}`;
 	}
 
 	function groupQty(group: ShopOfferGroup): number {
@@ -270,19 +276,23 @@
 </script>
 
 <div class="shop-shell">
-	{#if shopEnvironment.isSandbox && shopEnvironment.warning}
-		<aside class="shop-panel__sandbox" role="status">
-			<p class="shop-panel__sandbox-kicker">Test mode</p>
-			<p class="shop-panel__sandbox-copy">{shopEnvironment.warning}</p>
-		</aside>
-	{/if}
+	{#snippet sandboxBanner()}
+		{#if shopEnvironment.isSandbox && shopEnvironment.warning}
+			<aside class="shop-panel__sandbox" role="status">
+				<p class="shop-panel__sandbox-kicker">Test mode</p>
+				<p class="shop-panel__sandbox-copy">{shopEnvironment.warning}</p>
+			</aside>
+		{/if}
+	{/snippet}
 	{#if pending && groups.length === 0}
 	<div class="shop-panel shop-panel--request shop-panel--pending" role="status" aria-busy="true">
+		{@render sandboxBanner()}
 		<span class="shop-panel__spinner" aria-hidden="true"></span>
 		<span class="shop-panel__sr-only">Loading shop listings</span>
 	</div>
 {:else if groups.length === 0}
 	<div class="shop-panel shop-panel--request">
+		{@render sandboxBanner()}
 		{#if requestOutcome === 'success'}
 			<p class="shop-panel__success" role="status">
 				Thanks — I'll email you if this image becomes available to buy.
@@ -344,6 +354,44 @@
 {:else}
 	<form class="shop-panel" onsubmit={addSelected}>
 		<div class="shop-panel__catalog">
+			{@render sandboxBanner()}
+			{#if glossary.length > 0}
+				<aside class="shop-panel__guide">
+					<h3 class="shop-panel__guide-title">How to read these listings</h3>
+					<dl class="shop-panel__glossary">
+						{#each glossary as entry (entry.term)}
+							<div class="shop-panel__glossary-item">
+								<dt>{entry.term}</dt>
+								<dd>
+									{#if entry.meaning}
+										{entry.meaning}
+									{/if}
+									{#if entry.items && entry.items.length > 0}
+										<ul>
+											{#each entry.items as item (item.term)}
+												<li>
+													{#if item.chipKind}
+														<span
+															class="shop-panel__chip"
+															class:shop-panel__chip--paper={item.chipKind === 'paper'}
+															class:shop-panel__chip--low={item.chipKind === 'low'}
+														>
+															{item.term}
+														</span>
+													{:else}
+														<span class="shop-panel__glossary-sub">{item.term}</span>
+													{/if}
+													{item.meaning}
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</dd>
+							</div>
+						{/each}
+					</dl>
+				</aside>
+			{/if}
 			{#snippet offerGroup(group: ShopOfferGroup)}
 				{@const selectedInGroup = groupQty(group)}
 				{@const open = groupOpen(group)}
@@ -416,6 +464,8 @@
 								{@const fit = details?.fit ?? 'match'}
 								{@const showCrop = purchasable && (fit === 'crop' || fit === 'far')}
 								{@const showLowRes = purchasable && details?.lowResolution === true}
+								{@const paperChips = listing.paperChips}
+								{@const showChips = paperChips.length > 0 || showCrop || showLowRes}
 								{@const listingId = listingKey(group.id, listing)}
 								{@const fitOpen = openFitId === listingId}
 								{@const panelId = fitPanelId(group.id, listing)}
@@ -428,34 +478,36 @@
 									<div class="shop-panel__size-cell">
 										<div class="shop-panel__size-row">
 											<label class="shop-panel__size" for={qtyId(offer.variantId)}>
-												{listing.title}
+												{sizeLineText(listing.title, finishOptions.length > 0)}
 											</label>
 											{#if finishOptions.length > 0}
-												<div class="shop-panel__finish">
-													<label
-														class="shop-panel__finish-label"
-														for={finishId(group.id, listing)}
-													>
-														Finish
-													</label>
-													<select
-														id={finishId(group.id, listing)}
-														value={finishValue}
-														onchange={(e) =>
-															setFinish(group.id, listing, e.currentTarget.value)}
-													>
-														{#each finishOptions as option (option.value)}
-															<option value={option.value}>{option.label}</option>
-														{/each}
-													</select>
-												</div>
+												<span class="shop-panel__finish">
+													<span class="shop-panel__finish-select">
+														<select
+															id={finishId(group.id, listing)}
+															aria-label="Finish"
+															value={finishValue}
+															onchange={(e) =>
+																setFinish(group.id, listing, e.currentTarget.value)}
+														>
+															{#each finishOptions as option (option.value)}
+																<option value={option.value}>{option.label}</option>
+															{/each}
+														</select>
+													</span>
+												</span>
 											{/if}
 										</div>
-										{#if listing.paperNote}
-											<p class="shop-panel__paper-note">{listing.paperNote}</p>
-										{/if}
-										{#if showCrop || showLowRes}
+										{#if showChips}
 											<div class="shop-panel__chips">
+												{#each paperChips as chip (chip)}
+													<span
+														class="shop-panel__chip shop-panel__chip--paper"
+														title={paperChipLabel(chip)}
+													>
+														{chip}
+													</span>
+												{/each}
 												{#if showCrop}
 													<button
 														class="shop-panel__chip"
@@ -625,6 +677,7 @@
 		position: relative;
 		isolation: isolate;
 		overflow: hidden;
+		flex-shrink: 0;
 		margin: 0;
 		padding: 0.9rem 1rem 1rem;
 		border-radius: 8px;
@@ -633,7 +686,6 @@
 			radial-gradient(ellipse at 20% 0%, rgba(255, 236, 190, 0.35), transparent 55%),
 			radial-gradient(ellipse at 90% 110%, rgba(120, 55, 8, 0.22), transparent 50%);
 		color: var(--color-primary-darkest);
-		flex-shrink: 0;
 	}
 
 	.shop-panel__sandbox::before {
@@ -693,6 +745,10 @@
 		flex: 1 1 auto;
 		overflow-x: hidden;
 		overflow-y: auto;
+	}
+
+	.shop-panel__catalog > * {
+		flex-shrink: 0;
 	}
 
 	.shop-panel__group {
@@ -793,45 +849,142 @@
 		display: none;
 	}
 
+	.shop-panel__guide {
+		margin: 0 0 0.15rem;
+		padding: 0.7rem 0.85rem 0.8rem;
+		border: 1px solid color-mix(in oklch, var(--color-secondary) 42%, transparent);
+		border-radius: 10px;
+		background: color-mix(in oklch, var(--color-secondary) 10%, rgba(0, 0, 0, 0.28));
+		box-shadow: inset 3px 0 0 var(--color-secondary);
+	}
+
+	.shop-panel__guide-title {
+		margin: 0 0 0.5rem;
+		font-family: var(--font-oswald);
+		font-size: 0.7rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		line-height: 1.3;
+		text-transform: uppercase;
+		color: var(--color-secondary);
+	}
+
+	.shop-panel__glossary {
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+	}
+
+	.shop-panel__glossary-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.18rem;
+	}
+
+	.shop-panel__glossary dt {
+		font-family: var(--font-oswald);
+		font-size: 0.68rem;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-white-lightest);
+	}
+
+	.shop-panel__glossary dd {
+		margin: 0;
+		font-size: 0.8125rem;
+		line-height: 1.45;
+		color: var(--color-white-darker);
+	}
+
+	.shop-panel__glossary ul {
+		margin: 0.35rem 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		list-style: none;
+	}
+
+	.shop-panel__glossary li {
+		display: flex;
+		flex-wrap: wrap;
+		column-gap: 0.5rem;
+		row-gap: 0.12rem;
+		align-items: flex-start;
+	}
+
+	.shop-panel__glossary-sub {
+		font-family: var(--font-oswald);
+		font-size: 0.78rem;
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		color: var(--color-secondary);
+	}
+
+	.shop-panel__guide .shop-panel__chip {
+		cursor: default;
+		pointer-events: none;
+		flex-shrink: 0;
+	}
+
+	.shop-panel__guide .shop-panel__chip:hover {
+		background: transparent;
+	}
+
 	.shop-panel__finish {
+		display: inline-flex;
+		align-items: baseline;
+		flex: 0 0 auto;
+		min-width: 0;
+		margin: 0 0 0 0.4em;
+		color: var(--color-white-lightest);
+	}
+
+	.shop-panel__finish-select {
 		position: relative;
 		display: inline-flex;
 		align-items: center;
-		flex: 0 0 auto;
-		min-width: 0;
-		margin: 0;
+		color: inherit;
 	}
 
-	.shop-panel__finish-label {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	.shop-panel__finish select {
+	.shop-panel__finish-select select {
+		appearance: none;
 		box-sizing: border-box;
 		width: auto;
-		max-width: 7.5rem;
+		max-width: 8.5rem;
 		margin: 0;
-		padding: 0.12rem 0.4rem;
-		border: 1px solid rgba(255, 255, 255, 0.18);
+		padding: 0.12em 1.45em 0.12em 0.5em;
+		border: 1px solid rgba(255, 255, 255, 0.22);
 		border-radius: 6px;
 		background: rgba(0, 0, 0, 0.28);
-		color: var(--color-white-lightest);
+		color: inherit;
 		font-family: var(--font-oswald);
-		font-size: 0.8125rem;
+		font-size: 1rem;
 		font-weight: 500;
 		letter-spacing: 0.04em;
 		line-height: 1.2;
+		cursor: pointer;
+		field-sizing: content;
 	}
 
-	.shop-panel__finish select:focus-visible {
+	.shop-panel__finish-select::after {
+		content: '';
+		position: absolute;
+		right: 0.48em;
+		top: 50%;
+		width: 0;
+		height: 0;
+		border-left: 0.28em solid transparent;
+		border-right: 0.28em solid transparent;
+		border-top: 0.34em solid currentColor;
+		transform: translateY(-25%);
+		pointer-events: none;
+	}
+
+	.shop-panel__finish-select select:focus-visible {
 		outline: 2px solid var(--color-secondary);
 		outline-offset: 2px;
 	}
@@ -869,6 +1022,8 @@
 	.shop-panel--request {
 		gap: 0.9rem;
 		height: auto;
+		overflow-x: hidden;
+		overflow-y: auto;
 	}
 
 	.shop-panel--pending {
@@ -970,9 +1125,9 @@
 
 	.shop-panel__line {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 4.25rem auto;
+		grid-template-columns: minmax(0, 1fr) max-content auto;
 		align-items: center;
-		column-gap: 0.55rem;
+		column-gap: 0.45rem;
 		min-width: 0;
 		width: 100%;
 		padding: 0.42rem 0;
@@ -985,7 +1140,8 @@
 	}
 
 	.shop-panel__line--far .shop-panel__size,
-	.shop-panel__line--far .shop-panel__price {
+	.shop-panel__line--far .shop-panel__price,
+	.shop-panel__line--far .shop-panel__finish {
 		color: var(--color-tertiary);
 	}
 
@@ -1009,8 +1165,8 @@
 	.shop-panel__size-row {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.35rem 0.5rem;
+		align-items: baseline;
+		gap: 0.35rem 0;
 		min-width: 0;
 		width: 100%;
 	}
@@ -1032,18 +1188,8 @@
 	.shop-panel__size-row .shop-panel__size {
 		flex: 0 1 auto;
 		width: auto;
-	}
-
-	.shop-panel__paper-note {
-		margin: 0;
-		max-width: 100%;
-		font-family: var(--font-oswald);
-		font-size: 0.7rem;
-		font-weight: 400;
-		letter-spacing: 0.04em;
-		line-height: 1.25;
-		color: var(--color-white-darker);
-		overflow-wrap: anywhere;
+		white-space: nowrap;
+		overflow-wrap: normal;
 	}
 
 	.shop-panel__chips {
@@ -1088,6 +1234,16 @@
 	.shop-panel__chip--low {
 		border-color: #e8a54b;
 		color: #e8a54b;
+	}
+
+	.shop-panel__chip--paper {
+		cursor: default;
+		border-color: rgba(255, 255, 255, 0.22);
+		color: var(--color-tertiary);
+	}
+
+	.shop-panel__chip--paper:hover {
+		background: transparent;
 	}
 
 	.shop-panel__chip--low[aria-expanded='true'] {
@@ -1216,6 +1372,7 @@
 
 	.shop-panel__price {
 		justify-self: end;
+		width: max-content;
 		font-size: 0.875rem;
 		font-weight: 500;
 		font-variant-numeric: tabular-nums;
@@ -1402,9 +1559,10 @@
 			font-size: 0.6rem;
 		}
 
-		.shop-panel__finish select {
-			min-height: 2.5rem;
-			font-size: 0.875rem;
+		.shop-panel__finish-select select {
+			min-height: 2.25rem;
+			padding: 0.2em 1.6em 0.2em 0.55em;
+			font-size: 1.05rem;
 		}
 
 		.shop-panel__size {

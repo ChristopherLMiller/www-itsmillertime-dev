@@ -29,12 +29,13 @@ describe('formatPrintOfferLabel', () => {
 });
 
 describe('extraPrintLabelParts', () => {
-	it('keeps a human paper name that is not a Prodigi code', () => {
+	it('keeps paper names and codes, not size or weight', () => {
 		expect(extraPrintLabelParts('4×6″ · Archival Professional · 240gsm')).toEqual([
 			'Archival Professional'
 		]);
 		expect(extraPrintLabelParts('4×6″ · Archival Professional')).toEqual(['Archival Professional']);
-		expect(extraPrintLabelParts('4×6″ · LPP · 240gsm')).toEqual([]);
+		expect(extraPrintLabelParts('4×6″ · LPP · 240gsm')).toEqual(['LPP']);
+		expect(extraPrintLabelParts('4×6″ · HPR · 308gsm')).toEqual(['HPR']);
 	});
 });
 
