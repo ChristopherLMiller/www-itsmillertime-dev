@@ -1,16 +1,7 @@
 import { dev } from '$app/environment';
+import { cookieHeaderForCms } from '$lib/auth/sessionCookie';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { error, type RequestHandler } from '@sveltejs/kit';
-
-/** Match createPayloadFetch: CMS expects __Secure-better-auth.* in local HTTP dev. */
-function cookiesForPayload(cookieHeader: string | null): string {
-	if (!cookieHeader) return '';
-	if (!dev) return cookieHeader;
-	return cookieHeader
-		.split('; ')
-		.map((c) => (c.startsWith('better-auth.') ? '__Secure-' + c : c))
-		.join('; ');
-}
 
 const proxyRequest = async (request: Request, path: string): Promise<Response> => {
 	const url = `${getPayloadApiBaseUrl()}/${path}${new URL(request.url).search}`;
@@ -18,7 +9,7 @@ const proxyRequest = async (request: Request, path: string): Promise<Response> =
 	const headers = new Headers();
 	const contentType = request.headers.get('content-type');
 	if (contentType) headers.set('content-type', contentType);
-	headers.set('cookie', cookiesForPayload(request.headers.get('cookie')));
+	headers.set('cookie', cookieHeaderForCms(request.headers.get('cookie'), dev) ?? '');
 	headers.set('accept', request.headers.get('accept') ?? 'application/json');
 
 	const response = await fetch(url, {

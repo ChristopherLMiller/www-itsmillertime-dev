@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { scrollY } from 'svelte/reactivity/window';
 	import { watchFooterVersionBar } from '$lib/utils/footer-version-bar';
 
@@ -7,11 +6,6 @@
 	const FADE_START = 240;
 	/** Fully opaque after this many additional pixels. */
 	const FADE_RANGE = 320;
-
-	const isAdmin = $derived(
-		!!page.data.session?.user &&
-			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
-	);
 
 	const progress = $derived.by(() => {
 		const y = scrollY.current ?? 0;
@@ -32,7 +26,6 @@
 <button
 	type="button"
 	class="scroll-to-top"
-	class:scroll-to-top--admin-clear={isAdmin}
 	style:opacity={progress}
 	style:pointer-events={interactive ? 'auto' : 'none'}
 	tabindex={interactive ? 0 : -1}
@@ -77,12 +70,6 @@
 			bottom 180ms ease,
 			background 150ms ease,
 			opacity 180ms ease;
-	}
-
-	.scroll-to-top--admin-clear {
-		--scroll-to-top-inset: calc(
-			var(--admin-edge-tab-width) + var(--chrome-corner-gap) + env(safe-area-inset-right, 0px)
-		);
 	}
 
 	.scroll-to-top:hover {

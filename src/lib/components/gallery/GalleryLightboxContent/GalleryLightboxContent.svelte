@@ -45,6 +45,13 @@
 	} from '$lib/utils/gallery-image-display';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
+	import { untrack } from 'svelte';
+	import { fetchAiPromptChoices } from '$lib/settings/client';
+	import {
+		defaultPromptChoiceSlug,
+		IMAGE_ALT_PROMPT_SLUG,
+		type PromptChoice
+	} from '$lib/settings/prompts';
 
 	/** Crossfade duration: blurhash/placeholder out ↔ full image in */
 	const IMAGE_REVEAL_MS = 320;
@@ -492,7 +499,6 @@
 		imageTitle || captionText?.trim() || gallery.title || 'Gallery image'
 	);
 
-	let editingMeta = $state(false);
 	let draftAlt = $state('');
 	let draftCaption = $state('');
 	let metaSaveError = $state<string | null>(null);
@@ -501,6 +507,48 @@
 	let altSuggestion = $state<string | null>(null);
 	let altSuggestError = $state<string | null>(null);
 	let altSuggestAbort: AbortController | null = null;
+	let altPromptChoices = $state<PromptChoice[]>([]);
+	let selectedAltPromptSlug = $state('');
+
+	const ALT_PROMPT_PREF_KEY = 'gallery-lightbox-alt-prompt';
+
+	function readAltPromptPref(): string {
+		if (!browser) return '';
+		try {
+			return localStorage.getItem(ALT_PROMPT_PREF_KEY) ?? '';
+		} catch {
+			return '';
+		}
+	}
+
+	function writeAltPromptPref(slug: string) {
+		if (!browser) return;
+		try {
+			localStorage.setItem(ALT_PROMPT_PREF_KEY, slug);
+		} catch {
+			/* ignore quota / private mode */
+		}
+	}
+
+	async function loadAltPromptChoices() {
+		try {
+			const { defaultSlug, prompts } = await fetchAiPromptChoices();
+			altPromptChoices = prompts;
+			selectedAltPromptSlug = defaultPromptChoiceSlug(
+				prompts,
+				readAltPromptPref() || defaultSlug
+			);
+		} catch {
+			altPromptChoices = [];
+			selectedAltPromptSlug = '';
+		}
+	}
+
+	function altPromptOptionLabel(choice: PromptChoice): string {
+		return choice.slug.trim().toLowerCase() === IMAGE_ALT_PROMPT_SLUG
+			? `${choice.label} (default)`
+			: choice.label;
+	}
 
 	function resetAltSuggestion() {
 		altSuggestAbort?.abort();
@@ -512,23 +560,24 @@
 
 	$effect(() => {
 		void slideIdentity;
-		editingMeta = false;
-		metaSaveError = null;
 		metaSaving = false;
 		resetAltSuggestion();
+		metaSaveError = null;
+		untrack(() => {
+			draftAlt = image?.alt ?? '';
+			draftCaption = captionText ?? '';
+		});
 	});
 
-	function startEditingMeta() {
-		resetAltSuggestion();
-		draftAlt = image?.alt ?? '';
-		draftCaption = captionText ?? '';
-		metaSaveError = null;
-		editingMeta = true;
-	}
+	$effect(() => {
+		if (!browser || !isAdmin || activeSidebarTab !== 'admin') return;
+		void loadAltPromptChoices();
+	});
 
 	function cancelEditingMeta() {
 		resetAltSuggestion();
-		editingMeta = false;
+		draftAlt = image?.alt ?? '';
+		draftCaption = captionText ?? '';
 		metaSaveError = null;
 	}
 
@@ -544,7 +593,10 @@
 			const res = await fetch(`/api/gallery/images/${galleryImageId}/suggest-alt`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ albumTitle: gallery.title }),
+				body: JSON.stringify({
+					albumTitle: gallery.title,
+					...(selectedAltPromptSlug ? { promptSlug: selectedAltPromptSlug } : {})
+				}),
 				signal: ac.signal
 			});
 			const payload = (await res.json().catch(() => null)) as {
@@ -606,7 +658,6 @@
 				caption: payload?.caption ?? caption
 			});
 			resetAltSuggestion();
-			editingMeta = false;
 		} catch {
 			metaSaveError = 'Could not save changes';
 		} finally {
@@ -1211,138 +1262,12 @@
 									onShare={handleShare}
 								/>
 							{/if}
-
-							{#if cmsImageEditHref}
-								<span class="gallery-lightbox__toolbar-divider" aria-hidden="true"></span>
-								<a
-									href={cmsImageEditHref}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="gallery-lightbox__edit-btn"
-									aria-label="Edit image in CMS (opens in a new tab)"
-									title="Edit in CMS"
-								>
-									<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-										<path
-											d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-										/>
-									</svg>
-								</a>
-							{/if}
 						</section>
 					{/if}
 
 					<section class="gallery-lightbox__section gallery-lightbox__section--about">
-						<div class="gallery-lightbox__section-heading">
-							<h3 class="gallery-lightbox__section-title">About</h3>
-							{#if isAdmin && galleryImageId != null && !editingMeta}
-								<button
-									type="button"
-									class="gallery-lightbox__meta-edit-btn"
-									onclick={(e) => {
-										e.stopPropagation();
-										startEditingMeta();
-									}}
-								>
-									Edit
-								</button>
-							{/if}
-						</div>
-
-						{#if isAdmin && editingMeta}
-							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-							<form
-								class="gallery-lightbox__meta-form"
-								onsubmit={(e) => {
-									e.preventDefault();
-									e.stopPropagation();
-									void saveMediaMeta();
-								}}
-								onclick={(e) => e.stopPropagation()}
-								onkeydown={(e) => e.stopPropagation()}
-							>
-								<div class="gallery-lightbox__meta-field">
-									<div class="gallery-lightbox__meta-field-head">
-										<label class="gallery-lightbox__meta-field-label" for="lightbox-image-title">
-											Title
-										</label>
-										{#if !isVideo}
-											<button
-												type="button"
-												class="gallery-lightbox__meta-edit-btn"
-												disabled={metaSaving || altSuggesting}
-												aria-busy={altSuggesting}
-												onclick={(e) => {
-													e.stopPropagation();
-													void suggestAltText();
-												}}
-											>
-												{altSuggesting ? 'Suggesting…' : 'Suggest with AI'}
-											</button>
-										{/if}
-									</div>
-									<input
-										id="lightbox-image-title"
-										class="gallery-lightbox__meta-input"
-										type="text"
-										bind:value={draftAlt}
-										disabled={metaSaving || altSuggesting}
-										autocomplete="off"
-										placeholder="Short title for this image"
-									/>
-									<span class="gallery-lightbox__meta-hint">Stored as the image alt text</span>
-									{#if altSuggestError}
-										<p class="gallery-lightbox__meta-error" role="alert">{altSuggestError}</p>
-									{/if}
-									{#if altSuggestion}
-										<div class="gallery-lightbox__alt-suggestion" aria-live="polite">
-											<p class="gallery-lightbox__alt-suggestion-text">{altSuggestion}</p>
-											<button
-												type="button"
-												class="gallery-lightbox__meta-save"
-												onclick={insertAltSuggestion}
-											>
-												Insert
-											</button>
-										</div>
-									{/if}
-								</div>
-								<label class="gallery-lightbox__meta-field">
-									<span class="gallery-lightbox__meta-field-label">Description</span>
-									<textarea
-										class="gallery-lightbox__meta-textarea"
-										rows="4"
-										bind:value={draftCaption}
-										disabled={metaSaving || altSuggesting}
-										placeholder="Optional longer description"></textarea>
-								</label>
-								{#if metaSaveError}
-									<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>
-								{/if}
-								<div class="gallery-lightbox__meta-actions">
-									<button
-										type="submit"
-										class="gallery-lightbox__meta-save"
-										disabled={metaSaving || altSuggesting}
-									>
-										{metaSaving ? 'Saving…' : 'Save'}
-									</button>
-									<button
-										type="button"
-										class="gallery-lightbox__meta-cancel"
-										disabled={metaSaving}
-										onclick={cancelEditingMeta}
-									>
-										Cancel
-									</button>
-								</div>
-							</form>
-						{:else if imageTitle || hasLexicalCaption}
+						<h3 class="gallery-lightbox__section-title">About</h3>
+						{#if imageTitle || hasLexicalCaption}
 							<div class="gallery-lightbox__about">
 								{#if imageTitle}
 									<p class="gallery-lightbox__image-title">{imageTitle}</p>
@@ -1466,6 +1391,122 @@
 						aria-labelledby="gallery-lightbox-tab-admin"
 						hidden={activeSidebarTab !== 'admin'}
 					>
+						{#if galleryImageId != null}
+							<section class="gallery-lightbox__section">
+								<h3 class="gallery-lightbox__section-title">Title & description</h3>
+								<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+								<form
+									class="gallery-lightbox__meta-form"
+									onsubmit={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										void saveMediaMeta();
+									}}
+									onclick={(e) => e.stopPropagation()}
+									onkeydown={(e) => e.stopPropagation()}
+								>
+									<div class="gallery-lightbox__meta-field">
+										<div class="gallery-lightbox__meta-field-head">
+											<label class="gallery-lightbox__meta-field-label" for="lightbox-image-title">
+												Title
+											</label>
+											{#if !isVideo}
+												<div class="gallery-lightbox__alt-suggest">
+													<label class="gallery-lightbox__sr-only" for="lightbox-alt-prompt">
+														Prompt
+													</label>
+													<select
+														id="lightbox-alt-prompt"
+														class="gallery-lightbox__alt-prompt"
+														bind:value={selectedAltPromptSlug}
+														disabled={metaSaving || altSuggesting}
+														onchange={() => writeAltPromptPref(selectedAltPromptSlug)}
+													>
+														{#if altPromptChoices.length === 0}
+															<option value="">Photo alt text (default)</option>
+														{:else}
+															{#each altPromptChoices as choice (choice.slug)}
+																<option value={choice.slug}>{altPromptOptionLabel(choice)}</option>
+															{/each}
+														{/if}
+													</select>
+													<button
+														type="button"
+														class="gallery-lightbox__meta-edit-btn"
+														disabled={metaSaving || altSuggesting}
+														aria-busy={altSuggesting}
+														onclick={(e) => {
+															e.stopPropagation();
+															void suggestAltText();
+														}}
+													>
+														{altSuggesting ? 'Suggesting…' : 'Suggest with AI'}
+													</button>
+												</div>
+											{/if}
+										</div>
+										<input
+											id="lightbox-image-title"
+											class="gallery-lightbox__meta-input"
+											type="text"
+											bind:value={draftAlt}
+											disabled={metaSaving || altSuggesting}
+											autocomplete="off"
+											placeholder="Short title for this image"
+										/>
+										<span class="gallery-lightbox__meta-hint">Stored as the image alt text</span>
+										{#if altSuggestError}
+											<p class="gallery-lightbox__meta-error" role="alert">{altSuggestError}</p>
+										{/if}
+										{#if altSuggestion}
+											<div class="gallery-lightbox__alt-suggestion" aria-live="polite">
+												<span class="gallery-lightbox__meta-field-label">Suggestion</span>
+												<p class="gallery-lightbox__alt-preview">{altSuggestion}</p>
+												<div class="gallery-lightbox__meta-actions">
+													<button
+														type="button"
+														class="gallery-lightbox__meta-save"
+														onclick={insertAltSuggestion}
+													>
+														Insert
+													</button>
+												</div>
+											</div>
+										{/if}
+									</div>
+									<label class="gallery-lightbox__meta-field">
+										<span class="gallery-lightbox__meta-field-label">Description</span>
+										<textarea
+											class="gallery-lightbox__meta-textarea"
+											rows="4"
+											bind:value={draftCaption}
+											disabled={metaSaving || altSuggesting}
+											placeholder="Optional longer description"
+										></textarea>
+									</label>
+									{#if metaSaveError}
+										<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>
+									{/if}
+									<div class="gallery-lightbox__meta-actions">
+										<button
+											type="submit"
+											class="gallery-lightbox__meta-save"
+											disabled={metaSaving || altSuggesting}
+										>
+											{metaSaving ? 'Saving…' : 'Save'}
+										</button>
+										<button
+											type="button"
+											class="gallery-lightbox__meta-cancel"
+											disabled={metaSaving}
+											onclick={cancelEditingMeta}
+										>
+											Reset
+										</button>
+									</div>
+								</form>
+							</section>
+						{/if}
 						{#if cmsImageEditHref}
 							<section class="gallery-lightbox__section">
 								<h3 class="gallery-lightbox__section-title">CMS</h3>
@@ -1961,19 +2002,6 @@
 		border-bottom: 1px solid var(--color-tertiary-lighter);
 	}
 
-	.gallery-lightbox__section-heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.gallery-lightbox__section-heading .gallery-lightbox__section-title {
-		flex: 1;
-		margin: 0;
-	}
-
 	.gallery-lightbox__meta-edit-btn {
 		flex-shrink: 0;
 		margin: 0;
@@ -2022,6 +2050,48 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.gallery-lightbox__alt-suggest {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		flex-wrap: nowrap;
+		gap: 0.35rem;
+		min-width: 0;
+		flex: 1 1 12rem;
+	}
+
+	.gallery-lightbox__alt-prompt {
+		flex: 1 1 8rem;
+		min-width: 7rem;
+		max-width: 14rem;
+		height: 1.55rem;
+		padding: 0 0.3rem;
+		border: 1px solid rgba(255, 255, 255, 0.22);
+		border-radius: 4px;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--color-secondary);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.6875rem;
+		font-weight: 600;
+	}
+
+	.gallery-lightbox__alt-prompt:disabled {
+		opacity: 0.6;
+	}
+
+	.gallery-lightbox__sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.gallery-lightbox__meta-field-head .gallery-lightbox__meta-field-label {
@@ -2031,25 +2101,20 @@
 	.gallery-lightbox__alt-suggestion {
 		display: flex;
 		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.45rem;
-		padding: 0.55rem 0.65rem;
-		border: 1px solid rgba(255, 255, 255, 0.16);
-		border-radius: 4px;
-		background: rgba(0, 0, 0, 0.28);
+		gap: 0.35rem;
 	}
 
-	.gallery-lightbox__alt-suggestion-text {
+	.gallery-lightbox__alt-preview {
 		margin: 0;
-		font-size: 0.8125rem;
-		line-height: 1.4;
+		padding: 0.5rem 0.65rem;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.35);
 		color: var(--color-white-lightest);
+		font-family: var(--font-roboto, system-ui, sans-serif);
+		font-size: 0.875rem;
+		line-height: 1.4;
 		text-wrap: pretty;
-	}
-
-	.gallery-lightbox__alt-suggestion .gallery-lightbox__meta-save {
-		padding: 0.3rem 0.7rem;
-		font-size: 0.75rem;
 	}
 
 	.gallery-lightbox__meta-hint {
@@ -2167,32 +2232,6 @@
 	.gallery-lightbox__meta-cancel:disabled {
 		opacity: 0.55;
 		cursor: not-allowed;
-	}
-
-	.gallery-lightbox__edit-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2rem;
-		height: 2rem;
-		padding: 0;
-		border: 1px solid rgba(255, 255, 255, 0.18);
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.06);
-		color: rgba(255, 255, 255, 0.72);
-		text-decoration: none;
-		flex-shrink: 0;
-		transition:
-			border-color 150ms ease,
-			background 150ms ease,
-			color 150ms ease;
-	}
-
-	.gallery-lightbox__edit-btn:hover,
-	.gallery-lightbox__edit-btn:focus-visible {
-		border-color: rgba(255, 255, 255, 0.28);
-		background: rgba(255, 255, 255, 0.12);
-		color: var(--color-secondary);
 	}
 
 	.gallery-lightbox__cms-edit-link {

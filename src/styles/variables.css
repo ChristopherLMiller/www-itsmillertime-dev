@@ -79,8 +79,6 @@
 	);
 	/* Default: hug the viewport corner. Lifted when the footer version bar is on-screen. */
 	--chrome-corner-bottom: calc(var(--chrome-corner-gap) + env(safe-area-inset-bottom, 0px));
-	/* Thickness of the vertical Admin edge tab (padding + type). */
-	--admin-edge-tab-width: 2.25rem;
 	/* Fluid gutters: 0.75rem @ 768px → 2rem @ 1400px (slope is px-based vi, not rem) */
 	--side-margins: clamp(0.75rem, 3.165vi - 0.769rem, 2rem);
 

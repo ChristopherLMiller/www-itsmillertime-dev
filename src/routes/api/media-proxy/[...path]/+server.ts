@@ -1,5 +1,6 @@
 import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 import { dev } from '$app/environment';
+import { cookieHeaderForCms } from '$lib/auth/sessionCookie';
 import type { RequestHandler } from './$types';
 
 /**
@@ -13,17 +14,8 @@ const proxy: RequestHandler = async ({ request, params }) => {
 	const headers = new Headers();
 	headers.set('accept', request.headers.get('accept') ?? '*/*');
 
-	const cookieHeader = request.headers.get('cookie');
-	if (cookieHeader) {
-		let cookies = cookieHeader;
-		if (dev) {
-			cookies = cookies
-				.split('; ')
-				.map((c) => (c.startsWith('better-auth.') ? '__Secure-' + c : c))
-				.join('; ');
-		}
-		headers.set('cookie', cookies);
-	}
+	const cookies = cookieHeaderForCms(request.headers.get('cookie'), dev);
+	if (cookies) headers.set('cookie', cookies);
 
 	const response = await fetch(targetUrl, {
 		method: 'GET',

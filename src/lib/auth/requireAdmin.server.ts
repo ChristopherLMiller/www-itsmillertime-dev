@@ -1,3 +1,4 @@
+import { dev } from '$app/environment';
 import { extractPayloadMeUser, mergeSessionUser } from '$lib/auth/mergePayloadUser';
 import { hasBetterAuthCookie } from '$lib/auth/hasBetterAuthCookie';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
@@ -71,6 +72,28 @@ async function loadMergedSessionUser(
 }
 
 export function isAdminRole(user: { role?: unknown } | null | undefined): boolean {
-	const roles = user?.role as string[] | undefined;
-	return !!roles?.includes('admin');
+	const role = user?.role;
+	if (Array.isArray(role)) return role.includes('admin');
+	return role === 'admin';
+}
+
+/**
+ * `/admin` and `/api/admin` are open on the Vite dev server, otherwise the
+ * signed-in user must have the `admin` role. Deployed builds (including the
+ * git `dev` environment) have `dev === false`.
+ */
+export function canAccessAdmin(
+	user: { role?: unknown } | null | undefined,
+	isDev: boolean = dev
+): boolean {
+	return isDev || isAdminRole(user);
+}
+
+export function isProtectedAdminPath(pathname: string): boolean {
+	return (
+		pathname === '/admin' ||
+		pathname.startsWith('/admin/') ||
+		pathname === '/api/admin' ||
+		pathname.startsWith('/api/admin/')
+	);
 }

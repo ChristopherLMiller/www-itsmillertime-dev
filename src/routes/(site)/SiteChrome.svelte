@@ -8,7 +8,6 @@
 	import Meta from '$lib/components/meta/Meta';
 	import Navigation from '$lib/components/navigation/Navigation';
 	import GrungeOverlay from '$lib/components/GrungeOverlay';
-	import AdminUtilitiesDockLazy from '$lib/components/AdminUtilitiesDock/AdminUtilitiesDockLazy.svelte';
 	import TopBar from '$lib/components/TopBar';
 	import ScrollToTop from '$lib/components/ScrollToTop';
 	import type { LayoutCacheData } from '$lib/cache/layoutCache';
@@ -59,7 +58,6 @@
 		<Footer />
 		<LastFmNowPlayingLazy />
 		<ScrollToTop />
-		<AdminUtilitiesDockLazy />
 	</div>
 </div>
 
