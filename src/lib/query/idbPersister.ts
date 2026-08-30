@@ -113,6 +113,85 @@ export async function readPersistedQueryCache(): Promise<unknown> {
 	}
 }
 
+export async function writePersistedQueryCache(value: unknown): Promise<void> {
+	if (!browser) return;
+	await idbSet(QUERY_CACHE_STORAGE_KEY, JSON.stringify(value));
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	return value as Record<string, unknown>;
+}
+
+/** Drop one persisted TanStack Query by its queryHash. */
+export async function removePersistedQuery(queryHash: string): Promise<void> {
+	const raw = await readPersistedQueryCache();
+	const rec = asRecord(raw);
+	if (!rec) return;
+	const clientState = asRecord(rec.clientState);
+	if (!clientState || !Array.isArray(clientState.queries)) return;
+	clientState.queries = clientState.queries.filter((row) => {
+		const query = asRecord(row);
+		return query?.queryHash !== queryHash;
+	});
+	rec.timestamp = Date.now();
+	await writePersistedQueryCache(rec);
+}
+
+export type CacheStorageEntry = {
+	url: string;
+	method: string;
+	status: number;
+	size: number | null;
+};
+
+export type CacheStorageBucket = {
+	name: string;
+	entries: CacheStorageEntry[];
+};
+
+export async function listCacheStorage(): Promise<CacheStorageBucket[]> {
+	if (!browser || typeof caches === 'undefined') return [];
+	const names = await caches.keys();
+	return Promise.all(
+		names.map(async (name) => {
+			const cache = await caches.open(name);
+			const requests = await cache.keys();
+			const entries: CacheStorageEntry[] = [];
+			for (const request of requests) {
+				const response = await cache.match(request);
+				const length = response?.headers.get('content-length');
+				const parsed = length ? Number(length) : NaN;
+				entries.push({
+					url: request.url,
+					method: request.method,
+					status: response?.status ?? 0,
+					size: Number.isFinite(parsed) ? parsed : null
+				});
+			}
+			entries.sort((a, b) => a.url.localeCompare(b.url));
+			return { name, entries };
+		})
+	);
+}
+
+export async function deleteCacheStorage(name: string): Promise<void> {
+	if (!browser || typeof caches === 'undefined') return;
+	await caches.delete(name);
+}
+
+export async function deleteCacheStorageEntry(name: string, url: string): Promise<void> {
+	if (!browser || typeof caches === 'undefined') return;
+	const cache = await caches.open(name);
+	await cache.delete(url);
+}
+
+export async function unregisterServiceWorkers(): Promise<void> {
+	if (!browser || !('serviceWorker' in navigator)) return;
+	const regs = await navigator.serviceWorker.getRegistrations();
+	await Promise.all(regs.map((reg) => reg.unregister()));
+}
+
 /** Legacy keys from older persist policies — delete so stuck tabs cannot revive them. */
 const LEGACY_QUERY_CACHE_KEYS = [
 	'itsmillertime-query-cache',

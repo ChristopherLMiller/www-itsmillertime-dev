@@ -35,17 +35,83 @@ export function rewriteProxiedAuthCookie(cookie: string, isDev: boolean): string
 	const name = rawName ?? '';
 
 	const keep: string[] = [];
+	let sameSite: string | undefined;
 	for (const attr of parts.slice(1)) {
 		const lower = attr.toLowerCase();
 		if (lower.startsWith('domain=')) continue;
-		if (isDev && lower === 'secure') continue;
+		if (isDev && (lower === 'secure' || lower === 'partitioned')) continue;
+		if (isDev && lower.startsWith('path=')) continue;
+		if (lower.startsWith('samesite=')) {
+			sameSite = attr;
+			if (isDev) continue;
+		}
 		keep.push(attr);
 	}
 
 	const cookieName =
 		isDev && name.startsWith('__Secure-better-auth.') ? name.replace('__Secure-', '') : name;
 
+	if (isDev) {
+		keep.push('Path=/');
+		const sameSiteValue = sameSite?.split('=')[1]?.trim().toLowerCase();
+		keep.push(
+			sameSiteValue && sameSiteValue !== 'none' ? (sameSite ?? 'SameSite=Lax') : 'SameSite=Lax'
+		);
+	}
+
 	return [cookieName + '=' + value, ...keep].join('; ');
+}
+
+/**
+ * Local HTTP stores unprefixed `better-auth.*` cookies. Production CMS may look
+ * up either that name or `__Secure-better-auth.*` depending on X-Forwarded-Proto,
+ * so send both in dev.
+ */
+export function cookieHeaderForCms(cookieHeader: string | null, isDev: boolean): string | null {
+	if (!cookieHeader) return null;
+	if (!isDev) return cookieHeader;
+	const parts = cookieHeader
+		.split(';')
+		.map((part) => part.trim())
+		.filter(Boolean);
+	const extra: string[] = [];
+	for (const part of parts) {
+		if (part.startsWith('better-auth.')) extra.push(`__Secure-${part}`);
+		else if (part.startsWith('__Secure-better-auth.')) extra.push(part.slice('__Secure-'.length));
+	}
+	return [...parts, ...extra].join('; ');
+}
+
+export type ProxiedCookie = {
+	name: string;
+	value: string;
+	maxAge?: number;
+	httpOnly: boolean;
+};
+
+/** Parse a rewritten Set-Cookie so SvelteKit can set it without encodeURIComponent. */
+export function parseRewrittenSetCookie(cookie: string): ProxiedCookie | null {
+	const parts = cookie
+		.split(';')
+		.map((s) => s.trim())
+		.filter(Boolean);
+	const nameValue = parts[0];
+	if (!nameValue) return null;
+	const eq = nameValue.indexOf('=');
+	if (eq < 1) return null;
+	const name = nameValue.slice(0, eq);
+	const value = nameValue.slice(eq + 1);
+	let maxAge: number | undefined;
+	let httpOnly = false;
+	for (const attr of parts.slice(1)) {
+		const lower = attr.toLowerCase();
+		if (lower.startsWith('max-age=')) {
+			const parsed = Number(attr.slice(8));
+			if (Number.isFinite(parsed)) maxAge = parsed;
+		}
+		if (lower === 'httponly') httpOnly = true;
+	}
+	return { name, value, maxAge, httpOnly };
 }
 
 /** Last Set-Cookie for a name wins (CMS + proxy can emit duplicates). */

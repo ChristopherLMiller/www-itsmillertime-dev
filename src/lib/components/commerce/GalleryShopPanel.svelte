@@ -355,43 +355,6 @@
 	<form class="shop-panel" onsubmit={addSelected}>
 		<div class="shop-panel__catalog">
 			{@render sandboxBanner()}
-			{#if glossary.length > 0}
-				<aside class="shop-panel__guide">
-					<h3 class="shop-panel__guide-title">How to read these listings</h3>
-					<dl class="shop-panel__glossary">
-						{#each glossary as entry (entry.term)}
-							<div class="shop-panel__glossary-item">
-								<dt>{entry.term}</dt>
-								<dd>
-									{#if entry.meaning}
-										{entry.meaning}
-									{/if}
-									{#if entry.items && entry.items.length > 0}
-										<ul>
-											{#each entry.items as item (item.term)}
-												<li>
-													{#if item.chipKind}
-														<span
-															class="shop-panel__chip"
-															class:shop-panel__chip--paper={item.chipKind === 'paper'}
-															class:shop-panel__chip--low={item.chipKind === 'low'}
-														>
-															{item.term}
-														</span>
-													{:else}
-														<span class="shop-panel__glossary-sub">{item.term}</span>
-													{/if}
-													{item.meaning}
-												</li>
-											{/each}
-										</ul>
-									{/if}
-								</dd>
-							</div>
-						{/each}
-					</dl>
-				</aside>
-			{/if}
 			{#snippet offerGroup(group: ShopOfferGroup)}
 				{@const selectedInGroup = groupQty(group)}
 				{@const open = groupOpen(group)}
@@ -626,6 +589,43 @@
 			{#each groups as group (group.id)}
 				{@render offerGroup(group)}
 			{/each}
+			{#if glossary.length > 0}
+				<aside class="shop-panel__guide">
+					<h3 class="shop-panel__guide-title">How to read these listings</h3>
+					<dl class="shop-panel__glossary">
+						{#each glossary as entry (entry.term)}
+							<div class="shop-panel__glossary-item">
+								<dt>{entry.term}</dt>
+								<dd>
+									{#if entry.meaning}
+										{entry.meaning}
+									{/if}
+									{#if entry.items && entry.items.length > 0}
+										<ul>
+											{#each entry.items as item (item.term)}
+												<li>
+													{#if item.chipKind}
+														<span
+															class="shop-panel__chip"
+															class:shop-panel__chip--paper={item.chipKind === 'paper'}
+															class:shop-panel__chip--low={item.chipKind === 'low'}
+														>
+															{item.term}
+														</span>
+													{:else}
+														<span class="shop-panel__glossary-sub">{item.term}</span>
+													{/if}
+													{item.meaning}
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</dd>
+							</div>
+						{/each}
+					</dl>
+				</aside>
+			{/if}
 		</div>
 
 		<div class="shop-panel__footer">

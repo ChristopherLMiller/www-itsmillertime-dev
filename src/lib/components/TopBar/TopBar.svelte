@@ -2,6 +2,8 @@
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import { onMount } from 'svelte';
+	import { rememberAdminReturnTo } from '$lib/admin/returnTo';
 	import { navStore, type NavState } from '../../../stores/navigation';
 	import { filterNavItems } from '$lib/components/navigation/visibility';
 	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
@@ -56,7 +58,10 @@
 
 	const manageLinks = $derived.by((): MenuLink[] => {
 		if (!isAdmin) return [];
-		return [{ title: 'Content Manager', href: cmsAdminUrl, external: true }];
+		return [
+			{ title: 'Site admin', href: '/admin' },
+			{ title: 'Content Manager', href: cmsAdminUrl, external: true }
+		];
 	});
 
 	const browseLinks = $derived.by((): MenuLink[] => {
@@ -76,6 +81,15 @@
 	navStore.subscribe((state: NavState) => {
 		navState = state;
 	});
+
+	onMount(() => {
+		navStore.close();
+	});
+
+	function goToSiteAdmin() {
+		rememberAdminReturnTo(page.url);
+		navStore.close();
+	}
 
 	$effect(() => {
 		const newPath = page.url.pathname;
@@ -217,15 +231,26 @@
 								<ul class="menu-dialog__links">
 									{#each manageLinks as link (link.href)}
 										<li>
-											<a
-												class="menu-dialog__link"
-												href={link.href}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												<span>{link.title}</span>
-												<span class="menu-dialog__link-external" aria-hidden="true">↗</span>
-											</a>
+											{#if link.external}
+												<a
+													class="menu-dialog__link"
+													href={link.href}
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													<span>{link.title}</span>
+													<span class="menu-dialog__link-external" aria-hidden="true">↗</span>
+												</a>
+											{:else}
+												<a
+													class="menu-dialog__link"
+													class:menu-dialog__link--active={isActive(link.href)}
+													href={link.href}
+													onclick={link.href === '/admin' ? goToSiteAdmin : undefined}
+												>
+													{link.title}
+												</a>
+											{/if}
 										</li>
 									{/each}
 								</ul>
