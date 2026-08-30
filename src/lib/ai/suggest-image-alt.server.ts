@@ -1,30 +1,20 @@
 import sharp from 'sharp';
 
+import { DEFAULT_IMAGE_ALT_PROMPT } from '$lib/settings/prompts';
 import { isGifMedia, isVideoMedia, toCloudflareMediaUrl } from '$lib/utils/media-url';
 
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5';
+export const DEFAULT_OPENAI_MODEL = 'gpt-4o';
+export { DEFAULT_IMAGE_ALT_PROMPT };
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
+const OPENAI_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
 const ANTHROPIC_VERSION = '2023-06-01';
 const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 const MAX_JPEG_BYTES = 4 * 1024 * 1024;
 const MAX_PREVIEW_EDGE = 1280;
 const MAX_ALT_CHARS = 280;
 const MAX_ALBUM_TITLE_CHARS = 120;
-
-const SYSTEM_PROMPT = [
-	'You write short image titles that also work as HTML alt text for a photographer’s website.',
-	'Describe the visible scene: subject, setting, and notable action or mood.',
-	'One sentence or short phrase, typically 8–20 words.',
-	'When the subject is an aircraft, name the specific type or model if it is identifiable from shape, markings, or album context (for example F-16, P-51 Mustang, C-130). If the type is unclear, describe the aircraft without guessing a model.',
-	'When the photo is an airshow or flying display, try to name the specific operator, performer, demo team, or named act if they can be identified from distinctive aircraft, livery, registration, paint scheme, or unique routine — not from a generic type alone (many people fly F-16s or T-6s). Civilian examples include a named aerobatic pilot and their unique airplane; military demo teams (Thunderbirds, Blue Angels, and similar) may be named when the livery is clear. If you are not reasonably sure who it is, name the aircraft only.',
-	'When the subject is a plant, name it if it is identifiable (common name; add cultivar or scientific name only when clear). If unsure, describe the plant without inventing a species.',
-	'Do not name spectators or unidentified people. Do not guess family members. Named airshow operators are allowed when identified as above.',
-	'Do not start with “Image of”, “Photo of”, “Picture of”, or “A photo showing”.',
-	'No quotation marks, hashtags, camera settings, watermarks, or commentary about the task.',
-	'If an album title is provided, use it only as optional context; do not copy it unless it matches what is in the photo.',
-	'Return only the alt text.'
-].join(' ');
 
 export class SuggestImageAltError extends Error {
 	status: number;
@@ -191,6 +181,23 @@ export async function suggestImageAlt(opts: {
 	albumTitle?: string;
 	apiKey: string;
 	model: string;
+	systemPrompt?: string;
+	provider?: 'anthropic' | 'openai';
+	fetchFn?: typeof fetch;
+}): Promise<{ alt: string }> {
+	const systemPrompt = opts.systemPrompt?.trim() || DEFAULT_IMAGE_ALT_PROMPT;
+	if (opts.provider === 'openai') {
+		return suggestImageAltOpenAI({ ...opts, systemPrompt });
+	}
+	return suggestImageAltAnthropic({ ...opts, systemPrompt });
+}
+
+async function suggestImageAltAnthropic(opts: {
+	jpegBytes: Buffer | Uint8Array;
+	albumTitle?: string;
+	apiKey: string;
+	model: string;
+	systemPrompt: string;
 	fetchFn?: typeof fetch;
 }): Promise<{ alt: string }> {
 	const fetchFn = opts.fetchFn ?? globalThis.fetch;
@@ -213,7 +220,7 @@ export async function suggestImageAlt(opts: {
 			body: JSON.stringify({
 				model: opts.model,
 				max_tokens: 1024,
-				system: SYSTEM_PROMPT,
+				system: opts.systemPrompt,
 				messages: [
 					{
 						role: 'user',
@@ -267,6 +274,96 @@ export async function suggestImageAlt(opts: {
 		.map((block) => block.text as string)
 		.join('\n')
 		.trim();
+	const alt = parseSuggestedAlt(text);
+	if (!alt) {
+		throw new SuggestImageAltError('No suggestion returned', 502);
+	}
+	return { alt };
+}
+
+type OpenAIChatResponse = {
+	choices?: { message?: { content?: string | { type?: string; text?: string }[] } }[];
+	error?: { message?: string };
+};
+
+async function suggestImageAltOpenAI(opts: {
+	jpegBytes: Buffer | Uint8Array;
+	albumTitle?: string;
+	apiKey: string;
+	model: string;
+	systemPrompt: string;
+	fetchFn?: typeof fetch;
+}): Promise<{ alt: string }> {
+	const fetchFn = opts.fetchFn ?? globalThis.fetch;
+	const userLines = ['Write alt text for this photograph.'];
+	if (opts.albumTitle) {
+		userLines.push(`Album context (optional): ${opts.albumTitle}`);
+	}
+	const dataUrl = `data:image/jpeg;base64,${Buffer.from(opts.jpegBytes).toString('base64')}`;
+
+	let res: Response;
+	try {
+		res = await fetchFn(OPENAI_CHAT_URL, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				authorization: `Bearer ${opts.apiKey}`
+			},
+			body: JSON.stringify({
+				model: opts.model,
+				max_tokens: 1024,
+				messages: [
+					{ role: 'system', content: opts.systemPrompt },
+					{
+						role: 'user',
+						content: [
+							{ type: 'image_url', image_url: { url: dataUrl } },
+							{ type: 'text', text: userLines.join('\n') }
+						]
+					}
+				]
+			}),
+			signal: AbortSignal.timeout(45_000)
+		});
+	} catch (err) {
+		if (err instanceof Error && err.name === 'TimeoutError') {
+			throw new SuggestImageAltError('AI suggestion timed out', 504);
+		}
+		throw new SuggestImageAltError('Could not reach OpenAI', 502);
+	}
+
+	let payload: OpenAIChatResponse | null;
+	try {
+		payload = (await res.json()) as OpenAIChatResponse;
+	} catch {
+		payload = null;
+	}
+
+	if (res.status === 429) {
+		throw new SuggestImageAltError('AI is rate limited, try again shortly', 429);
+	}
+	if (res.status === 401 || res.status === 403) {
+		throw new SuggestImageAltError('OpenAI rejected the API key', 503);
+	}
+	if (!res.ok) {
+		const detail = payload?.error?.message?.replace(/\s+/g, ' ').trim();
+		console.error('[suggest-alt] openai', res.status, detail ?? '(no message)');
+		throw new SuggestImageAltError(
+			detail ? `OpenAI request failed: ${detail}` : 'OpenAI request failed',
+			502
+		);
+	}
+
+	const content = payload?.choices?.[0]?.message?.content;
+	const text =
+		typeof content === 'string'
+			? content
+			: Array.isArray(content)
+				? content
+						.filter((block) => block?.type === 'text' && typeof block.text === 'string')
+						.map((block) => block.text as string)
+						.join('\n')
+				: '';
 	const alt = parseSuggestedAlt(text);
 	if (!alt) {
 		throw new SuggestImageAltError('No suggestion returned', 502);

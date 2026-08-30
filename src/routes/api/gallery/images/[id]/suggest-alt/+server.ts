@@ -1,6 +1,4 @@
-import { env } from '$env/dynamic/private';
 import {
-	DEFAULT_ANTHROPIC_MODEL,
 	SuggestImageAltError,
 	fetchGalleryPreviewBytes,
 	jpegPreviewFromBytes,
@@ -12,13 +10,15 @@ import { getMergedSessionUser, isAdminRole } from '$lib/auth/requireAdmin.server
 import { createPayloadFetch } from '$lib/payload';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
+import { parsePromptSlug } from '$lib/settings/prompts';
+import { resolveAiSettings } from '$lib/settings/site-settings.server';
 import { mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
 import { isVideoMedia } from '$lib/utils/media-url';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * Admin-only: Claude vision suggests alt text for a gallery image.
+ * Admin-only: vision model suggests alt text for a gallery image.
  * Does not save — the lightbox inserts into the title field on confirm.
  */
 export const POST: RequestHandler = async (event) => {
@@ -33,19 +33,16 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'Forbidden' }, { status: 403 });
 	}
 
-	const apiKey = env.ANTHROPIC_API_KEY?.trim();
-	if (!apiKey) {
-		return json({ error: 'AI alt suggestions are not configured' }, { status: 503 });
-	}
-
 	let albumTitle: string | undefined;
+	let promptSlug: string | undefined;
 	try {
 		const body = await request.json();
-		albumTitle = parseAlbumTitle(
-			body && typeof body === 'object' ? (body as { albumTitle?: unknown }).albumTitle : undefined
-		);
+		const rec = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+		albumTitle = parseAlbumTitle(rec.albumTitle);
+		promptSlug = parsePromptSlug(rec.promptSlug);
 	} catch {
 		albumTitle = undefined;
+		promptSlug = undefined;
 	}
 
 	const sdk = getPayloadSDK(fetch, request);
@@ -74,7 +71,19 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'This image has no file to analyze' }, { status: 422 });
 	}
 
-	const model = env.ANTHROPIC_MODEL?.trim() || DEFAULT_ANTHROPIC_MODEL;
+	let ai;
+	try {
+		ai = await resolveAiSettings(fetch, request, promptSlug);
+	} catch {
+		return json({ error: 'Could not load AI settings' }, { status: 503 });
+	}
+	if (promptSlug && !ai.systemPrompt) {
+		return json({ error: 'Unknown prompt' }, { status: 400 });
+	}
+	if (!ai.apiKey) {
+		return json({ error: 'AI alt suggestions are not configured' }, { status: 503 });
+	}
+
 	const payloadFetch = createPayloadFetch(fetch, request);
 
 	try {
@@ -89,8 +98,10 @@ export const POST: RequestHandler = async (event) => {
 		const { alt } = await suggestImageAlt({
 			jpegBytes: jpeg,
 			albumTitle,
-			apiKey,
-			model
+			apiKey: ai.apiKey,
+			model: ai.model,
+			systemPrompt: ai.systemPrompt,
+			provider: ai.provider
 		});
 		return json({ alt });
 	} catch (err) {

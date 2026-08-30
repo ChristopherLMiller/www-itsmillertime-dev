@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+	cookieHeaderForCms,
 	cookieNameForSite,
 	dedupeSetCookies,
 	isSessionCookieName,
+	parseRewrittenSetCookie,
 	rewriteProxiedAuthCookie,
 	sessionCookieDomain,
 	shouldCommitCookiesWithHtmlHop
@@ -38,10 +40,47 @@ describe('session cookie handoff helpers', () => {
 		);
 	});
 
+	it('makes production Secure cookies usable on local HTTP', () => {
+		const raw =
+			'__Secure-better-auth.session_token=abc; Max-Age=2592000; Path=/api/auth; HttpOnly; Secure; SameSite=None; Partitioned; Domain=.itsmillertime.dev';
+		expect(rewriteProxiedAuthCookie(raw, true)).toBe(
+			'better-auth.session_token=abc; Max-Age=2592000; HttpOnly; Path=/; SameSite=Lax'
+		);
+	});
+
 	it('html-hops OAuth callback redirects so mobile Chrome can store cookies', () => {
 		expect(shouldCommitCookiesWithHtmlHop('GET', 302, 'oauth2/callback/authentik', [])).toBe(true);
 		expect(shouldCommitCookiesWithHtmlHop('POST', 302, 'sign-in/oauth2', [])).toBe(false);
 		expect(shouldCommitCookiesWithHtmlHop('GET', 200, 'get-session', [])).toBe(false);
+	});
+
+	it('preserves signed 2FA cookie values that contain =', () => {
+		const raw =
+			'__Secure-better-auth.two_factor=2fa-abc.abcdefghijklmnopqrstuvwxyz0123456789abc=; Max-Age=600; Path=/; HttpOnly; Secure; SameSite=Lax';
+		expect(rewriteProxiedAuthCookie(raw, true)).toBe(
+			'better-auth.two_factor=2fa-abc.abcdefghijklmnopqrstuvwxyz0123456789abc=; Max-Age=600; HttpOnly; Path=/; SameSite=Lax'
+		);
+	});
+
+	it('sends both cookie name variants so CMS can match http or https lookup', () => {
+		expect(cookieHeaderForCms('better-auth.two_factor=2fa-abc.sig=; other=1', true)).toBe(
+			'better-auth.two_factor=2fa-abc.sig=; other=1; __Secure-better-auth.two_factor=2fa-abc.sig='
+		);
+		expect(cookieHeaderForCms('better-auth.session_token=abc', false)).toBe(
+			'better-auth.session_token=abc'
+		);
+	});
+
+	it('parses rewritten Set-Cookie including a trailing = in the value', () => {
+		const parsed = parseRewrittenSetCookie(
+			'better-auth.two_factor=2fa-abc.abcdefghijklmnopqrstuvwxyz0123456789abc=; Max-Age=600; HttpOnly; Path=/; SameSite=Lax'
+		);
+		expect(parsed).toEqual({
+			name: 'better-auth.two_factor',
+			value: '2fa-abc.abcdefghijklmnopqrstuvwxyz0123456789abc=',
+			maxAge: 600,
+			httpOnly: true
+		});
 	});
 
 	it('dedupes duplicate Set-Cookie names', () => {

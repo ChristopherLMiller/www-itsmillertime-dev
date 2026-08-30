@@ -195,6 +195,48 @@ describe('suggestImageAlt', () => {
 		expect(body.messages[0].content[1].text).toContain('Goshen Airshow');
 	});
 
+	it('sends a custom system prompt when provided', async () => {
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => ({ content: [{ type: 'text', text: 'Red barn at dusk' }] })
+		});
+		await suggestImageAlt({
+			jpegBytes: PNG_1x1,
+			apiKey: 'sk-test',
+			model: 'claude-sonnet-5',
+			systemPrompt: 'Only name the aircraft type.',
+			fetchFn
+		});
+		const body = JSON.parse(String((fetchFn.mock.calls[0][1] as RequestInit).body)) as {
+			system?: string;
+		};
+		expect(body.system).toBe('Only name the aircraft type.');
+	});
+
+	it('posts JPEG bytes to OpenAI when provider is openai', async () => {
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => ({
+				choices: [{ message: { content: 'F-16 on the ramp at dusk' } }]
+			})
+		});
+		const jpeg = await jpegPreviewFromBytes(PNG_1x1);
+		const result = await suggestImageAlt({
+			jpegBytes: jpeg,
+			apiKey: 'sk-openai',
+			model: 'gpt-4o',
+			provider: 'openai',
+			fetchFn
+		});
+		expect(result.alt).toBe('F-16 on the ramp at dusk');
+		expect(String(fetchFn.mock.calls[0][0])).toBe('https://api.openai.com/v1/chat/completions');
+		const init = fetchFn.mock.calls[0][1] as RequestInit;
+		const headers = new Headers(init.headers);
+		expect(headers.get('authorization')).toBe('Bearer sk-openai');
+	});
+
 	it('maps 429 to a rate-limit error', async () => {
 		const fetchFn = vi.fn().mockResolvedValue({
 			ok: false,

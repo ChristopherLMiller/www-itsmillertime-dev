@@ -1,8 +1,11 @@
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { dev } from '$app/environment';
 import {
+	cookieHeaderForCms,
 	dedupeSetCookies,
+	parseRewrittenSetCookie,
 	rewriteProxiedAuthCookie,
+	sessionCookieSecure,
 	shouldCommitCookiesWithHtmlHop
 } from '$lib/auth/sessionCookie';
 import { browserFacingLocation, redirectHtml } from '$lib/auth/sameOriginReturnUrl';
@@ -17,9 +20,11 @@ import type { RequestHandler } from './$types';
  * so state and session cookies are first-party here, not on cms.
  *
  * OAuth callback 302 + Set-Cookie is converted to a 200 HTML hop so Android
- * Chrome commits the session cookie after returning from Authentik.
+ * Chrome commits the session cookie after returning from Authentik. Signed
+ * Better Auth cookies are applied with `cookies.set` and identity encode so
+ * HMAC signatures that contain `=` are not percent-encoded.
  */
-const proxy: RequestHandler = async ({ request, params, url }) => {
+const proxy: RequestHandler = async ({ request, params, url, cookies }) => {
 	const path = params.path ?? '';
 	const targetUrl = `${getPayloadApiBaseUrl()}/auth/${path}`;
 	const fullUrl = `${targetUrl}${url.search}`;
@@ -35,16 +40,8 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
 	headers.set('origin', url.origin);
 	headers.set('referer', `${url.origin}/`);
 
-	if (dev) {
-		const cookieHeader = headers.get('cookie');
-		if (cookieHeader) {
-			const rewritten = cookieHeader
-				.split('; ')
-				.map((c) => (c.startsWith('better-auth.') ? '__Secure-' + c : c))
-				.join('; ');
-			headers.set('cookie', rewritten);
-		}
-	}
+	const cookieHeader = cookieHeaderForCms(headers.get('cookie'), dev);
+	if (cookieHeader) headers.set('cookie', cookieHeader);
 
 	let requestBody: string | undefined;
 	if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -62,16 +59,25 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
 		response.headers.getSetCookie().map((cookie) => rewriteProxiedAuthCookie(cookie, dev))
 	);
 
+	for (const cookie of setCookies) {
+		const parsed = parseRewrittenSetCookie(cookie);
+		if (!parsed) continue;
+		cookies.set(parsed.name, parsed.value, {
+			path: '/',
+			httpOnly: parsed.httpOnly,
+			sameSite: 'lax',
+			secure: sessionCookieSecure(parsed.name, url.host, dev),
+			...(parsed.maxAge !== undefined ? { maxAge: parsed.maxAge } : {}),
+			encode: (value) => value
+		});
+	}
+
 	const responseHeaders = new Headers();
 	for (const [key, value] of response.headers.entries()) {
 		const lower = key.toLowerCase();
 		if (lower === 'content-encoding' || lower === 'content-length') continue;
 		if (lower === 'set-cookie') continue;
 		responseHeaders.append(key, value);
-	}
-
-	for (const cookie of setCookies) {
-		responseHeaders.append('Set-Cookie', cookie);
 	}
 
 	if (shouldCommitCookiesWithHtmlHop(request.method, response.status, path, setCookies)) {
