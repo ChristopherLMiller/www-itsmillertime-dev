@@ -1,4 +1,3 @@
-import { invalidateAll } from '$app/navigation';
 import type { PromptChoice } from './prompts';
 import type { SiteSettingsPatch, SiteSettingsView } from './types';
 
@@ -22,9 +21,6 @@ export async function patchSiteSettings(patch: SiteSettingsPatch): Promise<SiteS
 		body: JSON.stringify(patch)
 	});
 	const body = await res.json().catch(() => ({}));
-	if (res.status === 401 || res.status === 403) {
-		void invalidateAll();
-	}
 	if (!res.ok) {
 		const message =
 			typeof body === 'object' && body && typeof (body as { error?: string }).error === 'string'
@@ -43,9 +39,6 @@ export async function fetchAiPromptChoices(): Promise<{
 		headers: { Accept: 'application/json' }
 	});
 	const body = await res.json().catch(() => ({}));
-	if (res.status === 401 || res.status === 403) {
-		void invalidateAll();
-	}
 	if (!res.ok) {
 		const message =
 			typeof body === 'object' && body && typeof (body as { error?: string }).error === 'string'

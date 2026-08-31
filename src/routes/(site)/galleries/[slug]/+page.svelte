@@ -3,6 +3,7 @@
 	import { invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
+	import { isAdminRole } from '$lib/auth/isAdminRole';
 	import Panel from '$lib/components/Panel';
 	import GalleryAlbumHeader from '$lib/components/gallery/GalleryAlbumHeader';
 	import GalleryAlbumPolaroid from '$lib/components/gallery/GalleryAlbumPolaroid';
@@ -29,10 +30,7 @@
 	const albumIsNsfw = $derived(data.gallery.settings?.isNsfw === true);
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
-	const isAdmin = $derived(
-		!!page.data.session?.user &&
-			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
-	);
+	const isAdmin = $derived(isAdminRole(page.data.session?.user));
 	const albumCmsEditHref = $derived(
 		isAdmin && data.gallery.id != null
 			? `${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-albums/${data.gallery.id}`
