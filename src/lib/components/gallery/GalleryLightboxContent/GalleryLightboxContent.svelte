@@ -46,6 +46,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import { untrack } from 'svelte';
+	import { showToast } from '$lib/toast/toast.svelte';
 	import { isAdminRole } from '$lib/auth/isAdminRole';
 	import { fetchAiPromptChoices } from '$lib/settings/client';
 	import {
@@ -649,6 +650,7 @@
 			} | null;
 			if (!res.ok) {
 				metaSaveError = payload?.error ?? `Save failed (${res.status})`;
+				showToast(metaSaveError, 'error');
 				return;
 			}
 			onMediaMetaUpdated?.({
@@ -656,8 +658,10 @@
 				caption: payload?.caption ?? caption
 			});
 			resetAltSuggestion();
+			showToast('Title and description saved.');
 		} catch {
 			metaSaveError = 'Could not save changes';
+			showToast(metaSaveError, 'error');
 		} finally {
 			metaSaving = false;
 		}
