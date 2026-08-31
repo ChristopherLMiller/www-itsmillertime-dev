@@ -61,7 +61,10 @@ export async function resolveSession(
 		return { status: 'unavailable', session: null };
 	}
 	if (!sessionRes.ok) {
-		return { status: 'unauthenticated', session: null };
+		if (sessionRes.status === 401 || sessionRes.status === 403) {
+			return { status: 'unauthenticated', session: null };
+		}
+		return { status: 'unavailable', session: null };
 	}
 
 	const session = await sessionFromAuthResponses(sessionRes, meRes, () =>

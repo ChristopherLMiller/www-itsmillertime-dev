@@ -46,6 +46,8 @@
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import { untrack } from 'svelte';
+	import { showToast } from '$lib/toast/toast.svelte';
+	import { isAdminRole } from '$lib/auth/isAdminRole';
 	import { fetchAiPromptChoices } from '$lib/settings/client';
 	import {
 		defaultPromptChoiceSlug,
@@ -56,10 +58,7 @@
 	/** Crossfade duration: blurhash/placeholder out ↔ full image in */
 	const IMAGE_REVEAL_MS = 320;
 
-	const isAdmin = $derived(
-		!!page.data.session?.user &&
-			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
-	);
+	const isAdmin = $derived(isAdminRole(page.data.session?.user));
 
 	type SidebarTab = 'information' | 'shop' | 'admin';
 
@@ -651,6 +650,7 @@
 			} | null;
 			if (!res.ok) {
 				metaSaveError = payload?.error ?? `Save failed (${res.status})`;
+				showToast(metaSaveError, 'error');
 				return;
 			}
 			onMediaMetaUpdated?.({
@@ -658,8 +658,10 @@
 				caption: payload?.caption ?? caption
 			});
 			resetAltSuggestion();
+			showToast('Title and description saved.');
 		} catch {
 			metaSaveError = 'Could not save changes';
+			showToast(metaSaveError, 'error');
 		} finally {
 			metaSaving = false;
 		}
