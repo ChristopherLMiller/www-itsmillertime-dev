@@ -1,8 +1,6 @@
-import {
-	canAccessAdmin,
-	getMergedSessionUser,
-	isProtectedAdminPath
-} from '$lib/auth/requireAdmin.server';
+import { canAccessAdmin, isProtectedAdminPath } from '$lib/auth/requireAdmin.server';
+import { hasBetterAuthCookie } from '$lib/auth/hasBetterAuthCookie';
+import { loadSessionFromEvent } from '$lib/auth/loadSession.server';
 import { hrefWithCallback } from '$lib/auth/returnTo';
 import { error, json, type Handle, redirect } from '@sveltejs/kit';
 
@@ -12,8 +10,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const method = event.request.method;
 	const path = event.url.pathname;
 
+	if (
+		hasBetterAuthCookie(event.request.headers.get('cookie')) &&
+		!path.startsWith('/api/auth/')
+	) {
+		await loadSessionFromEvent(event);
+	}
+
 	if (isProtectedAdminPath(path)) {
-		const user = await getMergedSessionUser(event);
+		const user = event.locals.session?.user ?? null;
 		if (!canAccessAdmin(user)) {
 			const response = path.startsWith('/api/')
 				? json({ error: 'Forbidden' }, { status: 403 })

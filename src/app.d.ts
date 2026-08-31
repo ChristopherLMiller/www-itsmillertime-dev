@@ -1,9 +1,14 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
+import type { SessionShape } from '$lib/auth/sessionShape';
+
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			/** `undefined` = not resolved yet; `null` = resolved, signed out. */
+			session?: SessionShape;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}
