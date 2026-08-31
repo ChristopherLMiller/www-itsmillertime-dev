@@ -1,13 +1,11 @@
-import { loadSession } from '$lib/auth/loadSession.server';
+import { loadSessionFromEvent, type SessionShape } from '$lib/auth/loadSession.server';
 import { hrefWithCallback } from '$lib/auth/returnTo';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ parent, fetch, request }) => {
-	const parentData = await parent();
-	const session =
-		(parentData.session as Awaited<ReturnType<typeof loadSession>>) ??
-		(await loadSession(fetch, request));
+export const load: PageServerLoad = async (event) => {
+	const parentData = await event.parent();
+	const session = (parentData.session as SessionShape) ?? (await loadSessionFromEvent(event));
 	if (!session?.user) {
 		redirect(302, hrefWithCallback('/account/login', '/account/profile'));
 	}

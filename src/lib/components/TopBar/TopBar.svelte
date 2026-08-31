@@ -4,6 +4,7 @@
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 	import { onMount } from 'svelte';
 	import { rememberAdminReturnTo } from '$lib/admin/returnTo';
+	import { isAdminRole } from '$lib/auth/isAdminRole';
 	import { navStore, type NavState } from '../../../stores/navigation';
 	import { filterNavItems } from '$lib/components/navigation/visibility';
 	import { getSiteLayoutContext } from '$lib/query/siteLayoutContext';
@@ -20,7 +21,7 @@
 	let navigation = $derived(siteLayout ? siteLayout().navigation : page.data.navigation);
 	let user = $derived(page.data.session?.user ?? null);
 	let isLoggedIn = $derived(!!user);
-	let isAdmin = $derived(isLoggedIn && (user?.role as string[] | undefined)?.includes('admin'));
+	let isAdmin = $derived(isAdminRole(user));
 	let visibleNavItems = $derived(filterNavItems(navigation?.navItems ?? [], user));
 
 	let navState = $state<NavState>({ isOpen: false, activeDropdown: null });

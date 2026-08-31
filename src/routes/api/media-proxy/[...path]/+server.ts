@@ -1,6 +1,5 @@
+import { applyCmsAuthHeaders } from '$lib/auth/sessionCookie';
 import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
-import { dev } from '$app/environment';
-import { cookieHeaderForCms } from '$lib/auth/sessionCookie';
 import type { RequestHandler } from './$types';
 
 /**
@@ -13,9 +12,7 @@ const proxy: RequestHandler = async ({ request, params }) => {
 
 	const headers = new Headers();
 	headers.set('accept', request.headers.get('accept') ?? '*/*');
-
-	const cookies = cookieHeaderForCms(request.headers.get('cookie'), dev);
-	if (cookies) headers.set('cookie', cookies);
+	applyCmsAuthHeaders(headers, request);
 
 	const response = await fetch(targetUrl, {
 		method: 'GET',

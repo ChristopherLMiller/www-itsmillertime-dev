@@ -40,7 +40,7 @@ const proxy: RequestHandler = async ({ request, params, url, cookies }) => {
 	headers.set('origin', url.origin);
 	headers.set('referer', `${url.origin}/`);
 
-	const cookieHeader = cookieHeaderForCms(headers.get('cookie'), dev);
+	const cookieHeader = cookieHeaderForCms(headers.get('cookie'));
 	if (cookieHeader) headers.set('cookie', cookieHeader);
 
 	let requestBody: string | undefined;
