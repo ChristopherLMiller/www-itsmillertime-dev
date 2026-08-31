@@ -1,4 +1,4 @@
-import { loadSession } from '$lib/auth/loadSession.server';
+import { loadSessionFromEvent } from '$lib/auth/loadSession.server';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
 import { error, json } from '@sveltejs/kit';
@@ -64,8 +64,8 @@ function parseBody(body: unknown): ProfilePatchBody {
 	return data;
 }
 
-export const GET: RequestHandler = async ({ request, fetch }) => {
-	const session = await loadSession(fetch, request);
+export const GET: RequestHandler = async (event) => {
+	const session = await loadSessionFromEvent(event);
 	if (!session?.user?.id) {
 		throw error(401, 'Unauthorized');
 	}
@@ -85,8 +85,9 @@ export const GET: RequestHandler = async ({ request, fetch }) => {
 	});
 };
 
-export const PATCH: RequestHandler = async ({ request, fetch }) => {
-	const session = await loadSession(fetch, request);
+export const PATCH: RequestHandler = async (event) => {
+	const { request, fetch } = event;
+	const session = await loadSessionFromEvent(event);
 	const userIdRaw = session?.user?.id;
 	if (userIdRaw == null) {
 		throw error(401, 'Unauthorized');

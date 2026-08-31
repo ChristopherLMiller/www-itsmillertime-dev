@@ -63,23 +63,71 @@ export function rewriteProxiedAuthCookie(cookie: string, isDev: boolean): string
 }
 
 /**
- * Local HTTP stores unprefixed `better-auth.*` cookies. Production CMS may look
- * up either that name or `__Secure-better-auth.*` depending on X-Forwarded-Proto,
- * so send both in dev.
+ * Browser-facing host/proto so Better Auth on an internal HTTP CMS still looks
+ * up `__Secure-better-auth.*` when the user is on HTTPS www.
  */
-export function cookieHeaderForCms(cookieHeader: string | null, isDev: boolean): string | null {
+export function browserAuthHeaders(request: Request | undefined): Record<string, string> {
+	if (!request) return {};
+	try {
+		const url = new URL(request.url);
+		const proto = url.protocol.replace(':', '');
+		if (proto !== 'http' && proto !== 'https') return {};
+		return {
+			'x-forwarded-host': url.host,
+			'x-forwarded-proto': proto,
+			'x-auth-browser-host': url.host,
+			'x-auth-browser-proto': proto,
+			origin: url.origin
+		};
+	} catch {
+		return {};
+	}
+}
+
+/** Cookie aliases + forwarded browser origin for any server → CMS fetch. */
+export function applyCmsAuthHeaders(headers: Headers, request: Request | undefined): void {
+	const cookie = cookieHeaderForCms(request?.headers.get('cookie') ?? null);
+	if (cookie) headers.set('cookie', cookie);
+	for (const [key, value] of Object.entries(browserAuthHeaders(request))) {
+		if (!headers.has(key)) headers.set(key, value);
+	}
+}
+
+/**
+ * Local HTTP stores unprefixed `better-auth.*` cookies. CMS may look up either
+ * that name or `__Secure-better-auth.*` depending on X-Forwarded-Proto, so
+ * always send both name variants.
+ */
+export function cookieHeaderForCms(cookieHeader: string | null | undefined): string | null {
 	if (!cookieHeader) return null;
-	if (!isDev) return cookieHeader;
 	const parts = cookieHeader
 		.split(';')
 		.map((part) => part.trim())
 		.filter(Boolean);
+	const names = new Set<string>();
+	for (const part of parts) {
+		const name = part.split('=')[0];
+		if (name) names.add(name);
+	}
 	const extra: string[] = [];
 	for (const part of parts) {
-		if (part.startsWith('better-auth.')) extra.push(`__Secure-${part}`);
-		else if (part.startsWith('__Secure-better-auth.')) extra.push(part.slice('__Secure-'.length));
+		if (part.startsWith('better-auth.')) {
+			const alias = `__Secure-${part}`;
+			const aliasName = alias.split('=')[0];
+			if (aliasName && !names.has(aliasName)) {
+				extra.push(alias);
+				names.add(aliasName);
+			}
+		} else if (part.startsWith('__Secure-better-auth.')) {
+			const alias = part.slice('__Secure-'.length);
+			const aliasName = alias.split('=')[0];
+			if (aliasName && !names.has(aliasName)) {
+				extra.push(alias);
+				names.add(aliasName);
+			}
+		}
 	}
-	return [...parts, ...extra].join('; ');
+	return extra.length ? [...parts, ...extra].join('; ') : cookieHeader;
 }
 
 export type ProxiedCookie = {

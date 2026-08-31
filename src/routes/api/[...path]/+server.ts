@@ -1,5 +1,4 @@
-import { dev } from '$app/environment';
-import { cookieHeaderForCms } from '$lib/auth/sessionCookie';
+import { cookieHeaderForCms, browserAuthHeaders } from '$lib/auth/sessionCookie';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { error, type RequestHandler } from '@sveltejs/kit';
 
@@ -9,8 +8,11 @@ const proxyRequest = async (request: Request, path: string): Promise<Response> =
 	const headers = new Headers();
 	const contentType = request.headers.get('content-type');
 	if (contentType) headers.set('content-type', contentType);
-	headers.set('cookie', cookieHeaderForCms(request.headers.get('cookie'), dev) ?? '');
+	headers.set('cookie', cookieHeaderForCms(request.headers.get('cookie')) ?? '');
 	headers.set('accept', request.headers.get('accept') ?? 'application/json');
+	for (const [key, value] of Object.entries(browserAuthHeaders(request))) {
+		headers.set(key, value);
+	}
 
 	const response = await fetch(url, {
 		method: request.method,

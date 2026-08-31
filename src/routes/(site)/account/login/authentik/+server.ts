@@ -1,14 +1,20 @@
-import { AUTHENTIK_PROVIDER_ID } from '$lib/auth/authentik-constants';
+import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
 import { headerReferer, hrefWithCallback, resolveReturnUrl, urlToPath } from '$lib/auth/returnTo';
 import { redirectHtml, sameOriginReturnUrl } from '$lib/auth/sameOriginReturnUrl';
 import type { RequestHandler } from './$types';
 
 /**
- * Start Authentik from this origin so state + session cookies are first-party on www.
- * Returns 200 HTML (not a 302 to Authentik) so mobile Chrome commits Set-Cookie
- * before leaving the site.
+ * Start Authentik on the CMS origin via /api/frontend-oauth-start.
+ *
+ * OAuth state and the Better Auth session cookie must commit on cms first.
+ * CMS then hands off to www with a short-lived ticket; account/+layout.server.ts
+ * exchanges it and sets a first-party www cookie.
+ *
+ * Starting OAuth on www (/api/auth/sign-in/oauth2) often finishes Authentik but
+ * leaves www without a usable session — logging in on cms first "works" because
+ * cms sets a shared .itsmillertime.dev cookie the frontend can reuse.
  */
-export const GET: RequestHandler = async ({ url, fetch, request }) => {
+export const GET: RequestHandler = async ({ url, request }) => {
 	const origin = url.origin;
 	const callbackURL = resolveReturnUrl(origin, '/account/profile', [
 		url.searchParams.get('callbackURL'),
@@ -20,51 +26,16 @@ export const GET: RequestHandler = async ({ url, fetch, request }) => {
 		hrefWithCallback('/account/login', urlToPath(callbackURL))
 	);
 
-	const start = await fetch('/api/auth/sign-in/oauth2', {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			cookie: request.headers.get('cookie') ?? '',
-			origin
-		},
-		body: JSON.stringify({
-			providerId: AUTHENTIK_PROVIDER_ID,
-			callbackURL,
-			errorCallbackURL,
-			disableRedirect: true
-		}),
-		redirect: 'manual'
-	});
+	const cmsStart = new URL('/api/frontend-oauth-start', PUBLIC_PAYLOAD_URL);
+	cmsStart.searchParams.set('callbackURL', callbackURL);
+	cmsStart.searchParams.set('errorCallbackURL', errorCallbackURL);
 
-	const headers = new Headers({
-		'content-type': 'text/html; charset=utf-8',
-		'cache-control': 'no-store',
-		'referrer-policy': 'no-referrer'
-	});
-	for (const cookie of start.headers.getSetCookie()) {
-		headers.append('set-cookie', cookie);
-	}
-
-	let authentikUrl: string | undefined;
-	const location = start.headers.get('location');
-	if (location && start.status >= 300 && start.status < 400) {
-		authentikUrl = location;
-	} else if (start.ok) {
-		const data = (await start.json().catch(() => null)) as { url?: string } | null;
-		authentikUrl = data?.url;
-	}
-
-	if (!authentikUrl) {
-		const fail = new URL(errorCallbackURL);
-		fail.searchParams.set('error', 'oauth_provider_not_found');
-		return new Response(redirectHtml(fail.toString(), 'Sign-in failed.'), {
-			status: 200,
-			headers
-		});
-	}
-
-	return new Response(redirectHtml(authentikUrl, 'Redirecting to Authentik…'), {
+	return new Response(redirectHtml(cmsStart.toString(), 'Redirecting to sign in…'), {
 		status: 200,
-		headers
+		headers: {
+			'content-type': 'text/html; charset=utf-8',
+			'cache-control': 'no-store',
+			'referrer-policy': 'no-referrer'
+		}
 	});
 };

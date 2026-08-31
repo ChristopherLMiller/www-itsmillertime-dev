@@ -1,5 +1,5 @@
 import { dev } from '$app/environment';
-import { cookieHeaderForCms } from '$lib/auth/sessionCookie';
+import { applyCmsAuthHeaders } from '$lib/auth/sessionCookie';
 import { PUBLIC_PAYLOAD_API_ENDPOINT, PUBLIC_PAYLOAD_API_ENDPOINT_DEV } from '$env/static/public';
 import { PayloadSDK } from '@payloadcms/sdk';
 import type { Config } from '$lib/types/payload-types';
@@ -9,18 +9,16 @@ let sdk: PayloadSDK<Config> | null = null;
 /**
  * Creates a fetch wrapper that forwards better-auth session cookies to the Payload API.
  * Use when calling from server load functions so authenticated requests work.
- * In dev, forwards both `better-auth.*` and `__Secure-better-auth.*` cookie names.
+ * Sends both `better-auth.*` and `__Secure-better-auth.*` cookie names, plus the
+ * browser Host/Proto, so an internal HTTP CMS still validates HTTPS www sessions.
  */
 export function createPayloadFetch(
 	fetchFn: typeof globalThis.fetch,
 	request?: Request
 ): typeof globalThis.fetch {
-	let cookieHeader = cookieHeaderForCms(request?.headers.get('cookie') ?? null, dev);
 	return (input: RequestInfo | URL, init?: RequestInit) => {
 		const headers = new Headers(init?.headers);
-		if (cookieHeader) {
-			headers.set('cookie', cookieHeader);
-		}
+		applyCmsAuthHeaders(headers, request);
 		return fetchFn(input, { ...init, headers });
 	};
 }

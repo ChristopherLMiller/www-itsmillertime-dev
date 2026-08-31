@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	browserAuthHeaders,
 	cookieHeaderForCms,
 	cookieNameForSite,
 	dedupeSetCookies,
@@ -63,12 +64,22 @@ describe('session cookie handoff helpers', () => {
 	});
 
 	it('sends both cookie name variants so CMS can match http or https lookup', () => {
-		expect(cookieHeaderForCms('better-auth.two_factor=2fa-abc.sig=; other=1', true)).toBe(
+		expect(cookieHeaderForCms('better-auth.two_factor=2fa-abc.sig=; other=1')).toBe(
 			'better-auth.two_factor=2fa-abc.sig=; other=1; __Secure-better-auth.two_factor=2fa-abc.sig='
 		);
-		expect(cookieHeaderForCms('better-auth.session_token=abc', false)).toBe(
-			'better-auth.session_token=abc'
+		expect(cookieHeaderForCms('better-auth.session_token=abc')).toBe(
+			'better-auth.session_token=abc; __Secure-better-auth.session_token=abc'
 		);
+		expect(
+			cookieHeaderForCms('__Secure-better-auth.session_token=abc; better-auth.session_token=abc')
+		).toBe('__Secure-better-auth.session_token=abc; better-auth.session_token=abc');
+	});
+
+	it('forwards the browser host and proto so an internal HTTP CMS sees HTTPS www', () => {
+		const headers = browserAuthHeaders(new Request('https://www.itsmillertime.dev/gallery'));
+		expect(headers['x-forwarded-host']).toBe('www.itsmillertime.dev');
+		expect(headers['x-forwarded-proto']).toBe('https');
+		expect(headers.origin).toBe('https://www.itsmillertime.dev');
 	});
 
 	it('parses rewritten Set-Cookie including a trailing = in the value', () => {
