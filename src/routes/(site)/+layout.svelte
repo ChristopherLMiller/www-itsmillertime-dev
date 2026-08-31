@@ -8,6 +8,7 @@
 	import { queryPersistRestored } from '$lib/query/seedServerQuery';
 	import { shouldPersistQuery } from '$lib/query/shouldPersistQuery';
 	import { rememberAdminReturnTo } from '$lib/admin/returnTo';
+	import { startSessionKeepalive } from '$lib/auth/sessionKeepalive';
 	import { navStore } from '../../stores/navigation';
 	import SiteChrome from './SiteChrome.svelte';
 	import type { LayoutProps } from './$types';
@@ -22,6 +23,11 @@
 		void purgeLegacyPersistedQueryCaches();
 		void purgeCachedArticlesListing();
 	}
+
+	$effect(() => {
+		if (!browser || !data.session?.user) return;
+		return startSessionKeepalive();
+	});
 
 	function markPersistSettled() {
 		queryPersistRestored.set(true);
