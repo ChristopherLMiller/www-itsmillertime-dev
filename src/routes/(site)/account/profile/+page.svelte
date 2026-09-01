@@ -51,6 +51,21 @@
 	let nsfwFiltering = $state<NsfwFiltering | ''>('');
 	let bggUsername = $state('');
 
+	let linkError = $state<string | null>(null);
+	let linkSuccess = $state<string | null>(null);
+	let linkLoading = $state(false);
+	let linkConfirming = $state(false);
+	let shopEmail = $state('');
+	let shopOtp = $state('');
+	let shopChallengeId = $state<string | null>(null);
+	let shopLinkStatus = $state<{
+		linked: boolean;
+		medusa_customer_id: string | null;
+		medusa_customer_email: string | null;
+		linked_at: string | null;
+	} | null>(null);
+	let shopLinkLoaded = $state(false);
+
 	let deleteConfirm = $state('');
 
 	let otherSessions = $state<AuthSession[]>([]);
@@ -133,6 +148,121 @@
 		sessionsLoadedForUserId = u.id;
 		void loadSessions();
 	});
+
+	$effect(() => {
+		const u = user;
+		if (!u?.id || shopLinkLoaded) return;
+		shopLinkLoaded = true;
+		void loadShopLinkStatus();
+	});
+
+	async function loadShopLinkStatus() {
+		linkError = null;
+		try {
+			const res = await fetch('/api/account/shop-link');
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				linkError =
+					typeof data?.message === 'string' ? data.message : 'Could not load shop link status.';
+				return;
+			}
+			shopLinkStatus = {
+				linked: Boolean(data.linked),
+				medusa_customer_id:
+					typeof data.medusa_customer_id === 'string' ? data.medusa_customer_id : null,
+				medusa_customer_email:
+					typeof data.medusa_customer_email === 'string' ? data.medusa_customer_email : null,
+				linked_at: typeof data.linked_at === 'string' ? data.linked_at : null
+			};
+		} catch (err) {
+			linkError = err instanceof Error ? err.message : 'Could not load shop link status.';
+		}
+	}
+
+	async function startShopLink(e: SubmitEvent) {
+		e.preventDefault();
+		linkLoading = true;
+		linkError = null;
+		linkSuccess = null;
+		try {
+			const res = await fetch('/api/account/shop-link/start', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: shopEmail.trim() })
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				throw new Error(
+					typeof data?.message === 'string' ? data.message : 'Could not start shop linking.'
+				);
+			}
+			shopChallengeId =
+				typeof data.challenge_id === 'string'
+					? data.challenge_id
+					: typeof data.challengeId === 'string'
+						? data.challengeId
+						: null;
+			if (!shopChallengeId) {
+				throw new Error('Link challenge was not created.');
+			}
+			linkSuccess = `We sent a one-time code to ${shopEmail.trim()}. Enter it below to finish linking.`;
+		} catch (err) {
+			linkError = err instanceof Error ? err.message : 'Could not start shop linking.';
+		} finally {
+			linkLoading = false;
+		}
+	}
+
+	async function confirmShopLink(e: SubmitEvent) {
+		e.preventDefault();
+		if (!shopChallengeId) return;
+		linkConfirming = true;
+		linkError = null;
+		linkSuccess = null;
+		try {
+			const res = await fetch('/api/account/shop-link/confirm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ challenge_id: shopChallengeId, code: shopOtp.trim() })
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				throw new Error(
+					typeof data?.message === 'string' ? data.message : 'Could not confirm shop linking.'
+				);
+			}
+			shopChallengeId = null;
+			shopOtp = '';
+			shopEmail = '';
+			linkSuccess = 'Shop account linked.';
+			await loadShopLinkStatus();
+		} catch (err) {
+			linkError = err instanceof Error ? err.message : 'Could not confirm shop linking.';
+		} finally {
+			linkConfirming = false;
+		}
+	}
+
+	async function unlinkShopAccount() {
+		linkLoading = true;
+		linkError = null;
+		linkSuccess = null;
+		try {
+			const res = await fetch('/api/account/shop-link', { method: 'DELETE' });
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				throw new Error(
+					typeof data?.message === 'string' ? data.message : 'Could not unlink shop account.'
+				);
+			}
+			linkSuccess = 'Shop account unlinked.';
+			await loadShopLinkStatus();
+		} catch (err) {
+			linkError = err instanceof Error ? err.message : 'Could not unlink shop account.';
+		} finally {
+			linkLoading = false;
+		}
+	}
 
 	$effect(() => {
 		const email = typeof user?.email === 'string' ? user.email : '';
@@ -434,6 +564,85 @@
 							{profileSaving ? 'Saving...' : 'Save profile'}
 						</button>
 					</form>
+				</section>
+			</Panel>
+
+			<Panel hasPadding={true} hasBorder={true}>
+				<section class="section">
+					<h2>Shop account</h2>
+					<p class="subtitle">
+						Link your ItsMillerTime Store account. Emails do not need to match — we email a
+						one-time code to the shop inbox you enter.
+					</p>
+					{#if linkError}
+						<div class="message error" role="alert">{linkError}</div>
+					{/if}
+					{#if linkSuccess}
+						<div class="message success" role="status">{linkSuccess}</div>
+					{/if}
+
+					{#if shopLinkStatus?.linked}
+						<p>
+							Linked to shop account
+							<strong>{shopLinkStatus.medusa_customer_email || 'connected'}</strong>
+						</p>
+						<button
+							type="button"
+							class="submit-btn"
+							disabled={linkLoading}
+							onclick={unlinkShopAccount}
+						>
+							{linkLoading ? 'Unlinking...' : 'Unlink shop account'}
+						</button>
+					{:else if shopChallengeId}
+						<form class="account-form" onsubmit={confirmShopLink}>
+							<label class="field">
+								<span>One-time code</span>
+								<input
+									type="text"
+									name="code"
+									inputmode="numeric"
+									autocomplete="one-time-code"
+									bind:value={shopOtp}
+									disabled={linkConfirming}
+									required
+								/>
+							</label>
+							<button type="submit" class="submit-btn" disabled={linkConfirming}>
+								{linkConfirming ? 'Confirming...' : 'Confirm link'}
+							</button>
+							<button
+								type="button"
+								class="submit-btn"
+								disabled={linkConfirming}
+								onclick={() => {
+									shopChallengeId = null;
+									shopOtp = '';
+									linkSuccess = null;
+								}}
+							>
+								Cancel
+							</button>
+						</form>
+					{:else}
+						<form class="account-form" onsubmit={startShopLink}>
+							<label class="field">
+								<span>Shop account email</span>
+								<input
+									type="email"
+									name="email"
+									autocomplete="email"
+									bind:value={shopEmail}
+									disabled={linkLoading}
+									required
+									placeholder="you+store@example.com"
+								/>
+							</label>
+							<button type="submit" class="submit-btn" disabled={linkLoading}>
+								{linkLoading ? 'Sending code...' : 'Link shop account'}
+							</button>
+						</form>
+					{/if}
 				</section>
 			</Panel>
 
