@@ -146,6 +146,7 @@
 				class="gallery-album-polaroid__shop"
 				aria-label={`Open shop for ${media.alt || 'this image'}`}
 				onclick={() => {
+					if (!media) return;
 					(onShopClick ?? onClick)?.(media);
 				}}
 			>

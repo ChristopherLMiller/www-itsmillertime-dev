@@ -204,7 +204,7 @@
 				const seen = new Set(galleryImageSlots.map((slot) => slot.id));
 				const newSlots: ImageSlot[] = nextDocs
 					.map((d: AlbumImageDoc) => slotFromDoc(d))
-					.filter((slot) => !seen.has(slot.id));
+					.filter((slot: ImageSlot) => !seen.has(slot.id));
 				galleryImageSlots = [...galleryImageSlots, ...newSlots];
 				loadedPage = Number(payload?.page ?? nextPage);
 				hasNextPage = Boolean(payload?.hasNextPage);
@@ -503,7 +503,9 @@
 		onClose={closeLightbox}
 		onIndexChange={updateUrlForIndex}
 		canLoadMore={hasNextPage}
-		onRequestMore={loadNextImagePage}
+		onRequestMore={async () => {
+			await loadNextImagePage();
+		}}
 		{useProxy}
 	>
 		{#snippet content({
