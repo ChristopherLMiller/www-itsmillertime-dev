@@ -123,6 +123,9 @@
 
 	function isActive(href: string): boolean {
 		if (href.startsWith('http')) return false;
+		if (href === '/account/profile') {
+			return page.url.pathname === href || page.url.pathname.startsWith('/account/profile/');
+		}
 		return page.url.pathname === href;
 	}
 </script>

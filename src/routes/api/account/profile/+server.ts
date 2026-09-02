@@ -1,11 +1,12 @@
 import { loadSessionFromEvent } from '$lib/auth/loadSession.server';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { createPayloadFetch } from '$lib/payload';
+import { parseProfileUser } from '$lib/account/profileUser';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import type { NsfwFiltering } from '$lib/account/types';
 
 const NSFW_VALUES = new Set(['hide', 'blur', 'show'] as const);
-type NsfwFiltering = 'hide' | 'blur' | 'show';
 
 type ProfilePatchBody = {
 	displayName?: string | null;
@@ -64,39 +65,31 @@ function parseBody(body: unknown): ProfilePatchBody {
 	return data;
 }
 
+function payloadUserId(raw: unknown): number {
+	const userId = typeof raw === 'number' ? raw : Number(raw);
+	if (!Number.isFinite(userId)) {
+		throw error(400, 'Invalid user id');
+	}
+	return userId;
+}
+
 export const GET: RequestHandler = async (event) => {
 	const session = await loadSessionFromEvent(event);
 	if (!session?.user?.id) {
 		throw error(401, 'Unauthorized');
 	}
 
-	return json({
-		user: {
-			id: session.user.id,
-			email: session.user.email ?? null,
-			name: session.user.name ?? null,
-			displayName: session.user.displayName ?? null,
-			nsfwFiltering: session.user.nsfwFiltering ?? null,
-			bggUsername: session.user.bggUsername ?? null,
-			image: session.user.image ?? null,
-			role: session.user.role ?? null,
-			emailVerified: session.user.emailVerified ?? null
-		}
-	});
+	return json({ user: parseProfileUser(session.user) });
 };
 
 export const PATCH: RequestHandler = async (event) => {
 	const { request, fetch } = event;
 	const session = await loadSessionFromEvent(event);
-	const userIdRaw = session?.user?.id;
-	if (userIdRaw == null) {
+	if (session?.user?.id == null) {
 		throw error(401, 'Unauthorized');
 	}
 
-	const userId = Number(userIdRaw);
-	if (!Number.isFinite(userId)) {
-		throw error(400, 'Invalid user id');
-	}
+	const userId = payloadUserId(session.user.id);
 
 	let raw: unknown;
 	try {
@@ -130,5 +123,5 @@ export const PATCH: RequestHandler = async (event) => {
 		return json({ error: message }, { status: res.status });
 	}
 
-	return json({ user: payload?.doc ?? payload });
+	return json({ user: parseProfileUser(payload?.doc ?? payload) ?? payload?.doc ?? payload });
 };
