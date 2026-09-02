@@ -23,6 +23,7 @@
 		isVideoMedia
 	} from '$lib/utils/media-url';
 	import Lexical from '$lib/components/Lexical';
+	import { SvelteURL } from 'svelte/reactivity';
 	import type { GalleryImage } from '$lib/types/payload-types';
 	import {
 		imageZoomPan,
@@ -256,19 +257,6 @@
 		ro.observe(pane);
 		ro.observe(frame);
 		return () => ro.disconnect();
-	});
-
-	const imageZoomPanOptions = $derived({
-		handle: zoomHandle,
-		maxScale: Math.max(coverScale * 4, 8),
-		// Progressive zoom — do not snap to coverScale (that felt like a horizontal stretch
-		// when details are collapsed and side letterbars are large). Bars still fill as scale grows.
-		clickZoomScale: 2.5,
-		// Keep CSS transform so the frame's hit region scales with zoom; canvas paints sharp pixels on top.
-		applyCssTransform: true,
-		enabled: !shopCatalogOpen,
-		onZoomChange,
-		onTransform: onZoomTransform
 	});
 
 	$effect(() => {
@@ -533,10 +521,7 @@
 		try {
 			const { defaultSlug, prompts } = await fetchAiPromptChoices();
 			altPromptChoices = prompts;
-			selectedAltPromptSlug = defaultPromptChoiceSlug(
-				prompts,
-				readAltPromptPref() || defaultSlug
-			);
+			selectedAltPromptSlug = defaultPromptChoiceSlug(prompts, readAltPromptPref() || defaultSlug);
 		} catch {
 			altPromptChoices = [];
 			selectedAltPromptSlug = '';
@@ -691,6 +676,19 @@
 	const shopHasProducts = $derived(shopVariants.length > 0);
 	const shopCatalogOpen = $derived(shopTabActive && shopHasProducts);
 
+	const imageZoomPanOptions = $derived({
+		handle: zoomHandle,
+		maxScale: Math.max(coverScale * 4, 8),
+		// Progressive zoom — do not snap to coverScale (that felt like a horizontal stretch
+		// when details are collapsed and side letterbars are large). Bars still fill as scale grows.
+		clickZoomScale: 2.5,
+		// Keep CSS transform so the frame's hit region scales with zoom; canvas paints sharp pixels on top.
+		applyCssTransform: true,
+		enabled: !shopCatalogOpen,
+		onZoomChange,
+		onTransform: onZoomTransform
+	});
+
 	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
 
 	const dimensionsLabel = $derived.by(() => {
@@ -811,7 +809,7 @@
 
 	const shareUrl = $derived.by(() => {
 		if (!browser || !gallery.slug || galleryImageId == null) return '';
-		const url = new URL(page.url);
+		const url = new SvelteURL(page.url);
 		url.pathname = `/galleries/${gallery.slug}`;
 		url.search = '';
 		url.searchParams.set('selected', String(galleryImageId));
@@ -1483,8 +1481,7 @@
 											rows="4"
 											bind:value={draftCaption}
 											disabled={metaSaving || altSuggesting}
-											placeholder="Optional longer description"
-										></textarea>
+											placeholder="Optional longer description"></textarea>
 									</label>
 									{#if metaSaveError}
 										<p class="gallery-lightbox__meta-error" role="alert">{metaSaveError}</p>

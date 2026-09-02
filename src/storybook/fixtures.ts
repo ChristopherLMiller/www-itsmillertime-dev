@@ -83,6 +83,7 @@ export const storybookGalleryAlbum: GalleryAlbum = {
 	title: 'Sample gallery',
 	settings: {
 		visibility: 'ALL',
+		defaultSort: '-createdAt',
 		category: { id: 1, title: 'Travel', updatedAt: '', createdAt: '' },
 		tags: [{ id: 1, title: 'Summer', updatedAt: '', createdAt: '' }]
 	},

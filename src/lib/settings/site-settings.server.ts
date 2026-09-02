@@ -3,17 +3,14 @@ import { createPayloadFetch } from '$lib/payload';
 import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { SiteSetting } from '$lib/types/payload-types';
-import {
-	decryptGroupField,
-	encryptGroupField,
-	SettingsEncryptionError
-} from './encryption.server';
+import { decryptGroupField, encryptGroupField, SettingsEncryptionError } from './encryption.server';
 import {
 	DEFAULT_IMAGE_ALT_PROMPT,
 	getPrompt,
 	IMAGE_ALT_PROMPT_SLUG,
 	resolveImageAltPrompt
 } from './prompts';
+import type { SitePrompt } from './prompts';
 import type { SiteSettingsPatch, SiteSettingsView } from './types';
 
 export type { SiteSettingsPatch, SiteSettingsView };
@@ -43,7 +40,12 @@ function parsePrompts(value: unknown): SitePrompt[] {
 			slug,
 			label,
 			body,
-			id: typeof rec.id === 'string' ? rec.id : typeof rec.id === 'number' ? String(rec.id) : undefined
+			id:
+				typeof rec.id === 'string'
+					? rec.id
+					: typeof rec.id === 'number'
+						? String(rec.id)
+						: undefined
 		});
 	}
 	return rows;
@@ -173,7 +175,9 @@ export async function saveSiteSettings(
 			Array.isArray((body as { errors?: { message?: string }[] }).errors) &&
 			typeof (body as { errors: { message?: string }[] }).errors[0]?.message === 'string'
 				? (body as { errors: { message?: string }[] }).errors[0].message
-				: typeof body === 'object' && body && typeof (body as { message?: string }).message === 'string'
+				: typeof body === 'object' &&
+					  body &&
+					  typeof (body as { message?: string }).message === 'string'
 					? (body as { message: string }).message
 					: 'Failed to save settings';
 		throw new Error(message);
