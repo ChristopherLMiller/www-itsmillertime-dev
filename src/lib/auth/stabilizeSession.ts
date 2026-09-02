@@ -14,7 +14,7 @@ export function stabilizeSession(previous: SessionShape, next: SessionShape): Se
 		return next;
 	}
 
-	const user = mergeSessionUser(next.user, previous.user);
+	const user = mergeSessionUser(previous.user, next.user);
 	if (isAdminRole(previous.user) && !isAdminRole(user)) {
 		user.role = previous.user.role;
 	}

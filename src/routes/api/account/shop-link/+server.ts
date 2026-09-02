@@ -1,5 +1,5 @@
 import { loadSessionFromEvent } from '$lib/auth/loadSession.server';
-import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
+import { cmsAccountLinkUrl } from '$lib/account/shopLink.server';
 import { createPayloadFetch } from '$lib/payload';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -14,26 +14,32 @@ async function requireSession(event: Parameters<RequestHandler>[0]) {
 
 export const GET: RequestHandler = async (event) => {
 	await requireSession(event);
-	const payloadFetch = createPayloadFetch(event.fetch);
-	const res = await payloadFetch(`${getPayloadApiBaseUrl()}/api/account-link/shop/status`);
+	const payloadFetch = createPayloadFetch(event.fetch, event.request);
+	const res = await payloadFetch(cmsAccountLinkUrl('status'));
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
-		throw error(res.status, typeof data?.error === 'string' ? data.error : 'Could not load link status');
+		throw error(
+			res.status,
+			typeof data?.error === 'string' ? data.error : 'Could not load link status'
+		);
 	}
 	return json(data);
 };
 
 export const DELETE: RequestHandler = async (event) => {
 	await requireSession(event);
-	const payloadFetch = createPayloadFetch(event.fetch);
-	const res = await payloadFetch(`${getPayloadApiBaseUrl()}/api/account-link/shop/unlink`, {
+	const payloadFetch = createPayloadFetch(event.fetch, event.request);
+	const res = await payloadFetch(cmsAccountLinkUrl('unlink'), {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: '{}',
+		body: '{}'
 	});
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
-		throw error(res.status, typeof data?.error === 'string' ? data.error : 'Could not unlink shop account');
+		throw error(
+			res.status,
+			typeof data?.error === 'string' ? data.error : 'Could not unlink shop account'
+		);
 	}
 	return json(data);
 };

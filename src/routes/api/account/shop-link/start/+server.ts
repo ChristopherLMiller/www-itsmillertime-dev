@@ -1,5 +1,5 @@
 import { loadSessionFromEvent } from '$lib/auth/loadSession.server';
-import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
+import { cmsAccountLinkUrl } from '$lib/account/shopLink.server';
 import { createPayloadFetch } from '$lib/payload';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -20,15 +20,18 @@ export const POST: RequestHandler = async (event) => {
 		throw error(400, 'Shop account email is required');
 	}
 
-	const payloadFetch = createPayloadFetch(event.fetch);
-	const res = await payloadFetch(`${getPayloadApiBaseUrl()}/api/account-link/shop/start`, {
+	const payloadFetch = createPayloadFetch(event.fetch, event.request);
+	const res = await payloadFetch(cmsAccountLinkUrl('start'), {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ email }),
+		body: JSON.stringify({ email })
 	});
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
-		throw error(res.status, typeof data?.error === 'string' ? data.error : 'Could not start shop linking');
+		throw error(
+			res.status,
+			typeof data?.error === 'string' ? data.error : 'Could not start shop linking'
+		);
 	}
 	return json(data, { status: 201 });
 };

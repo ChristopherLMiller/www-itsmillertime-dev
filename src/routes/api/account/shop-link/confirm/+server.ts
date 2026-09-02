@@ -1,5 +1,5 @@
 import { loadSessionFromEvent } from '$lib/auth/loadSession.server';
-import { getPayloadApiBaseUrl } from '$lib/payload/api-base-url.server';
+import { cmsAccountLinkUrl } from '$lib/account/shopLink.server';
 import { createPayloadFetch } from '$lib/payload';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -26,11 +26,11 @@ export const POST: RequestHandler = async (event) => {
 		throw error(400, 'challenge_id and code are required');
 	}
 
-	const payloadFetch = createPayloadFetch(event.fetch);
-	const res = await payloadFetch(`${getPayloadApiBaseUrl()}/api/account-link/shop/confirm`, {
+	const payloadFetch = createPayloadFetch(event.fetch, event.request);
+	const res = await payloadFetch(cmsAccountLinkUrl('confirm'), {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ challenge_id: challengeId, code }),
+		body: JSON.stringify({ challenge_id: challengeId, code })
 	});
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {

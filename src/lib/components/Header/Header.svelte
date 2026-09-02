@@ -9,17 +9,17 @@
 	);
 	const path = $derived(page.url.pathname);
 	const currentPage = $derived(findMatchingPath(path, siteMeta?.siteMeta));
+	const isProfile = $derived(path === '/account/profile' || path.startsWith('/account/profile/'));
+	const pageDescription = $derived(isProfile ? 'Your account' : currentPage?.description);
+	const pageTitle = $derived(isProfile ? 'Profile' : currentPage?.title);
 
 	function findMatchingPath(url: string, siteMeta: SiteMeta['siteMeta'] | undefined) {
-		// First try for exact match
 		const exactMatch = siteMeta?.find((item) => item.path === url);
 		if (exactMatch) return exactMatch;
 
-		// If no exact match, find the base path
-		const urlParts = url.split('/').filter(Boolean); // Remove empty strings
+		const urlParts = url.split('/').filter(Boolean);
 		if (urlParts.length === 0) return undefined;
 
-		// Find the matching base path
 		return siteMeta?.find((item) => {
 			const itemPath = item.path.split('/').filter(Boolean);
 			return itemPath.length > 0 && urlParts[0] === itemPath[0];
@@ -29,8 +29,8 @@
 
 <header>
 	<div class="meta">
-		<p class="page-description text-small">{currentPage?.description}</p>
-		<p class="page-title text-large">{currentPage?.title}</p>
+		<p class="page-description text-small">{pageDescription}</p>
+		<p class="page-title text-large">{pageTitle}</p>
 	</div>
 </header>
 
