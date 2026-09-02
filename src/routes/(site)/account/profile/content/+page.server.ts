@@ -6,7 +6,7 @@ import {
 	type ContentAlbumView
 } from '$lib/account/contentAlbums';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
-import type { GalleryAlbum } from '$lib/types/payload-types';
+import type { GalleryAlbum, GalleryAlbumsSelect } from '$lib/types/payload-types';
 import { mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
 
 export const load: PageServerLoad = async ({ fetch, request, parent }) => {
@@ -15,7 +15,11 @@ export const load: PageServerLoad = async ({ fetch, request, parent }) => {
 	const userId = Number(profileUser?.id);
 	const roles = profileUser?.role ?? [];
 	const showCovers = profileUser?.nsfwFiltering === 'blur' || profileUser?.nsfwFiltering === 'show';
-	const or: Record<string, unknown>[] = [];
+	type AlbumWhere =
+		| { id: { in: number[] } }
+		| { 'settings.allowedUsers': { contains: number } }
+		| { 'settings.permittedRoles': { contains: string } };
+	const or: AlbumWhere[] = [];
 
 	if (assignedIds.length) {
 		or.push({ id: { in: assignedIds } });
@@ -32,8 +36,7 @@ export const load: PageServerLoad = async ({ fetch, request, parent }) => {
 	}
 
 	const sdk = getPayloadSDK(fetch, request);
-	const albumSelect = {
-		id: true,
+	const albumSelectBase = {
 		slug: true,
 		title: true,
 		settings: {
@@ -41,9 +44,11 @@ export const load: PageServerLoad = async ({ fetch, request, parent }) => {
 			visibility: true,
 			permittedRoles: true,
 			allowedUsers: true
-		},
-		...(showCovers ? { meta: { image: true } } : {})
-	} as const;
+		}
+	} satisfies GalleryAlbumsSelect<true>;
+	const albumSelect: GalleryAlbumsSelect<true> = showCovers
+		? { ...albumSelectBase, meta: { image: true } }
+		: albumSelectBase;
 
 	const toView = (docs: GalleryAlbum[]): ContentAlbumView[] => {
 		const albums: ContentAlbumView[] = [];

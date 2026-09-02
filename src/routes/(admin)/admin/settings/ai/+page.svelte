@@ -10,6 +10,7 @@
 		type SitePrompt
 	} from '$lib/settings/prompts';
 	import type { PageData } from './$types';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: { data: PageData } = $props();
 
@@ -68,7 +69,7 @@
 		event.preventDefault();
 		if (!draft) return;
 		draft.ai.prompts = ensurePromptSlugs(draft.ai.prompts);
-		const seen = new Set<string>();
+		const seen = new SvelteSet<string>();
 		for (const row of draft.ai.prompts) {
 			const slug = row.slug.trim().toLowerCase();
 			if (!slug || !isKnownPromptUse(slug)) continue;

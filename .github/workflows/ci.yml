@@ -29,10 +29,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck (svelte-check)
+      - name: Typecheck (svelte-check-native)
         run: pnpm run check
 
-      - name: Lint
+      - name: Lint (prettier, oxlint, eslint/svelte)
         run: pnpm run lint
 
       - name: Unit tests

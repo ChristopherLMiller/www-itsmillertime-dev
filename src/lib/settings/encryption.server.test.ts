@@ -1,13 +1,18 @@
 import { env } from '$env/dynamic/private';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { decryptSecret, encryptSecret, isEncryptedSecret, SETTINGS_ENC_PREFIX } from './encryption.server';
+import {
+	decryptSecret,
+	encryptSecret,
+	isEncryptedSecret,
+	SETTINGS_ENC_PREFIX
+} from './encryption.server';
 
 const KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 describe('settings encryption', () => {
 	afterEach(() => {
-		delete env.SETTINGS_ENCRYPTION_KEY;
+		env.SETTINGS_ENCRYPTION_KEY = '';
 	});
 
 	it('round-trips a secret', () => {
