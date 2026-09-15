@@ -16,10 +16,16 @@
 			: null
 	);
 
+	function relationTitle(value: unknown): string {
+		if (value && typeof value === 'object' && 'title' in value) {
+			const title = (value as { title?: unknown }).title;
+			return typeof title === 'string' ? title : '';
+		}
+		return '';
+	}
+
 	const headText = $derived(
-		kit
-			? `${typeof kit.manufacturer === 'object' && kit.manufacturer !== null ? kit.manufacturer.title : ''} • ${kit.kit_number ?? ''}`
-			: ''
+		kit ? [relationTitle(kit.manufacturer), kit.kit_number].filter(Boolean).join(' • ') : ''
 	);
 
 	const resolvedTags = $derived(
@@ -109,11 +115,7 @@
 				<div class="stats">
 					<div class="stat-row">
 						<span class="stat-label">Scale:</span>
-						<span class="value"
-							>{kit && typeof kit.scale === 'object' && kit.scale !== null
-								? kit.scale.title
-								: ''}</span
-						>
+						<span class="value">{relationTitle(kit?.scale)}</span>
 					</div>
 					{#if model.clockify_project}
 						<div class="stat-row">

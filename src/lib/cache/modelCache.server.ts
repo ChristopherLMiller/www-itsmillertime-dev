@@ -59,7 +59,8 @@ async function fetchModelsListFromCMS(
 					sort,
 					limit,
 					page,
-					depth: 1,
+					// Kit is a relation; manufacturer/scale live on the kit (need depth 2).
+					depth: 2,
 					select: {
 						id: true,
 						title: true,

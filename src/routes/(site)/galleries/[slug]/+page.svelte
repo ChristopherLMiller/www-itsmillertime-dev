@@ -9,6 +9,9 @@
 	import GalleryAlbumPolaroid from '$lib/components/gallery/GalleryAlbumPolaroid';
 	import Lightbox from '$lib/components/gallery/Lightbox';
 	import GalleryLightboxContent from '$lib/components/gallery/GalleryLightboxContent';
+	import { galleryAlbumQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
+	import { pageMetaOverride } from '$lib/stores/pageMeta';
 	import {
 		isShopListingPointer,
 		mergeGalleryGridMedia,
@@ -17,23 +20,43 @@
 	import { fetchGalleryImageFullForLightbox } from '$lib/utils/gallery-image-full-fetch';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 
 	const IMAGE_BATCH_SIZE = 30;
 	const LOAD_AHEAD_PX = 2400;
 
 	const { data } = $props();
+	const queryClient = useQueryClient();
+
+	const query = createQuery(() => galleryAlbumQueryOptions(data.slug, data.initialGallery));
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(queryClient, queryKeys.gallery(data.slug), data.initialGallery);
+	});
+
+	const albumData = $derived(
+		query.isPlaceholderData ? data.initialGallery : (query.data ?? data.initialGallery)
+	);
+	const gallery = $derived(albumData.gallery);
+
+	$effect(() => {
+		pageMetaOverride.set(albumData.meta ?? null);
+		return () => pageMetaOverride.set(null);
+	});
 
 	const isRestricted = $derived(
-		data.gallery.settings?.isNsfw === true || data.gallery.settings?.visibility !== 'ALL'
+		gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL'
 	);
 	const useProxy = $derived(isRestricted);
-	const albumIsNsfw = $derived(data.gallery.settings?.isNsfw === true);
+	const albumIsNsfw = $derived(gallery.settings?.isNsfw === true);
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const shouldHideAlbum = $derived(albumIsNsfw && nsfwPref === 'hide');
 	const isAdmin = $derived(isAdminRole(page.data.session?.user));
 	const albumCmsEditHref = $derived(
-		isAdmin && data.gallery.id != null
-			? `${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-albums/${data.gallery.id}`
+		isAdmin && gallery.id != null
+			? `${PUBLIC_PAYLOAD_URL}/admin/collections/gallery-albums/${gallery.id}`
 			: null
 	);
 
@@ -83,7 +106,7 @@
 	let infiniteLoadError = $state<string | null>(null);
 	let loadMoreSentinel = $state<HTMLDivElement | null>(null);
 	/** Only reset infinite-scroll client state when navigating to a different album */
-	let syncedGalleryId = $state<number | null>(null);
+	let syncedGalleryStamp = $state<string | null>(null);
 	let directLinkDismissed = $state(false);
 	let directLinkResolving = $state(false);
 	let directLinkFailed = $state(false);
@@ -151,8 +174,8 @@
 		return extra ? [extra] : galleryImages;
 	});
 	const totalImageCount = $derived(
-		typeof data.gallery.images?.totalDocs === 'number'
-			? data.gallery.images.totalDocs
+		typeof gallery.images?.totalDocs === 'number'
+			? gallery.images.totalDocs
 			: galleryImages.length
 	);
 
@@ -195,7 +218,7 @@
 			try {
 				const nextPage = loadedPage + 1;
 				const res = await fetch(
-					`/api/gallery/albums/${data.gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
+					`/api/gallery/albums/${gallery.id}/paged?page=${nextPage}&limit=${IMAGE_BATCH_SIZE}&idsOnly=1`
 				);
 				if (!res.ok) throw new Error(`Failed to load page ${nextPage}`);
 
@@ -261,18 +284,18 @@
 	// arbitrary data refreshes — that was wiping resolved polaroids. Runs before the
 	// ?selected= effect so deep links do not invent a slot at the front of the grid.
 	$effect(() => {
-		const galleryId = data.gallery.id;
-		const docs = (data.gallery.images?.docs ?? []) as AlbumImageDoc[];
+		const stamp = `${gallery.id}:${gallery.updatedAt}:${gallery.images?.totalDocs ?? 0}`;
+		const docs = (gallery.images?.docs ?? []) as AlbumImageDoc[];
 
-		if (syncedGalleryId === galleryId) return;
+		if (syncedGalleryStamp === stamp) return;
 
-		syncedGalleryId = galleryId;
+		syncedGalleryStamp = stamp;
 		directLinkDismissed = false;
 		directLinkResolving = false;
 		directLinkFailed = false;
 		galleryImageSlots = docs.map((d) => slotFromDoc(d));
-		loadedPage = data.gallery.images?.page ?? 1;
-		hasNextPage = data.gallery.images?.hasNextPage ?? false;
+		loadedPage = gallery.images?.page ?? 1;
+		hasNextPage = gallery.images?.hasNextPage ?? false;
 		slotMedia = {};
 		slotFetchDone = {};
 		isLoadingMore = false;
@@ -410,7 +433,7 @@
 		<div class="gallery-header-wrap">
 			<Panel hasBorder hasPadding>
 				<header class="gallery-header">
-					<h1>{data.gallery.title}</h1>
+					<h1>{gallery.title}</h1>
 					<p class="gallery-hidden-notice">
 						This album contains NSFW content and is hidden by your profile settings.
 					</p>
@@ -421,7 +444,7 @@
 {:else if showAlbumChrome}
 	<div class="gallery-page">
 		<GalleryAlbumHeader
-			gallery={data.gallery as unknown as GalleryAlbum}
+			gallery={gallery as unknown as GalleryAlbum}
 			imageCount={totalImageCount}
 			cmsEditHref={albumCmsEditHref}
 		/>
@@ -486,7 +509,7 @@
 		<div class="gallery-header-wrap">
 			<Panel hasBorder hasPadding>
 				<header class="gallery-header">
-					<h1>{data.gallery.title}</h1>
+					<h1>{gallery.title}</h1>
 					<p class="gallery-hidden-notice">This image is not available.</p>
 				</header>
 			</Panel>
@@ -537,7 +560,7 @@
 				{onNext}
 				{hasPrevious}
 				{hasNext}
-				gallery={data.gallery as unknown as GalleryAlbum}
+				gallery={gallery as unknown as GalleryAlbum}
 				{galleryImageId}
 				hasShopListing={galleryImageId != null
 					? (visibleSlots.find((s) => s.id === galleryImageId)?.hasShopListing ?? null)

@@ -18,14 +18,21 @@ function fakeQuery(queryKey: unknown[], status: Query['state']['status'] = 'succ
 }
 
 describe('shouldPersistQuery', () => {
-	it('persists layout and projects only', () => {
+	it('persists layout, projects, models, parks, galleries list, and gardens list', () => {
 		expect(shouldPersistQuery(fakeQuery(['layout']))).toBe(true);
 		expect(shouldPersistQuery(fakeQuery(['projects', 1, 10]))).toBe(true);
+		expect(shouldPersistQuery(fakeQuery(['models', 'list', {}]))).toBe(true);
+		expect(shouldPersistQuery(fakeQuery(['parks']))).toBe(true);
+		expect(shouldPersistQuery(fakeQuery(['galleries', 'list', {}]))).toBe(true);
+		expect(shouldPersistQuery(fakeQuery(['gardens']))).toBe(true);
 	});
 
-	it('skips article lists and full article bodies', () => {
+	it('skips article lists, article bodies, pages, garden entries, and album details', () => {
 		expect(shouldPersistQuery(fakeQuery(['articles', 'list', {}]))).toBe(false);
 		expect(shouldPersistQuery(fakeQuery(['article', 'my-slug']))).toBe(false);
+		expect(shouldPersistQuery(fakeQuery(['page', 'home']))).toBe(false);
+		expect(shouldPersistQuery(fakeQuery(['garden', 'note']))).toBe(false);
+		expect(shouldPersistQuery(fakeQuery(['gallery', 'album-slug']))).toBe(false);
 	});
 
 	it('skips non-success queries', () => {

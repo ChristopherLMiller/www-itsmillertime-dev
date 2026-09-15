@@ -19,6 +19,7 @@ const ASSETS = [...build, ...files].filter((path) => !PRECACHE_EXCLUDE.has(path)
 
 const SW_PRECACHE_ARTICLES = 'PRECACHE_ARTICLES';
 const SW_PRECACHE_PATHS = 'PRECACHE_PATHS';
+const SW_INVALIDATE_ARTICLES = 'INVALIDATE_ARTICLES';
 
 function articleDataPath(pathname: string): string {
 	const normalized = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
@@ -157,6 +158,35 @@ sw.addEventListener('activate', (event) => {
 	);
 });
 
+async function invalidateArticleSlugs(slugs: string[]): Promise<void> {
+	const cache = await caches.open(CACHE);
+	const origin = sw.location.origin;
+	const targets =
+		slugs.length > 0
+			? slugs.flatMap((slug) => [
+					`/articles/${slug}`,
+					`/api/articles/${slug}`,
+					articleDataPath(`/articles/${slug}`)
+				])
+			: null;
+
+	const requests = await cache.keys();
+	await Promise.all(
+		requests
+			.filter((request) => {
+				const url = new URL(request.url);
+				if (url.origin !== origin) return false;
+				if (targets) {
+					return targets.includes(url.pathname);
+				}
+				return url.pathname.startsWith('/articles/') || url.pathname.startsWith('/api/articles/');
+			})
+			.map((request) => cache.delete(request))
+	);
+
+	if (slugs.length > 0) await precacheArticleSlugs(slugs);
+}
+
 sw.addEventListener('message', (event) => {
 	const data = event.data as { type?: string; slugs?: string[]; paths?: string[] } | null;
 	if (!data?.type) return;
@@ -168,6 +198,11 @@ sw.addEventListener('message', (event) => {
 
 	if (data.type === SW_PRECACHE_PATHS && Array.isArray(data.paths)) {
 		void precacheArticlePaths(data.paths);
+		return;
+	}
+
+	if (data.type === SW_INVALIDATE_ARTICLES) {
+		void invalidateArticleSlugs(Array.isArray(data.slugs) ? data.slugs : []);
 	}
 });
 
