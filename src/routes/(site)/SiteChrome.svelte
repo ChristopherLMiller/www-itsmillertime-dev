@@ -12,6 +12,7 @@
 	import ScrollToTop from '$lib/components/ScrollToTop';
 	import ToastHost from '$lib/components/Toast/ToastHost.svelte';
 	import type { LayoutCacheData } from '$lib/cache/layoutCache';
+	import { subscribeToCmsEvents } from '$lib/cms-events/subscribe';
 	import { layoutQueryOptions, queryKeys } from '$lib/query/queries';
 	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import { setSiteLayoutContext } from '$lib/query/siteLayoutContext';
@@ -35,6 +36,11 @@
 		if (!browser) return;
 		void $queryPersistRestored;
 		seedServerQueryData(queryClient, queryKeys.layout, data.initialLayout);
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		return subscribeToCmsEvents(queryClient);
 	});
 
 	setSiteLayoutContext(() => ({

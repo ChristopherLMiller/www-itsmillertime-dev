@@ -1,17 +1,39 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Image from '$lib/components/Image';
 	import Lexical from '$lib/components/Lexical';
 	import Panel from '$lib/components/Panel';
+	import { gardenQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
+	import { pageMetaOverride } from '$lib/stores/pageMeta';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();
+	const queryClient = useQueryClient();
 
-	const garden = $derived(data.garden);
+	const query = createQuery(() => gardenQueryOptions(data.slug, data.initialGarden));
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(queryClient, queryKeys.garden(data.slug), data.initialGarden);
+	});
+
+	const gardenData = $derived(
+		query.isPlaceholderData ? data.initialGarden : (query.data ?? data.initialGarden)
+	);
+	const garden = $derived(gardenData.garden);
 	const title = $derived(garden.meta?.title ?? garden.name);
 	const description = $derived(garden.meta?.description ?? undefined);
 	const featured = $derived(
 		garden.featuredImage && typeof garden.featuredImage === 'object' ? garden.featuredImage : null
 	);
+
+	$effect(() => {
+		pageMetaOverride.set(gardenData.meta ?? null);
+		return () => pageMetaOverride.set(null);
+	});
 </script>
 
 <svelte:head>
@@ -19,7 +41,7 @@
 	{#if description}
 		<meta name="description" content={description} />
 	{/if}
-	<link rel="canonical" href={data.meta.canonicalURL} />
+	<link rel="canonical" href={gardenData.meta.canonicalURL} />
 </svelte:head>
 
 <div class="entry">

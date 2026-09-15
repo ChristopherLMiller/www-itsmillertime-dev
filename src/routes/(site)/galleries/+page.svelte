@@ -5,15 +5,45 @@
 	import FilmStrip from '$lib/components/gallery/FilmStrip';
 	import Paginator from '$lib/components/Paginator';
 	import GalleryLandingPolaroidStack from '$lib/components/gallery/GalleryLandingPolaroidStack';
+	import { galleriesListQueriesMatch } from '$lib/cache/galleryCache';
+	import { galleriesListQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
 	import type { Media } from '$lib/types/payload-types';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	const { data } = $props();
+	const queryClient = useQueryClient();
+
+	const listQuery = createQuery(() =>
+		galleriesListQueryOptions(data.query, data.initialGalleries)
+	);
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(
+			queryClient,
+			queryKeys.galleriesList(data.query),
+			data.initialGalleries
+		);
+	});
+
+	const list = $derived.by(() => {
+		const cached = listQuery.data;
+		if (listQuery.isPlaceholderData) return data.initialGalleries;
+		if (cached && galleriesListQueriesMatch(cached.query, data.query)) return cached;
+		return data.initialGalleries;
+	});
+	const galleries = $derived(list?.galleries ?? []);
+	const categories = $derived(list?.categories ?? []);
+	const tags = $derived(list?.tags ?? []);
+	const listMeta = $derived(list?.meta);
 
 	const nsfwPref = $derived((page.data.session?.user?.nsfwFiltering ?? '').toLowerCase());
 	const filteredGalleries = $derived(
-		nsfwPref === 'hide' ? data.galleries.filter((g) => !g.settings?.isNsfw) : data.galleries
+		nsfwPref === 'hide' ? galleries.filter((g) => !g.settings?.isNsfw) : galleries
 	);
 
 	const perPageOptions = [6, 12, 15, 24, 48];
@@ -236,23 +266,23 @@
 	}
 </script>
 
-{#if data.categories.length > 0}
+{#if categories.length > 0}
 	<div class="film-strip-wrapper">
 		<FilmStrip
-			categories={data.categories}
+			categories={categories}
 			selectedSlug={selectedCategory}
 			getHref={getCategoryHref}
 		/>
 	</div>
 {/if}
 
-{#if data.tags.length > 0}
+{#if tags.length > 0}
 	<div class="tag-strip-wrapper">
 		<nav class="tag-contact-sheet" aria-label="Filter galleries by tag">
 			<a href={getTagHref('')} class="tag-frame" class:tag-frame--active={!selectedTag}>
 				<span class="tag-frame__label">All tags</span>
 			</a>
-			{#each data.tags as tag (tag.id)}
+			{#each tags as tag (tag.id)}
 				<a
 					href={getTagHref(tag.slug ?? '')}
 					class="tag-frame"
@@ -308,7 +338,9 @@
 </div>
 
 <div class="pagination-row">
-	<Paginator meta={data.meta} />
+	{#if listMeta}
+		<Paginator meta={listMeta} />
+	{/if}
 	<div class="pagination-info">
 		<div class="per-page">
 			<label for="per-page-select">Show</label>
@@ -323,10 +355,12 @@
 				{/each}
 			</select>
 		</div>
-		<span class="page-info">
-			Page {page.url.searchParams.get('page') || '1'} of {data.meta.totalPages} ({data.meta
-				.totalDocs} total)
-		</span>
+		{#if listMeta}
+			<span class="page-info">
+				Page {page.url.searchParams.get('page') || '1'} of {listMeta.totalPages} ({listMeta
+					.totalDocs} total)
+			</span>
+		{/if}
 	</div>
 </div>
 

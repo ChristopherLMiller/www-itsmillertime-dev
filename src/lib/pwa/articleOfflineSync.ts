@@ -1,11 +1,11 @@
 /**
- * Client helpers for the articles offline service worker.
+ * Client helpers so CMS CRUD events can drop stale article Cache Storage entries.
  */
-
 import { browser } from '$app/environment';
 
 const SW_PRECACHE_ARTICLES = 'PRECACHE_ARTICLES';
 const SW_PRECACHE_PATHS = 'PRECACHE_PATHS';
+const SW_INVALIDATE_ARTICLES = 'INVALIDATE_ARTICLES';
 
 function postToServiceWorker(message: Record<string, unknown>): void {
 	if (!browser || !('serviceWorker' in navigator)) return;
@@ -26,9 +26,7 @@ export function precacheArticleSlugs(slugs: Iterable<string | null | undefined>)
 export function precacheArticlePaths(paths: Iterable<string>): void {
 	const unique = [
 		...new Set(
-			[...paths].filter(
-				(path) => path.startsWith('/articles/') && path !== '/articles/'
-			)
+			[...paths].filter((path) => path.startsWith('/articles/') && path !== '/articles/')
 		)
 	];
 	if (unique.length === 0) return;
@@ -44,4 +42,12 @@ export function precacheArticlesListing(slugs: Iterable<string | null | undefine
 export function precacheArticleContext(slug: string | null | undefined): void {
 	if (!slug) return;
 	precacheArticleSlugs([slug]);
+}
+
+/** Drop cached article documents after a CMS update, then recache if still needed. */
+export function invalidateCachedArticles(slugs?: Iterable<string | null | undefined>): void {
+	const unique = slugs
+		? [...new Set([...slugs].filter((slug): slug is string => !!slug && slug.length > 0))]
+		: [];
+	postToServiceWorker({ type: SW_INVALIDATE_ARTICLES, slugs: unique });
 }

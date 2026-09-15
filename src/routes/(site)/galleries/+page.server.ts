@@ -1,67 +1,17 @@
-import { getPayloadSDK } from '$lib/payload/sdk.server';
+import { galleriesListQueryFromUrl } from '$lib/cache/galleryCache';
+import { loadGalleriesListPageData } from '$lib/cache/galleryCache.server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, request, url, depends }) => {
 	depends('app:galleries-list');
-	const sdk = getPayloadSDK(fetch, request);
+	const query = galleriesListQueryFromUrl(url);
+	const initialGalleries = await loadGalleriesListPageData(
+		query.page,
+		query.limit,
+		query.category,
+		query.tag,
+		{ fetch, request }
+	);
 
-	const [galleriesData, categoriesData, tagsData] = await Promise.all([
-		sdk.find({
-			collection: 'gallery-albums',
-			sort: '-createdAt',
-			limit: Number(url.searchParams.get('limit')) || 15,
-			page: Number(url.searchParams.get('page')) || 1,
-			depth: 1,
-			select: {
-				slug: true,
-				title: true,
-				settings: {
-					isNsfw: true,
-					visibility: true
-				},
-				meta: {
-					description: true,
-					// Cover fields for layout/aspect before client preview fetch.
-					// Payload's generated select types only allow `image: true`.
-					image: true
-				}
-			},
-			where: {
-				and: [
-					{
-						'settings.category.slug': {
-							equals: url.searchParams.get('category') || undefined
-						}
-					},
-					{
-						'settings.tags.slug': {
-							contains: url.searchParams.get('tag') || undefined
-						}
-					}
-				]
-			}
-		}),
-		sdk.find({
-			collection: 'gallery-categories',
-			limit: 100,
-			sort: 'title',
-			select: { id: true, slug: true, title: true }
-		}),
-		sdk.find({
-			collection: 'gallery-tags',
-			limit: 100,
-			sort: 'title',
-			select: { id: true, slug: true, title: true }
-		})
-	]);
-
-	const { docs: rawGalleries, ...meta } = galleriesData;
-	const { docs: categories } = categoriesData;
-	const { docs: tags } = tagsData;
-
-	// Initial load only includes gallery metadata and the featured (SEO meta) image.
-	// Polaroid stack images are fetched on hover via /api/gallery/albums/[albumId].
-	const galleries = rawGalleries;
-
-	return { galleries, meta, categories, tags };
+	return { query, initialGalleries };
 };

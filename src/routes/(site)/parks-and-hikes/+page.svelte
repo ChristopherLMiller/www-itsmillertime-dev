@@ -1,17 +1,35 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
+	import { parksQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import type { GalleryAlbum, MapMarker } from '$lib/types/payload-types';
 
 	let { data }: { data: PageData } = $props();
 	let mapContainer: HTMLDivElement;
+	const queryClient = useQueryClient();
 
-	const placeCount = $derived(data.mapMarkers.length);
+	const query = createQuery(() => parksQueryOptions(data.initialParks));
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(queryClient, queryKeys.parks, data.initialParks);
+	});
+
+	const mapMarkers = $derived(
+		(query.isPlaceholderData ? data.initialParks : (query.data ?? data.initialParks))
+			?.mapMarkers ?? []
+	);
+
+	const placeCount = $derived(mapMarkers.length);
 	const totalVisits = $derived(
-		data.mapMarkers.reduce((sum, m) => sum + (m.visits ?? 0), 0)
+		mapMarkers.reduce((sum, m) => sum + (m.visits ?? 0), 0)
 	);
 	const ratedMarkers = $derived(
-		data.mapMarkers.filter((m) => m.rating != null && !Number.isNaN(m.rating))
+		mapMarkers.filter((m) => m.rating != null && !Number.isNaN(m.rating))
 	);
 	const avgRating = $derived(
 		ratedMarkers.length
@@ -19,7 +37,7 @@
 			: null
 	);
 	const linkedCount = $derived(
-		data.mapMarkers.filter((m) =>
+		mapMarkers.filter((m) =>
 			m.links?.some((link) => {
 				if (link.url) return true;
 				if (link.album && typeof link.album.value === 'object') {
@@ -34,7 +52,7 @@
 	);
 	const topRated = $derived.by(() => {
 		let best: MapMarker | null = null;
-		for (const m of data.mapMarkers) {
+		for (const m of mapMarkers) {
 			if (m.rating == null) continue;
 			if (!best || (best.rating ?? 0) < m.rating) best = m;
 		}
@@ -151,7 +169,7 @@
 				typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeMap) : null;
 			ro?.observe(mapContainer);
 
-			for (const marker of data.mapMarkers) {
+			for (const marker of mapMarkers) {
 				const popupContent = `
 				<div class="trail-popup">
 					<div class="trail-popup__rule" aria-hidden="true"></div>

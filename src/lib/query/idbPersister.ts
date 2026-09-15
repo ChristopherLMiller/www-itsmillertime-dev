@@ -18,7 +18,7 @@ const IDB_VERSION = 1;
  * Bump the suffix when persisted shape/policy changes so existing tabs drop stale blobs
  * even if PersistQueryClient's in-band `buster` does not run first.
  */
-export const QUERY_CACHE_STORAGE_KEY = 'itsmillertime-query-cache-v4';
+export const QUERY_CACHE_STORAGE_KEY = 'itsmillertime-query-cache-v5';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -196,7 +196,8 @@ export async function unregisterServiceWorkers(): Promise<void> {
 const LEGACY_QUERY_CACHE_KEYS = [
 	'itsmillertime-query-cache',
 	'itsmillertime-query-cache-v2',
-	'itsmillertime-query-cache-v3'
+	'itsmillertime-query-cache-v3',
+	'itsmillertime-query-cache-v4'
 ] as const;
 
 /** Delete the persisted query cache entirely (offline data reset). */

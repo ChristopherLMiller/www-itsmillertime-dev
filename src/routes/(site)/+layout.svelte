@@ -75,7 +75,7 @@
 		// Must be >= layout gcTime so nav/siteMeta survive IndexedDB restores indefinitely.
 		maxAge: LAYOUT_GC_TIME_MS,
 		// Bust caches written before article-list persistence was removed.
-		buster: 'v4-no-article-list-persist',
+		buster: 'v5-cms-events',
 		dehydrateOptions: {
 			shouldDehydrateQuery: shouldPersistQuery
 		}

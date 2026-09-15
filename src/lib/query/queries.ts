@@ -12,6 +12,13 @@ import {
 	type ArticlesListCacheData,
 	type ArticlesListQuery
 } from '$lib/cache/articleCache';
+import {
+	buildGalleriesDataUrl,
+	type GalleriesListCacheData,
+	type GalleriesListQuery,
+	type GalleryAlbumCacheData
+} from '$lib/cache/galleryCache';
+import type { GardenCacheData, GardensListCacheData } from '$lib/cache/gardenCache';
 import type { LayoutCacheData } from '$lib/cache/layoutCache';
 import {
 	buildModelsDataUrl,
@@ -19,6 +26,9 @@ import {
 	type ModelsListCacheData,
 	type ModelsListQuery
 } from '$lib/cache/modelCache';
+import type { CmsPageCacheData } from '$lib/cache/pageCache';
+import { buildCmsPageDataUrl } from '$lib/cache/pageCache';
+import type { ParksCacheData } from '$lib/cache/parksCache';
 import type { ProjectsCacheData } from '$lib/cache/projectCache';
 import { LAYOUT_GC_TIME_MS } from '$lib/query/client';
 
@@ -40,7 +50,13 @@ export const queryKeys = {
 	modelsList: (query: ModelsListQuery, includeNotStarted = false) =>
 		['models', 'list', query, { includeNotStarted }] as const,
 	model: (slug: string, includeNotStarted = false) =>
-		['model', slug, { includeNotStarted }] as const
+		['model', slug, { includeNotStarted }] as const,
+	page: (slug: string) => ['page', slug] as const,
+	gardensList: ['gardens'] as const,
+	garden: (slug: string) => ['garden', slug] as const,
+	parks: ['parks'] as const,
+	galleriesList: (query: GalleriesListQuery) => ['galleries', 'list', query] as const,
+	gallery: (slug: string) => ['gallery', slug] as const
 };
 
 export function layoutQueryOptions(initialData?: LayoutCacheData | null) {
@@ -119,6 +135,66 @@ export function modelQueryOptions(
 	return {
 		queryKey: queryKeys.model(slug, includeNotStarted),
 		queryFn: () => getJson<ModelCacheData>(`/api/models/${slug}`),
+		enabled: browser,
+		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
+	};
+}
+
+export function cmsPageQueryOptions(slug: string, initialData?: CmsPageCacheData | null) {
+	return {
+		queryKey: queryKeys.page(slug),
+		queryFn: () => getJson<CmsPageCacheData>(buildCmsPageDataUrl(slug)),
+		enabled: browser,
+		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
+	};
+}
+
+export function gardensListQueryOptions(initialData?: GardensListCacheData | null) {
+	return {
+		queryKey: queryKeys.gardensList,
+		queryFn: () => getJson<GardensListCacheData>('/api/gardens-data'),
+		enabled: browser,
+		placeholderData: (previousData: GardensListCacheData | undefined) => previousData,
+		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
+	};
+}
+
+export function gardenQueryOptions(slug: string, initialData?: GardenCacheData | null) {
+	return {
+		queryKey: queryKeys.garden(slug),
+		queryFn: () => getJson<GardenCacheData>(`/api/gardens/${encodeURIComponent(slug)}`),
+		enabled: browser,
+		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
+	};
+}
+
+export function parksQueryOptions(initialData?: ParksCacheData | null) {
+	return {
+		queryKey: queryKeys.parks,
+		queryFn: () => getJson<ParksCacheData>('/api/parks-data'),
+		enabled: browser,
+		placeholderData: (previousData: ParksCacheData | undefined) => previousData,
+		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
+	};
+}
+
+export function galleriesListQueryOptions(
+	query: GalleriesListQuery,
+	initialData?: GalleriesListCacheData | null
+) {
+	return {
+		queryKey: queryKeys.galleriesList(query),
+		queryFn: () => getJson<GalleriesListCacheData>(buildGalleriesDataUrl(query)),
+		enabled: browser,
+		placeholderData: (previousData: GalleriesListCacheData | undefined) => previousData,
+		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
+	};
+}
+
+export function galleryAlbumQueryOptions(slug: string, initialData?: GalleryAlbumCacheData | null) {
+	return {
+		queryKey: queryKeys.gallery(slug),
+		queryFn: () => getJson<GalleryAlbumCacheData>(`/api/galleries/${encodeURIComponent(slug)}`),
 		enabled: browser,
 		...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {})
 	};

@@ -1,11 +1,29 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Accordian from '$lib/components/Accordian';
 	import Image from '$lib/components/Image';
 	import Lexical from '$lib/components/Lexical';
 	import Panel from '$lib/components/Panel';
+	import { gardensListQueryOptions, queryKeys } from '$lib/query/queries';
+	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();
+	const queryClient = useQueryClient();
+
+	const query = createQuery(() => gardensListQueryOptions(data.initialGardens));
+
+	$effect(() => {
+		if (!browser) return;
+		void $queryPersistRestored;
+		seedServerQueryData(queryClient, queryKeys.gardensList, data.initialGardens);
+	});
+
+	const gardens = $derived(
+		(query.isPlaceholderData ? data.initialGardens : (query.data ?? data.initialGardens))
+			?.gardens ?? []
+	);
 </script>
 
 <svelte:head>
@@ -15,7 +33,7 @@
 <h1 class="heading font-permanent-marker">Digital Garden</h1>
 
 <div class="garden-list">
-	{#each data.gardens as garden (garden.id)}
+	{#each gardens as garden (garden.id)}
 		{@const featured =
 			garden.featuredImage && typeof garden.featuredImage === 'object'
 				? garden.featuredImage
