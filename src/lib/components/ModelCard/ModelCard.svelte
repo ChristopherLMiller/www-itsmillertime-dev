@@ -100,15 +100,17 @@
 		<div class="contents">
 			<p class="head">{headText}</p>
 			<div class="card-image">
-				<Image
-					image={model.model_meta.featuredImage as Media}
-					fixedAspectRatio={4 / 3}
-					objectFit="cover"
-					sizes="(min-width: 768px) 350px, 100vw"
-				/>
-				<span class={`status ${model.model_meta.status.toLowerCase()}`}
-					>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
-				>
+				<div class="card-image-frame">
+					<Image
+						image={model.model_meta.featuredImage as Media}
+						fixedAspectRatio={4 / 3}
+						objectFit="cover"
+						sizes="(min-width: 768px) 350px, 100vw"
+					/>
+					<span class={`status ${model.model_meta.status.toLowerCase()}`}
+						>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
+					>
+				</div>
 				<a href={`/models/${model.slug}`} class="name">{kit?.title ?? ''}</a>
 			</div>
 			<div class="details">
@@ -165,11 +167,16 @@
 		background: linear-gradient(45deg, var(--color-primary), white);
 		padding: 14px;
 		position: relative;
+		isolation: isolate;
 		border-radius: 10px;
 		color: var(--color-primary);
 		height: 490px;
 		overflow: hidden;
 		transition: all 0.2s ease-in-out;
+
+		&:has(.name) {
+			cursor: pointer;
+		}
 
 		&.in_progress {
 			background: linear-gradient(45deg, var(--color-secondary-lighter), white);
@@ -182,6 +189,11 @@
 			transform: translateZ(20px) scale(1.05);
 			z-index: 1;
 			box-shadow: var(--box-shadow-elev-2);
+		}
+
+		&:has(.name:focus-visible) {
+			outline: 2px solid var(--color-primary-darker);
+			outline-offset: 2px;
 		}
 	}
 	.contents {
@@ -207,7 +219,6 @@
 	}
 
 	.card-image {
-		position: relative;
 		min-width: 0;
 		align-self: start;
 
@@ -215,25 +226,28 @@
 			width: 100%;
 			border-block: 2px solid var(--color-primary-darker);
 		}
+	}
 
-		.status {
-			position: absolute;
-			right: 5px;
-			top: 10px;
-			background: var(--color-primary);
-			color: var(--color-white);
-			padding: 0.25rem;
-			line-height: 1;
-			font-size: var(--fs-xs);
-			color: var(--color-white-lightest);
-			transform: rotate(-2deg);
+	.card-image-frame {
+		position: relative;
+	}
 
-			&.in_progress {
-				background: var(--color-secondary);
-			}
-			&.not_started {
-				background: var(--color-tertiary);
-			}
+	.status {
+		position: absolute;
+		right: 5px;
+		top: 10px;
+		background: var(--color-primary);
+		color: var(--color-white-lightest);
+		padding: 0.25rem;
+		line-height: 1;
+		font-size: var(--fs-xs);
+		transform: rotate(-2deg);
+
+		&.in_progress {
+			background: var(--color-secondary);
+		}
+		&.not_started {
+			background: var(--color-tertiary);
 		}
 	}
 
@@ -247,6 +261,13 @@
 		padding-inline: 0.5rem;
 		text-decoration: none;
 		color: var(--color-primary);
+
+		&::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			z-index: 1;
+		}
 	}
 
 	.details {
@@ -308,6 +329,11 @@
 			text-decoration: none;
 			padding: 0.25rem 0.5rem;
 			transform: skew(-10deg);
+		}
+
+		a {
+			position: relative;
+			z-index: 2;
 		}
 
 		.tags-more {
