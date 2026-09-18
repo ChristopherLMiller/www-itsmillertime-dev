@@ -1,3 +1,5 @@
+import { unzoomedPointerIntent } from '$lib/utils/lightbox-swipe/lightbox-swipe';
+
 export type ImageZoomPanHandle = {
 	reset: () => void;
 	isZoomed: () => boolean;
@@ -20,6 +22,8 @@ export type ImageZoomPanOptions = {
 	onZoomChange?: (zoomed: boolean) => void;
 	/** Fired whenever scale/translate are applied (including identity). */
 	onTransform?: (t: ImageZoomPanTransform) => void;
+	/** Unzoomed horizontal swipe/drag — next is leftward. */
+	onSwipe?: (direction: 'next' | 'previous') => void;
 	/**
 	 * When false, skip writing CSS transform on the node (canvas owns pixels).
 	 * Hit-testing still uses the node; keep true if the node must grow with scale.
@@ -43,6 +47,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	let clickZoomScale = options.clickZoomScale ?? 2.5;
 	let onZoomChange = options.onZoomChange;
 	let onTransform = options.onTransform;
+	let onSwipe = options.onSwipe;
 	let applyCssTransform = options.applyCssTransform ?? true;
 	let handle = options.handle;
 	let enabled = options.enabled ?? true;
@@ -85,7 +90,14 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 			node.style.willChange = 'auto';
 		}
 		if (enabled) {
-			node.style.cursor = scale > 1.001 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in';
+			node.style.cursor =
+				scale > 1.001
+					? dragging
+						? 'grabbing'
+						: 'grab'
+					: dragging && movedDuringPointer
+						? 'grabbing'
+						: 'zoom-in';
 			node.style.touchAction = 'none';
 			node.style.userSelect = 'none';
 		} else {
@@ -218,6 +230,17 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 		const dy = e.clientY - origin.y;
 		if (Math.hypot(dx, dy) > MOVE_THRESHOLD_PX) movedDuringPointer = true;
 
+		if (scale <= 1.001) {
+			if (!movedDuringPointer || !dragOrigin) return;
+			if (Math.abs(dx) < Math.abs(dy)) return;
+			if (e.cancelable) e.preventDefault();
+			dragging = true;
+			tx = dx;
+			ty = 0;
+			apply();
+			return;
+		}
+
 		if (!dragging || !dragOrigin) return;
 
 		e.preventDefault();
@@ -230,9 +253,10 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 	function onWindowPointerUp(e: PointerEvent) {
 		if (activePointerId != null && e.pointerId !== activePointerId) return;
 
-		const wasClick = !movedDuringPointer && pointerDownAt != null;
 		const clickX = pointerDownAt?.x ?? e.clientX;
 		const clickY = pointerDownAt?.y ?? e.clientY;
+		const deltaX = (pointerDownAt?.x ?? e.clientX) - e.clientX;
+		const deltaY = (pointerDownAt?.y ?? e.clientY) - e.clientY;
 
 		dragging = false;
 		dragOrigin = null;
@@ -240,9 +264,16 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 		unpinWindowDrag();
 		pointers.delete(e.pointerId);
 
-		// Click while showing zoom-in cursor → zoom in toward click.
-		if (enabled && wasClick && scale <= 1.001) {
-			zoomAt(clickX, clickY, Math.min(maxScale, clickZoomScale));
+		if (enabled && scale <= 1.001) {
+			const intent = unzoomedPointerIntent(deltaX, deltaY);
+			tx = 0;
+			ty = 0;
+			apply();
+			if (intent === 'click') {
+				zoomAt(clickX, clickY, Math.min(maxScale, clickZoomScale));
+			} else if (intent === 'next' || intent === 'previous') {
+				onSwipe?.(intent);
+			}
 		} else {
 			apply();
 		}
@@ -385,6 +416,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 			clickZoomScale = next.clickZoomScale ?? 2.5;
 			onZoomChange = next.onZoomChange;
 			onTransform = next.onTransform;
+			onSwipe = next.onSwipe;
 			const nextApplyCss = next.applyCssTransform ?? true;
 			const cssModeChanged = nextApplyCss !== applyCssTransform;
 			applyCssTransform = nextApplyCss;

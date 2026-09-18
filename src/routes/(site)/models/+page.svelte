@@ -14,6 +14,7 @@
 	} from '$lib/models/filters';
 	import { modelsListQueryOptions, queryKeys } from '$lib/query/queries';
 	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
+	import { masonryPack } from '$lib/utils/masonry-pack';
 	import type { PageProps } from './$types';
 
 	const { data }: PageProps = $props();
@@ -224,7 +225,7 @@
 </section>
 
 {#if models.length > 0}
-	<div class="grid">
+	<div class="grid" use:masonryPack>
 		{#each models as model (model.id)}
 			<ModelCard {model} />
 		{/each}
@@ -420,9 +421,29 @@
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, 350px);
-		grid-template-rows: masonry;
+		align-items: start;
 		justify-content: center;
 		gap: 2rem;
+	}
+
+	@supports (grid-template-rows: masonry) and (not (display: grid-lanes)) {
+		.grid {
+			grid-template-rows: masonry;
+		}
+	}
+
+	@supports (display: masonry) and (not (display: grid-lanes)) {
+		.grid {
+			display: masonry;
+		}
+	}
+
+	@supports (display: grid-lanes) {
+		.grid {
+			display: grid-lanes;
+			grid-template-rows: none;
+			grid-auto-flow: unset;
+		}
 	}
 
 	.empty {

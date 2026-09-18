@@ -17,8 +17,10 @@
 		mergeGalleryGridMedia,
 		type GalleryGridMedia
 	} from '$lib/utils/gallery-image-display';
+	import { buildGalleryImagePageMeta } from '$lib/utils/gallery-image-seo';
 	import { fetchGalleryImageFullForLightbox } from '$lib/utils/gallery-image-full-fetch';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
+	import { masonryPack } from '$lib/utils/masonry-pack';
 	import type { GalleryAlbum } from '$lib/types/payload-types';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 
@@ -40,11 +42,6 @@
 		query.isPlaceholderData ? data.initialGallery : (query.data ?? data.initialGallery)
 	);
 	const gallery = $derived(albumData.gallery);
-
-	$effect(() => {
-		pageMetaOverride.set(albumData.meta ?? null);
-		return () => pageMetaOverride.set(null);
-	});
 
 	const isRestricted = $derived(
 		gallery.settings?.isNsfw === true || gallery.settings?.visibility !== 'ALL'
@@ -333,6 +330,42 @@
 		void resolveDirectLink(selectedId);
 	});
 
+	const selectedPageMeta = $derived.by(() => {
+		const albumMeta = albumData.meta;
+		const slug = gallery.slug ?? data.slug;
+
+		// replaceState does not re-run load(); follow the lightbox pin while open.
+		if (lightboxOpen && pinnedLightboxFileMediaId != null) {
+			const selectedId = pinnedLightboxFileMediaId;
+			const media = slotMedia[selectedId];
+			if (media && albumMeta && slug) {
+				return buildGalleryImagePageMeta({
+					image: media,
+					albumMeta,
+					origin: page.url.origin,
+					slug,
+					selectedId
+				});
+			}
+			if (data.selectedGalleryImageId === selectedId && data.meta) {
+				return data.meta;
+			}
+			return albumMeta ?? null;
+		}
+
+		// Deep-link first paint (lightbox not open yet): keep SSR image tags.
+		if (!directLinkDismissed && data.selectedGalleryImageId != null && data.meta) {
+			return data.meta;
+		}
+
+		return albumMeta ?? null;
+	});
+
+	$effect(() => {
+		pageMetaOverride.set(selectedPageMeta);
+		return () => pageMetaOverride.set(null);
+	});
+
 	function handlePolaroidResolved(galleryImageId: number, media: GalleryGridMedia) {
 		slotMedia = {
 			...slotMedia,
@@ -449,7 +482,7 @@
 			cmsEditHref={albumCmsEditHref}
 		/>
 
-		<div class="gallery-grid">
+		<div class="gallery-grid" use:masonryPack>
 			{#each visibleSlots as slot, idx (slot.id)}
 				{@const rotation = (
 					(((slot.id * 2654435761 + 1013904223) % 2147483647) / 2147483647) * 14 -
@@ -615,13 +648,19 @@
 		gap: 1.875rem;
 	}
 
-	@supports (grid-template-rows: masonry) {
+	/*
+	  Native masonry: the old `grid-template-rows: masonry` / `display: masonry`
+	  prototypes were replaced by `display: grid-lanes` (Safari 26.4+; Chrome/Firefox
+	  still flag-gated). Don't combine the old row keyword with grid-lanes — that
+	  switches the packing axis and looks like a regular grid.
+	*/
+	@supports (grid-template-rows: masonry) and (not (display: grid-lanes)) {
 		.gallery-grid {
 			grid-template-rows: masonry;
 		}
 	}
 
-	@supports (display: masonry) {
+	@supports (display: masonry) and (not (display: grid-lanes)) {
 		.gallery-grid {
 			display: masonry;
 		}
@@ -630,6 +669,8 @@
 	@supports (display: grid-lanes) {
 		.gallery-grid {
 			display: grid-lanes;
+			grid-template-rows: none;
+			grid-auto-flow: unset;
 		}
 	}
 

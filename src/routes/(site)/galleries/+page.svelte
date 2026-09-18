@@ -9,6 +9,7 @@
 	import { galleriesListQueryOptions, queryKeys } from '$lib/query/queries';
 	import { queryPersistRestored, seedServerQueryData } from '$lib/query/seedServerQuery';
 	import { cssAspectRatioFromDimensions } from '$lib/utils/aspect-ratio';
+	import { masonryPack } from '$lib/utils/masonry-pack';
 	import type { Media } from '$lib/types/payload-types';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -295,7 +296,7 @@
 	</div>
 {/if}
 
-<div class="galleries-grid">
+<div class="galleries-grid" use:masonryPack>
 	{#each filteredGalleries as gallery (gallery.id)}
 		{@const gid = coverGalleryImageId(gallery)}
 		{@const expanded = expandedAlbumImages[gallery.id]}
@@ -465,13 +466,13 @@
 		}
 	}
 
-	@supports (grid-template-rows: masonry) {
+	@supports (grid-template-rows: masonry) and (not (display: grid-lanes)) {
 		.galleries-grid {
 			grid-template-rows: masonry;
 		}
 	}
 
-	@supports (display: masonry) {
+	@supports (display: masonry) and (not (display: grid-lanes)) {
 		.galleries-grid {
 			display: masonry;
 		}
@@ -480,6 +481,8 @@
 	@supports (display: grid-lanes) {
 		.galleries-grid {
 			display: grid-lanes;
+			grid-template-rows: none;
+			grid-auto-flow: unset;
 		}
 	}
 
