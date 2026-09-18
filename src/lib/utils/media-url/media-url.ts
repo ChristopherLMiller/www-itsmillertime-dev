@@ -116,8 +116,49 @@ type SizedMedia = {
 	sizes?: {
 		xlarge?: { url?: string | null } | null;
 		large?: { url?: string | null } | null;
+		medium?: { url?: string | null } | null;
+		small?: { url?: string | null } | null;
+		thumbnail?: { url?: string | null } | null;
 	} | null;
 };
+
+function uniquePaths(paths: Array<string | null | undefined>): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const path of paths) {
+		if (!path || seen.has(path)) continue;
+		seen.add(path);
+		out.push(path);
+	}
+	return out;
+}
+
+/**
+ * Paint sources, largest-usable first, then strictly smaller on failure.
+ * Skip `xlarge` — the Cloudflare gallery-images host currently 502s many of those AVIFs.
+ * GIFs/videos always use the original.
+ */
+export function lightboxPaintUrlPaths(media: SizedMedia | null | undefined): string[] {
+	if (!media) return [];
+	if (isGifMedia(media) || isVideoMedia(media)) {
+		return media.url ? [media.url] : [];
+	}
+	return uniquePaths([
+		media.sizes?.large?.url,
+		media.sizes?.medium?.url,
+		media.sizes?.small?.url,
+		media.sizes?.thumbnail?.url,
+		media.url
+	]);
+}
+
+/** Resolved paint URLs (CDN/proxy) in fallback order. */
+export function getLightboxPaintUrls(
+	media: SizedMedia | null | undefined,
+	proxy = false
+): string[] {
+	return uniquePaths(lightboxPaintUrlPaths(media).map((path) => getMediaUrl(path, proxy)));
+}
 
 /**
  * Lightbox paint URL: prefer a large derivative so first paint stays light.
@@ -127,12 +168,7 @@ export function getLightboxPaintUrl(
 	media: SizedMedia | null | undefined,
 	proxy = false
 ): string | null {
-	if (!media) return null;
-	if (isGifMedia(media) || isVideoMedia(media)) {
-		return media.url ? getMediaUrl(media.url, proxy) : null;
-	}
-	const path = media.sizes?.xlarge?.url ?? media.sizes?.large?.url ?? media.url;
-	return path ? getMediaUrl(path, proxy) : null;
+	return getLightboxPaintUrls(media, proxy)[0] ?? null;
 }
 
 /** Full original for sharp zoom bitmap / pinch detail. */

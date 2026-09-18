@@ -18,7 +18,7 @@
 	import { lexicalToPlainText, plainTextToLexical } from '$lib/utils/lexical-to-text';
 	import {
 		getMediaUrl,
-		getLightboxPaintUrl,
+		getLightboxPaintUrls,
 		getLightboxZoomUrl,
 		isVideoMedia
 	} from '$lib/utils/media-url';
@@ -152,9 +152,10 @@
 	);
 
 	const isVideo = $derived(image ? isVideoMedia(image) : false);
-	/** Prefer xlarge/large for paint; fall back to parent imageSrc / original. */
+	/** Paint `large` first; on error walk medium → small → thumbnail → original. */
+	const paintUrls = $derived(getLightboxPaintUrls(image, useProxy ?? false));
 	const resolvedImageSrc = $derived(
-		getLightboxPaintUrl(image, useProxy ?? false) ??
+		paintUrls[0] ??
 			imageSrc ??
 			(image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
 	);
@@ -395,6 +396,7 @@
 	 * visible and swap only after the next URL is decoded (no spinner flash).
 	 */
 	let paintedImageSrc = $state<string | null>(null);
+	let failedPaintSrcs = $state<string[]>([]);
 
 	$effect(() => {
 		const id = slideIdentity;
@@ -403,6 +405,7 @@
 		lastRevealIdentity = id;
 		mainImageLoaded = false;
 		paintedImageSrc = null;
+		failedPaintSrcs = [];
 		mainImgReadyNotified = false;
 		showPlaceholderOverlay = true;
 	});
@@ -411,6 +414,7 @@
 		const next = resolvedImageSrc;
 		// Keep the last painted frame across transient gaps (images array reshuffle).
 		if (!next) return;
+		if (failedPaintSrcs.includes(next)) return;
 		if (!paintedImageSrc) {
 			paintedImageSrc = next;
 			return;
@@ -437,6 +441,11 @@
 		};
 		img.onerror = () => {
 			if (cancelled) return;
+			const nextFallback = nextPaintUrl(next);
+			if (nextFallback) {
+				paintedImageSrc = nextFallback;
+				return;
+			}
 			paintedImageSrc = next;
 			if (!mainImgReadyNotified) markMainImageReady();
 		};
@@ -455,6 +464,27 @@
 		// Trigger placeholder outro (fade) while the full image fades in.
 		showPlaceholderOverlay = false;
 		onImageLoad();
+	}
+
+	function nextPaintUrl(failedSrc: string): string | null {
+		if (!failedPaintSrcs.includes(failedSrc)) {
+			failedPaintSrcs = [...failedPaintSrcs, failedSrc];
+		}
+		return paintUrls.find((url) => !failedPaintSrcs.includes(url)) ?? null;
+	}
+
+	function handleMainImageError() {
+		const failed = paintedImageSrc;
+		if (!failed) {
+			markMainImageReady();
+			return;
+		}
+		const next = nextPaintUrl(failed);
+		if (next) {
+			paintedImageSrc = next;
+			return;
+		}
+		markMainImageReady();
 	}
 
 	/** Idle-prefetch zoom bitmap from the original after the lightbox img is ready. */
@@ -1125,7 +1155,7 @@
 							draggable="false"
 							fetchpriority="high"
 							decoding="async"
-							onerror={markMainImageReady}
+							onerror={handleMainImageError}
 							oncontextmenu={preventContextMenu}
 						/>
 					{/if}

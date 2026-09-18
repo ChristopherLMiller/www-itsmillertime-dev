@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	getLightboxPaintUrl,
+	getLightboxPaintUrls,
 	getLightboxZoomUrl,
 	getMediaUrl,
 	isGifMedia,
@@ -79,23 +80,41 @@ describe('toCloudflareMediaUrl', () => {
 });
 
 describe('getLightboxPaintUrl', () => {
-	it('prefers xlarge then large over original', () => {
+	it('starts at large and skips xlarge', () => {
 		expect(
 			getLightboxPaintUrl({
 				url: '/media/orig.jpg',
 				sizes: {
 					xlarge: { url: '/media/xl.jpg' },
-					large: { url: '/media/lg.jpg' }
+					large: { url: '/media/lg.jpg' },
+					medium: { url: '/media/md.jpg' }
 				}
 			})
-		).toMatch(/\/media\/xl\.jpg$/);
+		).toMatch(/\/media\/lg\.jpg$/);
+	});
 
+	it('falls through to the next smaller size when large is missing', () => {
 		expect(
 			getLightboxPaintUrl({
 				url: '/media/orig.jpg',
-				sizes: { large: { url: '/media/lg.jpg' } }
+				sizes: { medium: { url: '/media/md.jpg' }, small: { url: '/media/sm.jpg' } }
 			})
-		).toMatch(/\/media\/lg\.jpg$/);
+		).toMatch(/\/media\/md\.jpg$/);
+	});
+
+	it('lists fallbacks from large down to original, excluding xlarge', () => {
+		expect(
+			getLightboxPaintUrls({
+				url: '/media/orig.jpg',
+				sizes: {
+					xlarge: { url: '/media/xl.jpg' },
+					large: { url: '/media/lg.jpg' },
+					medium: { url: '/media/md.jpg' },
+					small: { url: '/media/sm.jpg' },
+					thumbnail: { url: '/media/th.jpg' }
+				}
+			}).map((url) => url.replace(/^https?:\/\/[^/]+/, ''))
+		).toEqual(['/media/lg.jpg', '/media/md.jpg', '/media/sm.jpg', '/media/th.jpg', '/media/orig.jpg']);
 	});
 
 	it('uses original for gifs', () => {
