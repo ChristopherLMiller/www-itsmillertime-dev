@@ -3,7 +3,7 @@
 	import { untrack } from 'svelte';
 	import type { Media } from '$lib/types/payload-types';
 	import { getMediaUrl, getLightboxPaintUrl, isVideoMedia } from '$lib/utils/media-url';
-	import { lightboxSwipeFromDelta, touchStartedInNoSwipe } from '$lib/utils/lightbox-swipe/lightbox-swipe';
+	import { touchStartedInNoSwipe, unzoomedPointerIntent } from '$lib/utils/lightbox-swipe/lightbox-swipe';
 
 	export type LightboxContentArgs = {
 		image: Media | undefined;
@@ -192,24 +192,19 @@
 		}
 	}
 
-	function handleTouchStart(e: TouchEvent) {
-		const touch = e.touches[0];
-		if (!touch) return;
-		touchStartX = touch.clientX;
-		touchStartY = touch.clientY;
+	function handlePointerDown(e: PointerEvent) {
+		if (content) return;
+		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		touchStartX = e.clientX;
+		touchStartY = e.clientY;
 		ignoreLightboxSwipe = touchStartedInNoSwipe(e.target);
 	}
 
-	function handleTouchEnd(e: TouchEvent) {
-		if (ignoreLightboxSwipe) return;
-		const touch = e.changedTouches[0];
-		if (!touch) return;
-		const swipe = lightboxSwipeFromDelta(
-			touchStartX - touch.clientX,
-			touchStartY - touch.clientY
-		);
-		if (swipe === 'next') next();
-		else if (swipe === 'previous') previous();
+	function handlePointerUp(e: PointerEvent) {
+		if (content || ignoreLightboxSwipe) return;
+		const intent = unzoomedPointerIntent(touchStartX - e.clientX, touchStartY - e.clientY);
+		if (intent === 'next') void next();
+		else if (intent === 'previous') previous();
 	}
 
 	function mediaNeedsProxy(image: (Media & { needsProxy?: boolean }) | undefined): boolean {
@@ -336,8 +331,8 @@
 				style:width={content ? undefined : `${containerDimensions.width}px`}
 				style:height={content ? undefined : `${containerDimensions.height}px`}
 				class:lightbox__image-container--custom={!!content}
-				ontouchstart={handleTouchStart}
-				ontouchend={handleTouchEnd}
+				onpointerdown={handlePointerDown}
+				onpointerup={handlePointerUp}
 			>
 				{#if content}
 					<!-- No {#key}: custom content (gallery) owns its own image transitions and must

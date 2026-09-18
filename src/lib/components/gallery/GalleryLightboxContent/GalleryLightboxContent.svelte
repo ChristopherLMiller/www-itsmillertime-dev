@@ -30,6 +30,7 @@
 		type ImageZoomPanHandle,
 		type ImageZoomPanTransform
 	} from '$lib/utils/image-zoom-pan';
+	import { unzoomedPointerIntent } from '$lib/utils/lightbox-swipe/lightbox-swipe';
 	import {
 		createLightboxZoomCanvasController,
 		type LightboxZoomCanvasPaintInput
@@ -233,6 +234,57 @@
 	function onZoomChange(z: boolean) {
 		imageZoomed = z;
 		if (z) ensureZoomBitmap();
+	}
+
+	function onUnzoomedSwipe(direction: 'next' | 'previous') {
+		if (direction === 'next') void onNext();
+		else onPrevious();
+	}
+
+	let paneSwipe: { x: number; y: number; id: number } | null = null;
+	let suppressBackdropClick = false;
+
+	function handlePanePointerDown(e: PointerEvent) {
+		if (imageZoomed) return;
+		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		if (!(e.target instanceof Element)) return;
+		if (e.target.closest('.gallery-lightbox__image-frame--zoomable:not(.gallery-lightbox__image-frame--zoom-off)')) {
+			return;
+		}
+		if (
+			e.target.closest(
+				'.gallery-lightbox__nav, .gallery-lightbox__close, .gallery-lightbox__info-toggle'
+			)
+		) {
+			return;
+		}
+		paneSwipe = { x: e.clientX, y: e.clientY, id: e.pointerId };
+	}
+
+	function handlePanePointerUp(e: PointerEvent) {
+		if (!paneSwipe || e.pointerId !== paneSwipe.id) {
+			paneSwipe = null;
+			return;
+		}
+		const intent = unzoomedPointerIntent(paneSwipe.x - e.clientX, paneSwipe.y - e.clientY);
+		paneSwipe = null;
+		if (intent === 'next') {
+			suppressBackdropClick = true;
+			void onNext();
+		} else if (intent === 'previous') {
+			suppressBackdropClick = true;
+			onPrevious();
+		}
+	}
+
+	function handleBackdropClick(e: MouseEvent) {
+		if (suppressBackdropClick) {
+			e.preventDefault();
+			e.stopPropagation();
+			suppressBackdropClick = false;
+			return;
+		}
+		onClose();
 	}
 
 	function onZoomTransform(t: ImageZoomPanTransform) {
@@ -686,7 +738,8 @@
 		applyCssTransform: true,
 		enabled: !shopCatalogOpen,
 		onZoomChange,
-		onTransform: onZoomTransform
+		onTransform: onZoomTransform,
+		onSwipe: onUnzoomedSwipe
 	});
 
 	const imageAspectRatio = $derived(image?.width && image?.height ? image.width / image.height : 1);
@@ -937,10 +990,16 @@
 		class:gallery-lightbox__body--shop={shopCatalogOpen}
 	>
 		<!-- Image pane: grows to fill when the info panel is collapsed -->
-		<div class="gallery-lightbox__image-pane" bind:this={imagePaneEl}>
+		<div
+			class="gallery-lightbox__image-pane"
+			bind:this={imagePaneEl}
+			onpointerdown={handlePanePointerDown}
+			onpointerup={handlePanePointerUp}
+			onpointercancel={handlePanePointerUp}
+		>
 			<button
 				class="gallery-lightbox__backdrop"
-				onclick={onClose}
+				onclick={handleBackdropClick}
 				aria-label="Close lightbox"
 				type="button"
 				tabindex={shopCatalogOpen ? -1 : 0}

@@ -1,7 +1,9 @@
 import { getParentSession } from '$lib/auth/parentSession';
 import { albumSettingsSelect, loadGalleryAlbumPageData } from '$lib/cache/galleryCache.server';
+import type { GalleryAlbumPageMeta } from '$lib/cache/galleryCache';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { canAccessGallerySettings } from '$lib/utils/gallery-access';
+import { buildGalleryImagePageMeta } from '$lib/utils/gallery-image-seo';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -43,6 +45,7 @@ export const load: PageServerLoad = async ({ params, fetch, request, url, parent
 
 	const selectedRaw = url.searchParams.get('selected');
 	let selectedGalleryImageId: number | null = null;
+	let meta: GalleryAlbumPageMeta = initialGallery.meta;
 
 	if (selectedRaw) {
 		const selectedId = Number(selectedRaw);
@@ -58,7 +61,15 @@ export const load: PageServerLoad = async ({ params, fetch, request, url, parent
 			select: {
 				id: true,
 				albums: true,
-				settings: albumSettingsSelect
+				settings: albumSettingsSelect,
+				alt: true,
+				caption: true,
+				filename: true,
+				url: true,
+				width: true,
+				height: true,
+				sizes: { og: true },
+				meta: true
 			},
 			disableErrors: true
 		});
@@ -93,12 +104,19 @@ export const load: PageServerLoad = async ({ params, fetch, request, url, parent
 		}
 
 		selectedGalleryImageId = selectedId;
+		meta = buildGalleryImagePageMeta({
+			image: selectedImage,
+			albumMeta: initialGallery.meta,
+			origin: url.origin,
+			slug,
+			selectedId
+		});
 	}
 
 	return {
 		slug,
 		initialGallery,
 		selectedGalleryImageId,
-		meta: initialGallery.meta
+		meta
 	};
 };
