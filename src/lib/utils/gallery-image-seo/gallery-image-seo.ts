@@ -93,6 +93,7 @@ export function buildGalleryImagePageMeta(options: {
 		metaDescription: imageDescription ?? albumMeta.metaDescription ?? description,
 		image: seoImage,
 		metaImage: seoImage,
-		canonicalURL: `${origin}/galleries/${slug}?selected=${selectedId}`
+		canonicalURL: albumMeta.canonicalURL || `${origin}/galleries/${slug}`,
+		ogURL: `${origin}/galleries/${slug}?selected=${selectedId}`
 	};
 }

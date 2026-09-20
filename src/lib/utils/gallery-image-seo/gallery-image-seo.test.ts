@@ -45,7 +45,7 @@ describe('resolveGalleryImageSeoAsset', () => {
 });
 
 describe('buildGalleryImagePageMeta', () => {
-	it('overrides title, description, image, and canonical from the selected photo', () => {
+	it('overrides title, description, and image; keeps album canonical; sets ogURL for shares', () => {
 		const meta = buildGalleryImagePageMeta({
 			image: {
 				alt: 'Golden hour at the lake',
@@ -75,7 +75,8 @@ describe('buildGalleryImagePageMeta', () => {
 			height: 1600,
 			sizes: { og: { url: '/photo-og.jpg', width: 1200, height: 630 } }
 		});
-		expect(meta.canonicalURL).toBe('https://example.com/galleries/air-show?selected=42');
+		expect(meta.canonicalURL).toBe('https://example.com/galleries/air-show');
+		expect(meta.ogURL).toBe('https://example.com/galleries/air-show?selected=42');
 	});
 
 	it('skips filename-like alts and keeps the album title', () => {

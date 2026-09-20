@@ -18,5 +18,11 @@ export const load: PageServerLoad = async (event) => {
 		throw error(404, 'Article not found');
 	}
 
-	return { slug: params.slug, initialArticle, includeDrafts };
+	return {
+		slug: params.slug,
+		initialArticle,
+		includeDrafts,
+		/** Keep top-level meta for SSR `<Meta>` before pageMetaOverride runs. */
+		meta: initialArticle.meta
+	};
 };

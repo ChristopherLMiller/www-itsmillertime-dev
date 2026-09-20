@@ -64,6 +64,8 @@ export type GalleryAlbumPageMeta = {
 	image: unknown;
 	metaImage: unknown;
 	canonicalURL: string;
+	/** Share URL for `og:url`. When omitted, Meta falls back to `canonicalURL`. */
+	ogURL?: string;
 };
 
 export interface GalleryAlbumCacheData {

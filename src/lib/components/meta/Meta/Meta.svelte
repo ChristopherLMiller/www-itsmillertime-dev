@@ -17,8 +17,8 @@
 		return getMediaUrl(url, false);
 	}
 
-	function generateTitle(title: string) {
-		if (meta.title) {
+	function generateTitle(title: string | undefined) {
+		if (typeof meta.title === 'string' && meta.title.trim()) {
 			return meta.title;
 		}
 		// Home path will match all and return something random, make it deterministic
@@ -33,9 +33,9 @@
 
 		if (pageMeta) {
 			return `${pageMeta?.title} | ItsMillerTime`;
-		} else {
-			return `${title} | ItsMillerTime`;
 		}
+		const fragment = typeof title === 'string' ? title.trim() : '';
+		return fragment ? `${fragment} | ItsMillerTime` : 'ItsMillerTime';
 	}
 
 	function getImage(title: string): { url: string; width?: number; height?: number } {
@@ -56,8 +56,8 @@
 		return { url: `${page.url.origin}/og-image?text=${encodedTitle}` };
 	}
 
-	function generateDescription(description: string) {
-		if (meta.description) {
+	function generateDescription(description: string | undefined) {
+		if (typeof meta.description === 'string' && meta.description.trim()) {
 			return meta.description;
 		}
 		// Home path will match all and return something random, make it deterministic
@@ -92,6 +92,9 @@
 	let pageImage = $derived(pageImageInfo.url);
 	let pageImageWidth = $derived(pageImageInfo.width);
 	let pageImageHeight = $derived(pageImageInfo.height);
+	let pageUrl = $derived(
+		(typeof meta?.ogURL === 'string' && meta.ogURL.trim()) || meta?.canonicalURL
+	);
 </script>
 
 <svelte:head>
@@ -114,8 +117,8 @@
 		<meta property="og:image:height" content={String(pageImageHeight)} />
 	{/if}
 	<meta property="og:description" content={pageDescription} />
-	{#if meta?.canonicalURL}
-		<meta property="og:url" content={meta?.canonicalURL} />
+	{#if pageUrl}
+		<meta property="og:url" content={pageUrl} />
 	{/if}
 
 	<!-- Twitter -->
