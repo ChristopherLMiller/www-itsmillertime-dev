@@ -3,9 +3,8 @@ import { writable } from 'svelte/store';
 /**
  * Page-level SEO meta override.
  *
- * Client-rendered routes (e.g. articles) fetch their document via TanStack
- * Query rather than a blocking `load`, so `page.data.meta` is not populated for
- * them. Such a route can publish its resolved meta here and the shared `Meta`
- * component will prefer it over `page.data.meta`.
+ * Dynamic routes still publish resolved meta here after TanStack Query updates
+ * so the shared `Meta` component can prefer it over `page.data.meta`. Page
+ * `load` functions must also return top-level `meta` for correct SSR tags.
  */
 export const pageMetaOverride = writable<Record<string, unknown> | null>(null);

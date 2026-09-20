@@ -1,4 +1,8 @@
-import type { ArticlePageMeta, ArticleRelatedModel } from '$lib/cache/articleCache';
+import {
+	buildArticlePageMeta,
+	type ArticlePageMeta,
+	type ArticleRelatedModel
+} from '$lib/cache/articleCache';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { Post } from '$lib/types/payload-types';
 import { mergeRelatedLinks, toRelatedLinks } from '$lib/utils/relatedResources';
@@ -19,11 +23,7 @@ function isReadableArticle(
 	return article._status === 'published';
 }
 
-export function buildArticlePageMeta(doc: Post, origin: string, slug: string): ArticlePageMeta {
-	return doc.meta
-		? { ...doc.meta, canonicalURL: `${origin}/articles/${slug}` }
-		: { canonicalURL: `${origin}/articles/${slug}` };
-}
+export { buildArticlePageMeta };
 
 async function fetchArticleByIdFromCMS(
 	articleId: number | string,

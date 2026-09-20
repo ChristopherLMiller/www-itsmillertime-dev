@@ -19,7 +19,50 @@ export type ArticlesListQuery = {
 
 export type ArticlePageMeta = NonNullable<Post['meta']> & {
 	canonicalURL: string;
+	/** Title fragment for `<Meta>` when Payload SEO title is absent. */
+	metaTitle?: string;
+	metaDescription?: string;
+	metaImage?: unknown;
 };
+
+function firstText(...values: Array<string | null | undefined>): string | undefined {
+	for (const value of values) {
+		const text = value?.trim();
+		if (text) return text;
+	}
+	return undefined;
+}
+
+function isSeoImageAsset(value: unknown): value is NonNullable<NonNullable<Post['meta']>['image']> {
+	if (typeof value !== 'object' || value === null) return false;
+	const asset = value as { url?: unknown; sizes?: { og?: { url?: unknown } } };
+	if (typeof asset.url === 'string' && asset.url.length > 0) return true;
+	return typeof asset.sizes?.og?.url === 'string' && asset.sizes.og.url.length > 0;
+}
+
+/** Build the page meta object consumed by `<Meta>` during SSR and client override. */
+export function buildArticlePageMeta(doc: Post, origin: string, slug: string): ArticlePageMeta {
+	const seoTitle = firstText(doc.meta?.title);
+	const seoDescription = firstText(doc.meta?.description);
+	const metaImage = doc.meta?.image;
+	const featuredImage = doc.featuredImage;
+	const seoImage = isSeoImageAsset(metaImage)
+		? metaImage
+		: isSeoImageAsset(featuredImage)
+			? featuredImage
+			: undefined;
+
+	return {
+		...doc.meta,
+		title: seoTitle,
+		metaTitle: seoTitle ?? doc.title,
+		description: seoDescription,
+		metaDescription: seoDescription,
+		image: seoImage,
+		metaImage: seoImage,
+		canonicalURL: `${origin}/articles/${slug}`
+	};
+}
 
 export type ArticleRelatedModel = {
 	id: number;
