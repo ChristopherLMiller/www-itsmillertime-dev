@@ -2,14 +2,11 @@
 	import Image from '$lib/components/Image';
 	import type { Kit, Media, Model, ModelsTag } from '$lib/types/payload-types';
 	import { convertDate } from '$lib/utils/convertDate';
-	import { makeClockifyDurationFriendly } from '$lib/utils/makeClockifyDurationFriendly';
-
-	type ClockifyProject = { duration: string };
+	import { formatBuildTime } from '$lib/utils/formatBuildTime';
 
 	let { model }: { model: Model } = $props();
-	let isClockifyLoading = $state(true);
 	let completionDate = $derived(convertDate(model.model_meta.completionDate));
-	let clockifyProject = $state<ClockifyProject | null>(null);
+	const buildTime = $derived(formatBuildTime(model.timeTracking?.totalSeconds));
 	const kit = $derived(
 		typeof model.model_meta.kit === 'object' && model.model_meta.kit != null
 			? (model.model_meta.kit as Kit)
@@ -35,23 +32,6 @@
 	);
 
 	let tagsEl = $state<HTMLDivElement | null>(null);
-
-	$effect(() => {
-		async function getClockifyProjects() {
-			if (!model.clockify_project) {
-				isClockifyLoading = false;
-				return;
-			}
-			const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
-
-			if (response.ok) {
-				clockifyProject = await response.json();
-				isClockifyLoading = false;
-			}
-		}
-
-		getClockifyProjects();
-	});
 
 	$effect(() => {
 		const el = tagsEl;
@@ -95,72 +75,55 @@
 	});
 </script>
 
-{#if !isClockifyLoading}
-	<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
-		<div class="contents">
-			<p class="head">{headText}</p>
-			<div class="card-image">
-				<div class="card-image-frame">
-					<Image
-						image={model.model_meta.featuredImage as Media}
-						fixedAspectRatio={4 / 3}
-						objectFit="cover"
-						sizes="(min-width: 768px) 350px, 100vw"
-					/>
-					<span class={`status ${model.model_meta.status.toLowerCase()}`}
-						>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
-					>
-				</div>
-				<a href={`/models/${model.slug}`} class="name">{kit?.title ?? ''}</a>
+<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
+	<div class="contents">
+		<p class="head">{headText}</p>
+		<div class="card-image">
+			<div class="card-image-frame">
+				<Image
+					image={model.model_meta.featuredImage as Media}
+					fixedAspectRatio={4 / 3}
+					objectFit="cover"
+					sizes="(min-width: 768px) 350px, 100vw"
+				/>
+				<span class={`status ${model.model_meta.status.toLowerCase()}`}
+					>{model.model_meta.status.replace('_', ' ').toLowerCase()}</span
+				>
 			</div>
-			<div class="details">
-				<div class="stats">
+			<a href={`/models/${model.slug}`} class="name">{kit?.title ?? ''}</a>
+		</div>
+		<div class="details">
+			<div class="stats">
+				<div class="stat-row">
+					<span class="stat-label">Scale:</span>
+					<span class="value">{relationTitle(kit?.scale)}</span>
+				</div>
+				{#if buildTime}
 					<div class="stat-row">
-						<span class="stat-label">Scale:</span>
-						<span class="value">{relationTitle(kit?.scale)}</span>
+						<div class="stat-label">Build Time:</div>
+						<div class="value">{buildTime}</div>
 					</div>
-					{#if model.clockify_project}
-						<div class="stat-row">
-							<div class="stat-label">Build Time:</div>
-							<div class="vlaue">
-								{clockifyProject &&
-									makeClockifyDurationFriendly(clockifyProject.duration, false, true)}
-							</div>
+				{/if}
+				{#if model.model_meta.completionDate}
+					<div class="stat-row">
+						<div class="stat-label">Completed:</div>
+						<div class="value">
+							{completionDate}
 						</div>
-					{/if}
-					{#if model.model_meta.completionDate}
-						<div class="stat-row">
-							<div class="stat-label">Completed:</div>
-							<div class="value">
-								{completionDate}
-							</div>
-						</div>
-					{/if}
-					{#if resolvedTags.length}
-						<div class="tags" bind:this={tagsEl}>
-							{#each resolvedTags as tag (tag.id)}
-								<a data-tag href={`/models?tag=${tag.slug}`}>{tag.title}</a>
-							{/each}
-							<span class="tags-more" data-more hidden></span>
-						</div>
-					{/if}
-				</div>
+					</div>
+				{/if}
+				{#if resolvedTags.length}
+					<div class="tags" bind:this={tagsEl}>
+						{#each resolvedTags as tag (tag.id)}
+							<a data-tag href={`/models?tag=${tag.slug}`}>{tag.title}</a>
+						{/each}
+						<span class="tags-more" data-more hidden></span>
+					</div>
+				{/if}
 			</div>
 		</div>
-	</article>
-{:else}
-	<article class={`model-card ${model.model_meta.status.toLowerCase()}`}>
-		<div class="contents">
-			<div class="skeleton-head"></div>
-			<div class="skeleton-image"></div>
-			<div class="skeleton-details">
-				<div class="skeleton-stat"></div>
-				<div class="skeleton-stat"></div>
-				<div class="skeleton-stat"></div>
-			</div>
-		</div>
-	</article>
-{/if}
+	</div>
+</article>
 
 <style lang="postcss">
 	.model-card {
@@ -301,8 +264,7 @@
 		flex-shrink: 0;
 	}
 
-	.value,
-	.vlaue {
+	.value {
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -338,64 +300,6 @@
 
 		.tags-more {
 			cursor: default;
-		}
-	}
-
-	/* Skeleton loading styles */
-	.skeleton-head {
-		height: 32px;
-		background: linear-gradient(
-			90deg,
-			var(--color-primary-lighter) 25%,
-			var(--color-primary-light) 50%,
-			var(--color-primary-lighter) 75%
-		);
-		background-size: 200% 100%;
-		animation: loading 1.5s infinite;
-		border-radius: 4px;
-		margin: 5px 0;
-	}
-
-	.skeleton-image {
-		height: 200px;
-		background: linear-gradient(
-			90deg,
-			var(--color-primary-lighter) 25%,
-			var(--color-primary-light) 50%,
-			var(--color-primary-lighter) 75%
-		);
-		background-size: 200% 100%;
-		animation: loading 1.5s infinite;
-		border-radius: 8px;
-		margin: 10px 0;
-	}
-
-	.skeleton-details {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		padding: 0.5rem;
-	}
-
-	.skeleton-stat {
-		height: 16px;
-		background: linear-gradient(
-			90deg,
-			var(--color-primary-lighter) 25%,
-			var(--color-primary-light) 50%,
-			var(--color-primary-lighter) 75%
-		);
-		background-size: 200% 100%;
-		animation: loading 1.5s infinite;
-		border-radius: 2px;
-	}
-
-	@keyframes loading {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
 		}
 	}
 </style>

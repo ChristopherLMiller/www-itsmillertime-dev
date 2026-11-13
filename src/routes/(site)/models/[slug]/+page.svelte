@@ -3,15 +3,15 @@
 	import { page } from '$app/state';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
-	import ClockifyTimer from '$lib/components/ClockifyTimer';
 	import Image from '$lib/components/Image';
 	import Icon from '$lib/components/Icon';
+	import ModelTimer, { type ModelTimerChange } from '$lib/components/ModelTimer';
 	import Panel from '$lib/components/Panel';
 	import StickyNote from '$lib/components/StickyNote';
 	import TimelineCard from '$lib/components/TimelineCard';
 	import { type Kit, type Media } from '$lib/types/payload-types.js';
 	import { convertDate } from '$lib/utils/convertDate';
-	import { makeClockifyDurationFriendly } from '$lib/utils/makeClockifyDurationFriendly';
+	import { formatBuildTime } from '$lib/utils/formatBuildTime';
 	import { toRelatedLinks } from '$lib/utils/relatedResources';
 	import Disqus from '$lib/components/Disqus';
 	import ShareButtons from '$lib/components/ShareButtons';
@@ -21,9 +21,6 @@
 	import { pageMetaOverride } from '$lib/stores/pageMeta';
 	import type { PageProps } from './$types';
 
-	type ClockifyProject = { duration: string };
-
-	let clockifyProject = $state<ClockifyProject | null>(null);
 	const { data }: PageProps = $props();
 	const queryClient = useQueryClient();
 
@@ -66,14 +63,20 @@
 	const modelGalleryImages = $derived(
 		(model?.image ?? []).filter((img): img is Media => typeof img === 'object' && img !== null)
 	);
-	const status = $derived(model?.model_meta.status ?? 'NOT_STARTED');
+	/** Fresh total/status from the timer, shown until the cached model catches up. */
+	let timerOverride = $state<{ modelId: number; change: ModelTimerChange } | null>(null);
+	const liveTimer = $derived(
+		timerOverride && model && timerOverride.modelId === model.id ? timerOverride.change : null
+	);
+
+	const status = $derived(liveTimer?.status ?? model?.model_meta.status ?? 'NOT_STARTED');
 	const statusDisplay = $derived(status.replace('_', ' ').toLowerCase());
 	const statusClass = $derived(status.toLowerCase());
 	const completionDate = $derived(
 		model?.model_meta.completionDate ? convertDate(model.model_meta.completionDate) : null
 	);
-	const clockifyDuration = $derived(
-		clockifyProject ? makeClockifyDurationFriendly(clockifyProject.duration, false, true) : null
+	const buildTime = $derived(
+		formatBuildTime(liveTimer ? liveTimer.totalSeconds : model?.timeTracking?.totalSeconds)
 	);
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -88,22 +91,16 @@
 	const relatedModels = $derived(toRelatedLinks(model?.relatedResources?.relatedModels));
 	const hasRelatedResources = $derived(relatedPosts.length > 0 || relatedModels.length > 0);
 
-	async function refreshClockifyProject() {
-		if (!model?.clockify_project) return;
-		const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
-		if (response.ok) {
-			clockifyProject = await response.json();
-		}
+	function handleTimerChange(change: ModelTimerChange) {
+		if (!model) return;
+		timerOverride = { modelId: model.id, change };
+		void queryClient.invalidateQueries({ queryKey: ['model', data.slug] });
+		void queryClient.invalidateQueries({ queryKey: ['models'] });
 	}
 
 	$effect(() => {
 		pageMetaOverride.set(modelData?.meta ?? null);
 		return () => pageMetaOverride.set(null);
-	});
-
-	$effect(() => {
-		if (!model?.clockify_project) return;
-		refreshClockifyProject();
 	});
 </script>
 
@@ -127,18 +124,14 @@
 									<span>{completionDate}</span>
 								</span>
 							{/if}
-							{#if clockifyDuration}
+							{#if buildTime}
 								<span class="meta-item">
 									<Icon name="clock" size={18} />
-									<span>{clockifyDuration}</span>
+									<span>{buildTime}</span>
 								</span>
 							{/if}
-							{#if model.clockify_project}
-								<ClockifyTimer
-									projectId={model.clockify_project}
-									description={model.title}
-									onChange={refreshClockifyProject}
-								/>
+							{#if status !== 'COMPLETED'}
+								<ModelTimer modelId={model.id} onChange={handleTimerChange} />
 							{/if}
 							{#if cmsEditHref}
 								<a

@@ -55,7 +55,7 @@ export const storybookModel: Model = {
 	id: 1,
 	title: 'Test model',
 	slug: 'test-model',
-	clockify_project: null,
+	timeTracking: { totalSeconds: 5400 },
 	model_meta: {
 		featuredImage: storybookImageMedia,
 		status: 'COMPLETED',

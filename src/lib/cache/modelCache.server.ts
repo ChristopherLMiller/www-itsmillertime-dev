@@ -66,7 +66,7 @@ async function fetchModelsListFromCMS(
 						updatedAt: true,
 						slug: true,
 						model_meta: true,
-						clockify_project: true
+						timeTracking: true
 					},
 					...(andFilters.length > 0
 						? {
@@ -142,7 +142,7 @@ async function fetchModelBySlugFromCMS(
 			updatedAt: true,
 			slug: true,
 			model_meta: true,
-			clockify_project: true,
+			timeTracking: true,
 			buildLog: true,
 			image: true,
 			meta: true,
