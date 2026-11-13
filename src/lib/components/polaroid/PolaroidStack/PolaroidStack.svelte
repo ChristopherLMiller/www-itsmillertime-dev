@@ -248,15 +248,13 @@
 					albumDescription={item.isPrimary ? albumDescription : undefined}
 					fixedAspectRatio={item.isPrimary ? primaryAspectRatio : 4 / 3}
 					responsiveSizes={polaroidResponsiveSizes}
-					useProxy={
-						useProxy ||
+					useProxy={useProxy ||
 						Boolean(
 							item.media &&
-								typeof item.media === 'object' &&
-								'needsProxy' in item.media &&
-								(item.media as { needsProxy?: boolean }).needsProxy === true
-						)
-					}
+							typeof item.media === 'object' &&
+							'needsProxy' in item.media &&
+							(item.media as { needsProxy?: boolean }).needsProxy === true
+						)}
 					isNsfw={isNsfw || (nsfwImageIds?.has(item.media.id) ?? false)}
 					onNavigate={item.isPrimary ? onNavigate : undefined}
 					{disableContextMenu}

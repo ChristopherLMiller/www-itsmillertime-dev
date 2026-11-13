@@ -10,10 +10,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const method = event.request.method;
 	const path = event.url.pathname;
 
-	if (
-		hasBetterAuthCookie(event.request.headers.get('cookie')) &&
-		!path.startsWith('/api/auth/')
-	) {
+	if (hasBetterAuthCookie(event.request.headers.get('cookie')) && !path.startsWith('/api/auth/')) {
 		await loadSessionFromEvent(event);
 	}
 

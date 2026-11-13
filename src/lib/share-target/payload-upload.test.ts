@@ -39,9 +39,9 @@ describe('altFromShareContext', () => {
 
 describe('payloadCreateUpload', () => {
 	it('posts form data and parses doc id', async () => {
-		const innerFetch = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ doc: { id: 99 } }), { status: 201 })
-		);
+		const innerFetch = vi
+			.fn()
+			.mockResolvedValue(new Response(JSON.stringify({ doc: { id: 99 } }), { status: 201 }));
 		const r = await payloadCreateUpload({
 			innerFetch,
 			baseURL: 'https://cms.test/api/',
@@ -57,9 +57,11 @@ describe('payloadCreateUpload', () => {
 	});
 
 	it('returns first Payload error message on non-OK', async () => {
-		const innerFetch = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ errors: [{ message: 'Bad alt' }] }), { status: 400 })
-		);
+		const innerFetch = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ errors: [{ message: 'Bad alt' }] }), { status: 400 })
+			);
 		const r = await payloadCreateUpload({
 			innerFetch,
 			baseURL: 'https://cms.test/api',

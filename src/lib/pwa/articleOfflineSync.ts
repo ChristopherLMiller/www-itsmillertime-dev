@@ -17,7 +17,9 @@ function postToServiceWorker(message: Record<string, unknown>): void {
 
 /** Ask the service worker to fetch and cache article detail + API routes. */
 export function precacheArticleSlugs(slugs: Iterable<string | null | undefined>): void {
-	const unique = [...new Set([...slugs].filter((slug): slug is string => !!slug && slug.length > 0))];
+	const unique = [
+		...new Set([...slugs].filter((slug): slug is string => !!slug && slug.length > 0))
+	];
 	if (unique.length === 0) return;
 	postToServiceWorker({ type: SW_PRECACHE_ARTICLES, slugs: unique });
 }
@@ -25,9 +27,7 @@ export function precacheArticleSlugs(slugs: Iterable<string | null | undefined>)
 /** Ask the service worker to cache article detail documents (not the blog index). */
 export function precacheArticlePaths(paths: Iterable<string>): void {
 	const unique = [
-		...new Set(
-			[...paths].filter((path) => path.startsWith('/articles/') && path !== '/articles/')
-		)
+		...new Set([...paths].filter((path) => path.startsWith('/articles/') && path !== '/articles/'))
 	];
 	if (unique.length === 0) return;
 	postToServiceWorker({ type: SW_PRECACHE_PATHS, paths: unique });

@@ -97,11 +97,10 @@
 		useProxy ||
 		Boolean(
 			cover &&
-				typeof cover === 'object' &&
-				'needsProxy' in cover &&
-				(cover as { needsProxy?: boolean }).needsProxy === true
-		)
-	}
+			typeof cover === 'object' &&
+			'needsProxy' in cover &&
+			(cover as { needsProxy?: boolean }).needsProxy === true
+		)}
 	{#key `${cover.id}-${cover.url ?? ''}-${coverNeedsProxy ? 'p' : 'd'}`}
 		<PolaroidStack
 			primary={cover}

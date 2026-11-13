@@ -100,4 +100,4 @@ export const masonryPack: Action<HTMLElement> = (node) => {
 			}
 		}
 	};
-}
+};

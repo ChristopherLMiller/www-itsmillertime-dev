@@ -3,7 +3,10 @@ import { getPayloadSDK } from '$lib/payload/sdk.server';
 import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { canAccessGallerySettings, mediaRequiresAuthProxy } from '$lib/utils/gallery-access';
-import { commerceFromStoreProduct, stampPrintPixelsAndRedactMaster } from '$lib/utils/gallery-image-display';
+import {
+	commerceFromStoreProduct,
+	stampPrintPixelsAndRedactMaster
+} from '$lib/utils/gallery-image-display';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -66,8 +69,7 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	// Animated GIF size variants are often tall frame-strips — always prefer the original.
-	const isGif =
-		doc.mimeType === 'image/gif' || !!doc.filename?.toLowerCase().endsWith('.gif');
+	const isGif = doc.mimeType === 'image/gif' || !!doc.filename?.toLowerCase().endsWith('.gif');
 	const previewUrl = isGif
 		? (doc.url ?? doc.thumbnailURL ?? '')
 		: (doc.sizes?.thumbnail?.url ?? doc.thumbnailURL ?? doc.url ?? '');

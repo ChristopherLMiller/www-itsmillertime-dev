@@ -52,7 +52,6 @@
 			submitting = false;
 		}
 	}
-
 </script>
 
 <footer>

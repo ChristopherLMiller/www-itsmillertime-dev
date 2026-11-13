@@ -3,7 +3,10 @@ import { getStoreConfig, getStoreProduct } from '$lib/medusa/store.server';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { GalleryImage } from '$lib/types/payload-types';
 import { canAccessGallerySettings } from '$lib/utils/gallery-access';
-import { commerceFromStoreProduct, stampPrintPixelsAndRedactMaster } from '$lib/utils/gallery-image-display';
+import {
+	commerceFromStoreProduct,
+	stampPrintPixelsAndRedactMaster
+} from '$lib/utils/gallery-image-display';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

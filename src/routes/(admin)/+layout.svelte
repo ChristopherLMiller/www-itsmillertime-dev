@@ -101,7 +101,8 @@
 		<a class="admin-header__home" href="/admin/settings/ai">Admin</a>
 		<div class="admin-header__end">
 			<span class="admin-header__user">{userLabel}</span>
-			<a class="admin-header__site" href={data.siteHref ?? '/'} onclick={leaveAdmin}>Back to site</a>
+			<a class="admin-header__site" href={data.siteHref ?? '/'} onclick={leaveAdmin}>Back to site</a
+			>
 			<a class="admin-header__link" href="/account/logout" data-sveltekit-reload>Sign out</a>
 		</div>
 	</header>

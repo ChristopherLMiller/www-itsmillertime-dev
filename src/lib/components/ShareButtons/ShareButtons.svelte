@@ -46,7 +46,11 @@
 		aria-label="Share on Facebook"
 		type="button"
 	>
-		<SocialIcon platform="facebook" size={variant === 'on-dark' ? 16 : 20} color={variant === 'on-dark' ? 'currentColor' : undefined} />
+		<SocialIcon
+			platform="facebook"
+			size={variant === 'on-dark' ? 16 : 20}
+			color={variant === 'on-dark' ? 'currentColor' : undefined}
+		/>
 	</button>
 
 	<button
@@ -55,7 +59,11 @@
 		aria-label="Share on Twitter"
 		type="button"
 	>
-		<SocialIcon platform="twitter" size={variant === 'on-dark' ? 16 : 20} color={variant === 'on-dark' ? 'currentColor' : undefined} />
+		<SocialIcon
+			platform="twitter"
+			size={variant === 'on-dark' ? 16 : 20}
+			color={variant === 'on-dark' ? 'currentColor' : undefined}
+		/>
 	</button>
 
 	<button
@@ -64,7 +72,11 @@
 		aria-label="Share on LinkedIn"
 		type="button"
 	>
-		<SocialIcon platform="linkedin" size={variant === 'on-dark' ? 16 : 20} color={variant === 'on-dark' ? 'currentColor' : undefined} />
+		<SocialIcon
+			platform="linkedin"
+			size={variant === 'on-dark' ? 16 : 20}
+			color={variant === 'on-dark' ? 'currentColor' : undefined}
+		/>
 	</button>
 
 	<button
@@ -73,7 +85,11 @@
 		aria-label="Share on Reddit"
 		type="button"
 	>
-		<SocialIcon platform="reddit" size={variant === 'on-dark' ? 16 : 20} color={variant === 'on-dark' ? 'currentColor' : undefined} />
+		<SocialIcon
+			platform="reddit"
+			size={variant === 'on-dark' ? 16 : 20}
+			color={variant === 'on-dark' ? 'currentColor' : undefined}
+		/>
 	</button>
 
 	<button
@@ -83,7 +99,11 @@
 		aria-label={copySuccess ? 'Link copied!' : 'Copy link'}
 		type="button"
 	>
-		<SocialIcon platform="link" size={variant === 'on-dark' ? 16 : 20} color={variant === 'on-dark' ? 'currentColor' : undefined} />
+		<SocialIcon
+			platform="link"
+			size={variant === 'on-dark' ? 16 : 20}
+			color={variant === 'on-dark' ? 'currentColor' : undefined}
+		/>
 		{#if copySuccess}
 			<span class="copy-feedback">Copied!</span>
 		{/if}

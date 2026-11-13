@@ -51,7 +51,11 @@ export async function incrementGalleryImageTracking(
 	if (!res.ok) {
 		const message =
 			body.error ??
-			(res.status === 404 ? 'Not found' : res.status === 400 ? 'Invalid request' : 'Failed to update tracking');
+			(res.status === 404
+				? 'Not found'
+				: res.status === 400
+					? 'Invalid request'
+					: 'Failed to update tracking');
 		return { ok: false, error: message };
 	}
 

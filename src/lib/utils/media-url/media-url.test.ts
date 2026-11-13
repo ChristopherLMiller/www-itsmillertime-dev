@@ -114,7 +114,13 @@ describe('getLightboxPaintUrl', () => {
 					thumbnail: { url: '/media/th.jpg' }
 				}
 			}).map((url) => url.replace(/^https?:\/\/[^/]+/, ''))
-		).toEqual(['/media/lg.jpg', '/media/md.jpg', '/media/sm.jpg', '/media/th.jpg', '/media/orig.jpg']);
+		).toEqual([
+			'/media/lg.jpg',
+			'/media/md.jpg',
+			'/media/sm.jpg',
+			'/media/th.jpg',
+			'/media/orig.jpg'
+		]);
 	});
 
 	it('uses original for gifs', () => {

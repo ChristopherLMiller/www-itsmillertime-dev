@@ -47,7 +47,10 @@ export function plainTextToLexical(text: string): LexicalRootDoc | null {
 	const normalized = text.replace(/\r\n/g, '\n').trim();
 	if (!normalized) return null;
 
-	const paragraphs = normalized.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+	const paragraphs = normalized
+		.split(/\n+/)
+		.map((p) => p.trim())
+		.filter(Boolean);
 	if (paragraphs.length === 0) return null;
 
 	return {

@@ -86,9 +86,7 @@ async function connectLoop(): Promise<void> {
 			});
 
 			if (!response.ok) {
-				console.error(
-					`[cms-events] CMS stream failed (${response.status}) ${streamUrl()}`
-				);
+				console.error(`[cms-events] CMS stream failed (${response.status}) ${streamUrl()}`);
 			} else {
 				delayMs = 1000;
 				await consumeSse(response, abort.signal);

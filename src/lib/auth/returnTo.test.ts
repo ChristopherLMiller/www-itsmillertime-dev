@@ -37,14 +37,11 @@ describe('returnTo', () => {
 
 	it('prefers callbackURL, then referrer, then the fallback', () => {
 		expect(
-			resolveReturnUrl(origin, '/account/profile', [
-				'/galleries/album',
-				`${origin}/articles/hello`
-			])
+			resolveReturnUrl(origin, '/account/profile', ['/galleries/album', `${origin}/articles/hello`])
 		).toBe(`${origin}/galleries/album`);
-		expect(
-			resolveReturnUrl(origin, '/account/profile', [null, `${origin}/articles/hello`])
-		).toBe(`${origin}/articles/hello`);
+		expect(resolveReturnUrl(origin, '/account/profile', [null, `${origin}/articles/hello`])).toBe(
+			`${origin}/articles/hello`
+		);
 		expect(resolveReturnUrl(origin, '/account/profile', [null, '/account/login'])).toBe(
 			`${origin}/account/profile`
 		);

@@ -150,8 +150,6 @@ export function defaultPromptChoiceSlug(
 		const match = choices.find((row) => row.slug.trim().toLowerCase() === prefer);
 		if (match) return match.slug;
 	}
-	const assigned = choices.find(
-		(row) => row.slug.trim().toLowerCase() === IMAGE_ALT_PROMPT_SLUG
-	);
+	const assigned = choices.find((row) => row.slug.trim().toLowerCase() === IMAGE_ALT_PROMPT_SLUG);
 	return assigned?.slug ?? choices[0].slug;
 }
