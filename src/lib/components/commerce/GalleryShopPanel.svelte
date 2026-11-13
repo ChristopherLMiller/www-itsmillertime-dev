@@ -4,7 +4,10 @@
 	import { addVariantsToCart } from '$lib/commerce/add-to-cart';
 	import { clampQuantity, MAX_CART_QTY, type CartLine } from '$lib/commerce/cart-items';
 	import { cartUi } from '$lib/commerce/cart-session.svelte';
-	import { shopEnvironment, hydrateShopEnvironment } from '$lib/commerce/ecommerce-environment.svelte';
+	import {
+		shopEnvironment,
+		hydrateShopEnvironment
+	} from '$lib/commerce/ecommerce-environment.svelte';
 	import { SHOP_CART_WINDOW } from '$lib/commerce/cart-session';
 	import {
 		printCropCopy,
@@ -285,381 +288,384 @@
 		{/if}
 	{/snippet}
 	{#if pending && groups.length === 0}
-	<div class="shop-panel shop-panel--request shop-panel--pending" role="status" aria-busy="true">
-		{@render sandboxBanner()}
-		<span class="shop-panel__spinner" aria-hidden="true"></span>
-		<span class="shop-panel__sr-only">Loading shop listings</span>
-	</div>
-{:else if groups.length === 0}
-	<div class="shop-panel shop-panel--request">
-		{@render sandboxBanner()}
-		{#if requestOutcome === 'success'}
-			<p class="shop-panel__success" role="status">
-				Thanks — I'll email you if this image becomes available to buy.
-			</p>
-		{:else if requestOutcome === 'duplicate'}
-			<p class="shop-panel__success" role="status">
-				You're already on the list for this image. I'll email you if it becomes available.
-			</p>
-		{:else if galleryImageId == null}
-			<p class="shop-panel__empty">
-				This image isn't available for purchase right now. Check back later for ways to bring it
-				home.
-			</p>
-		{:else}
-			<p class="shop-panel__empty">
-				This image isn't listed in the shop yet. Leave your name and email and I'll let you know if
-				I make it available to buy.
-			</p>
-			<form
-				class="shop-panel__request"
-				aria-label="Request this image in the shop"
-				onsubmit={submitRequest}
-			>
-				<div class="shop-panel__field">
-					<label for="shop-request-name">Name</label>
-					<input
-						id="shop-request-name"
-						name="name"
-						type="text"
-						autocomplete="name"
-						required
-						maxlength="200"
-						disabled={requestBusy}
-						bind:value={requestName}
-					/>
-				</div>
-				<div class="shop-panel__field">
-					<label for="shop-request-email">Email</label>
-					<input
-						id="shop-request-email"
-						name="email"
-						type="email"
-						autocomplete="email"
-						required
-						maxlength="320"
-						disabled={requestBusy}
-						bind:value={requestEmail}
-					/>
-				</div>
-				{#if requestError}
-					<p class="shop-panel__error" role="alert">{requestError}</p>
-				{/if}
-				<button class="shop-panel__add" type="submit" disabled={requestBusy}>
-					{requestBusy ? 'Sending…' : 'Request it'}
-				</button>
-			</form>
-		{/if}
-	</div>
-{:else}
-	<form class="shop-panel" onsubmit={addSelected}>
-		<div class="shop-panel__catalog">
+		<div class="shop-panel shop-panel--request shop-panel--pending" role="status" aria-busy="true">
 			{@render sandboxBanner()}
-			{#snippet offerGroup(group: ShopOfferGroup)}
-				{@const selectedInGroup = groupQty(group)}
-				{@const open = groupOpen(group)}
-				{@const headingId = `shop-group-${groupDomId(group.id)}`}
-				{@const sizesId = `shop-sizes-${groupDomId(group.id)}`}
-				{@const listings = listingsForGroup(group)}
-				{@const sizeCount = uniqueSizeCount(group.offers)}
-				<section
-					class="shop-panel__group"
-					class:shop-panel__group--digital={group.kind === 'digital'}
-					aria-labelledby={headingId}
+			<span class="shop-panel__spinner" aria-hidden="true"></span>
+			<span class="shop-panel__sr-only">Loading shop listings</span>
+		</div>
+	{:else if groups.length === 0}
+		<div class="shop-panel shop-panel--request">
+			{@render sandboxBanner()}
+			{#if requestOutcome === 'success'}
+				<p class="shop-panel__success" role="status">
+					Thanks — I'll email you if this image becomes available to buy.
+				</p>
+			{:else if requestOutcome === 'duplicate'}
+				<p class="shop-panel__success" role="status">
+					You're already on the list for this image. I'll email you if it becomes available.
+				</p>
+			{:else if galleryImageId == null}
+				<p class="shop-panel__empty">
+					This image isn't available for purchase right now. Check back later for ways to bring it
+					home.
+				</p>
+			{:else}
+				<p class="shop-panel__empty">
+					This image isn't listed in the shop yet. Leave your name and email and I'll let you know
+					if I make it available to buy.
+				</p>
+				<form
+					class="shop-panel__request"
+					aria-label="Request this image in the shop"
+					onsubmit={submitRequest}
 				>
-					{#if group.kind === 'digital'}
-						<div class="shop-panel__heading">
-							<h3 class="shop-panel__name" id={headingId}>{group.name}</h3>
-							<span
-								class="shop-panel__badge"
-								class:shop-panel__badge--hidden={selectedInGroup === 0}
-								aria-hidden={selectedInGroup === 0}
-							>
-								{selectedInGroup > 0 ? selectedInGroup : ''}
-							</span>
-						</div>
-					{:else}
-						<div class="shop-panel__heading">
-							<button
-								class="shop-panel__toggle"
-								type="button"
-								id={headingId}
-								aria-expanded={open}
-								aria-controls={sizesId}
-								onclick={() => toggleGroup(group.id)}
-							>
-								<span class="shop-panel__name">{group.name}</span>
-								<span class="shop-panel__heading-meta">
-									<span
-										class="shop-panel__badge"
-										class:shop-panel__badge--hidden={selectedInGroup === 0}
-										aria-hidden={selectedInGroup === 0}
-									>
-										{selectedInGroup > 0 ? selectedInGroup : ''}
-									</span>
-									{#if !open}
-										<span class="shop-panel__size-count">
-											{sizeCount}
-											{sizeCount === 1 ? 'size' : 'sizes'}
-										</span>
-									{/if}
-									<span
-										class="shop-panel__chevron"
-										class:shop-panel__chevron--open={open}
-										aria-hidden="true"
-									></span>
-								</span>
-							</button>
-						</div>
+					<div class="shop-panel__field">
+						<label for="shop-request-name">Name</label>
+						<input
+							id="shop-request-name"
+							name="name"
+							type="text"
+							autocomplete="name"
+							required
+							maxlength="200"
+							disabled={requestBusy}
+							bind:value={requestName}
+						/>
+					</div>
+					<div class="shop-panel__field">
+						<label for="shop-request-email">Email</label>
+						<input
+							id="shop-request-email"
+							name="email"
+							type="email"
+							autocomplete="email"
+							required
+							maxlength="320"
+							disabled={requestBusy}
+							bind:value={requestEmail}
+						/>
+					</div>
+					{#if requestError}
+						<p class="shop-panel__error" role="alert">{requestError}</p>
 					{/if}
-					{#if group.description}
-						<p class="shop-panel__desc" title={group.description}>{group.description}</p>
-					{/if}
-					<div class="shop-panel__sizes" id={sizesId} hidden={!open}>
-						<ul class="shop-panel__lines">
-							{#each listings as listing (listingKey(group.id, listing))}
-								{@const finishOptions = finishOptionsForOffers(listing.offers)}
-								{@const finishValue = selectedFinish(group.id, listing, listing.offers)}
-								{@const offer = activeOffer(group.id, listing, listing.offers)}
-								{@const qty = qtyByVariant[offer.variantId] ?? 0}
-								{@const purchasable = offer.purchasable}
-								{@const details = offerFit(group.kind, listing.title)}
-								{@const fit = details?.fit ?? 'match'}
-								{@const showCrop = purchasable && (fit === 'crop' || fit === 'far')}
-								{@const showLowRes = purchasable && details?.lowResolution === true}
-								{@const paperChips = listing.paperChips}
-								{@const showChips = paperChips.length > 0 || showCrop || showLowRes}
-								{@const listingId = listingKey(group.id, listing)}
-								{@const fitOpen = openFitId === listingId}
-								{@const panelId = fitPanelId(group.id, listing)}
-								<li
-									class="shop-panel__line"
-									class:shop-panel__line--crop={fit === 'crop'}
-									class:shop-panel__line--far={fit === 'far'}
-									class:shop-panel__line--unavailable={!purchasable}
+					<button class="shop-panel__add" type="submit" disabled={requestBusy}>
+						{requestBusy ? 'Sending…' : 'Request it'}
+					</button>
+				</form>
+			{/if}
+		</div>
+	{:else}
+		<form class="shop-panel" onsubmit={addSelected}>
+			<div class="shop-panel__catalog">
+				{@render sandboxBanner()}
+				{#snippet offerGroup(group: ShopOfferGroup)}
+					{@const selectedInGroup = groupQty(group)}
+					{@const open = groupOpen(group)}
+					{@const headingId = `shop-group-${groupDomId(group.id)}`}
+					{@const sizesId = `shop-sizes-${groupDomId(group.id)}`}
+					{@const listings = listingsForGroup(group)}
+					{@const sizeCount = uniqueSizeCount(group.offers)}
+					<section
+						class="shop-panel__group"
+						class:shop-panel__group--digital={group.kind === 'digital'}
+						aria-labelledby={headingId}
+					>
+						{#if group.kind === 'digital'}
+							<div class="shop-panel__heading">
+								<h3 class="shop-panel__name" id={headingId}>{group.name}</h3>
+								<span
+									class="shop-panel__badge"
+									class:shop-panel__badge--hidden={selectedInGroup === 0}
+									aria-hidden={selectedInGroup === 0}
 								>
-									<div class="shop-panel__size-cell">
-										<div class="shop-panel__size-row">
-											<label class="shop-panel__size" for={qtyId(offer.variantId)}>
-												{sizeLineText(listing.title, finishOptions.length > 0)}
-											</label>
-											{#if finishOptions.length > 0}
-												<span class="shop-panel__finish">
-													<span class="shop-panel__finish-select">
-														<select
-															id={finishId(group.id, listing)}
-															aria-label="Finish"
-															value={finishValue}
-															onchange={(e) =>
-																setFinish(group.id, listing, e.currentTarget.value)}
-														>
-															{#each finishOptions as option (option.value)}
-																<option value={option.value}>{option.label}</option>
-															{/each}
-														</select>
+									{selectedInGroup > 0 ? selectedInGroup : ''}
+								</span>
+							</div>
+						{:else}
+							<div class="shop-panel__heading">
+								<button
+									class="shop-panel__toggle"
+									type="button"
+									id={headingId}
+									aria-expanded={open}
+									aria-controls={sizesId}
+									onclick={() => toggleGroup(group.id)}
+								>
+									<span class="shop-panel__name">{group.name}</span>
+									<span class="shop-panel__heading-meta">
+										<span
+											class="shop-panel__badge"
+											class:shop-panel__badge--hidden={selectedInGroup === 0}
+											aria-hidden={selectedInGroup === 0}
+										>
+											{selectedInGroup > 0 ? selectedInGroup : ''}
+										</span>
+										{#if !open}
+											<span class="shop-panel__size-count">
+												{sizeCount}
+												{sizeCount === 1 ? 'size' : 'sizes'}
+											</span>
+										{/if}
+										<span
+											class="shop-panel__chevron"
+											class:shop-panel__chevron--open={open}
+											aria-hidden="true"
+										></span>
+									</span>
+								</button>
+							</div>
+						{/if}
+						{#if group.description}
+							<p class="shop-panel__desc" title={group.description}>{group.description}</p>
+						{/if}
+						<div class="shop-panel__sizes" id={sizesId} hidden={!open}>
+							<ul class="shop-panel__lines">
+								{#each listings as listing (listingKey(group.id, listing))}
+									{@const finishOptions = finishOptionsForOffers(listing.offers)}
+									{@const finishValue = selectedFinish(group.id, listing, listing.offers)}
+									{@const offer = activeOffer(group.id, listing, listing.offers)}
+									{@const qty = qtyByVariant[offer.variantId] ?? 0}
+									{@const purchasable = offer.purchasable}
+									{@const details = offerFit(group.kind, listing.title)}
+									{@const fit = details?.fit ?? 'match'}
+									{@const showCrop = purchasable && (fit === 'crop' || fit === 'far')}
+									{@const showLowRes = purchasable && details?.lowResolution === true}
+									{@const paperChips = listing.paperChips}
+									{@const showChips = paperChips.length > 0 || showCrop || showLowRes}
+									{@const listingId = listingKey(group.id, listing)}
+									{@const fitOpen = openFitId === listingId}
+									{@const panelId = fitPanelId(group.id, listing)}
+									<li
+										class="shop-panel__line"
+										class:shop-panel__line--crop={fit === 'crop'}
+										class:shop-panel__line--far={fit === 'far'}
+										class:shop-panel__line--unavailable={!purchasable}
+									>
+										<div class="shop-panel__size-cell">
+											<div class="shop-panel__size-row">
+												<label class="shop-panel__size" for={qtyId(offer.variantId)}>
+													{sizeLineText(listing.title, finishOptions.length > 0)}
+												</label>
+												{#if finishOptions.length > 0}
+													<span class="shop-panel__finish">
+														<span class="shop-panel__finish-select">
+															<select
+																id={finishId(group.id, listing)}
+																aria-label="Finish"
+																value={finishValue}
+																onchange={(e) =>
+																	setFinish(group.id, listing, e.currentTarget.value)}
+															>
+																{#each finishOptions as option (option.value)}
+																	<option value={option.value}>{option.label}</option>
+																{/each}
+															</select>
+														</span>
 													</span>
-												</span>
+												{/if}
+											</div>
+											{#if showChips}
+												<div class="shop-panel__chips">
+													{#each paperChips as chip (chip)}
+														<span
+															class="shop-panel__chip shop-panel__chip--paper"
+															title={paperChipLabel(chip)}
+														>
+															{chip}
+														</span>
+													{/each}
+													{#if showCrop}
+														<button
+															class="shop-panel__chip"
+															type="button"
+															aria-expanded={fitOpen}
+															aria-controls={panelId}
+															aria-label="Crop details for {listing.title}"
+															onclick={() => toggleFit(group.id, listing)}
+														>
+															Crop
+														</button>
+													{/if}
+													{#if showLowRes}
+														<button
+															class="shop-panel__chip shop-panel__chip--low"
+															type="button"
+															aria-expanded={fitOpen}
+															aria-controls={panelId}
+															aria-label="Resolution details for {listing.title}"
+															onclick={() => toggleFit(group.id, listing)}
+														>
+															Low res
+														</button>
+													{/if}
+												</div>
 											{/if}
 										</div>
-										{#if showChips}
-											<div class="shop-panel__chips">
-												{#each paperChips as chip (chip)}
-													<span
-														class="shop-panel__chip shop-panel__chip--paper"
-														title={paperChipLabel(chip)}
-													>
-														{chip}
-													</span>
-												{/each}
-												{#if showCrop}
-													<button
-														class="shop-panel__chip"
-														type="button"
-														aria-expanded={fitOpen}
-														aria-controls={panelId}
-														aria-label="Crop details for {listing.title}"
-														onclick={() => toggleFit(group.id, listing)}
-													>
-														Crop
-													</button>
-												{/if}
-												{#if showLowRes}
-													<button
-														class="shop-panel__chip shop-panel__chip--low"
-														type="button"
-														aria-expanded={fitOpen}
-														aria-controls={panelId}
-														aria-label="Resolution details for {listing.title}"
-														onclick={() => toggleFit(group.id, listing)}
-													>
-														Low res
-													</button>
-												{/if}
+										{#if typeof offer.priceUSD === 'number'}
+											<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
+										{:else if !purchasable}
+											<span class="shop-panel__price shop-panel__price--unavailable"
+												>Unavailable</span
+											>
+										{:else}
+											<span class="shop-panel__price shop-panel__price--pending">—</span>
+										{/if}
+										<div class="shop-panel__stepper">
+											<button
+												class="shop-panel__step"
+												type="button"
+												disabled={busy || !purchasable || qty <= 0}
+												aria-label="Decrease quantity of {offerQtyContext(group, offer)}{aspectHint(
+													details
+												)}"
+												onclick={() => bumpQty(offer.variantId, -1, purchasable)}
+											>
+												−
+											</button>
+											<input
+												class="shop-panel__qty"
+												id={qtyId(offer.variantId)}
+												type="number"
+												inputmode="numeric"
+												min="0"
+												max={MAX_CART_QTY}
+												step="1"
+												disabled={busy || !purchasable}
+												value={qty}
+												aria-label="Quantity for {offerQtyContext(group, offer)}{aspectHint(
+													details
+												)}"
+												oninput={(e) =>
+													setQty(offer.variantId, e.currentTarget.valueAsNumber, purchasable)}
+											/>
+											<button
+												class="shop-panel__step"
+												type="button"
+												disabled={busy || !purchasable || qty >= MAX_CART_QTY}
+												aria-label="Increase quantity of {offerQtyContext(group, offer)}{aspectHint(
+													details
+												)}"
+												onclick={() => bumpQty(offer.variantId, 1, purchasable)}
+											>
+												+
+											</button>
+										</div>
+										{#if (showCrop || showLowRes) && details && imageWidth && imageHeight}
+											<div
+												class="shop-panel__fit"
+												id={panelId}
+												hidden={!fitOpen}
+												role="region"
+												aria-label="Crop and resolution for {listing.title}"
+											>
+												<div
+													class="shop-panel__photo"
+													style:--photo-ar="{imageWidth} / {imageHeight}"
+													style:--crop-x={details.crop.offsetX}
+													style:--crop-y={details.crop.offsetY}
+													style:--crop-w={details.crop.visibleWidth}
+													style:--crop-h={details.crop.visibleHeight}
+													aria-hidden="true"
+												>
+													{#if imageSrc}
+														<img
+															class="shop-panel__photo-img"
+															src={imageSrc}
+															alt=""
+															width={imageWidth}
+															height={imageHeight}
+															decoding="async"
+														/>
+													{/if}
+													<div class="shop-panel__crop-window"></div>
+												</div>
+												<div class="shop-panel__fit-copy">
+													<p>{printCropCopy(details)}</p>
+													<p>{printDpiCopy(details)}</p>
+												</div>
 											</div>
 										{/if}
-									</div>
-									{#if typeof offer.priceUSD === 'number'}
-										<span class="shop-panel__price">{formatUsd(offer.priceUSD)}</span>
-									{:else if !purchasable}
-										<span class="shop-panel__price shop-panel__price--unavailable">Unavailable</span
-										>
-									{:else}
-										<span class="shop-panel__price shop-panel__price--pending">—</span>
-									{/if}
-									<div class="shop-panel__stepper">
-										<button
-											class="shop-panel__step"
-											type="button"
-											disabled={busy || !purchasable || qty <= 0}
-											aria-label="Decrease quantity of {offerQtyContext(group, offer)}{aspectHint(
-												details
-											)}"
-											onclick={() => bumpQty(offer.variantId, -1, purchasable)}
-										>
-											−
-										</button>
-										<input
-											class="shop-panel__qty"
-											id={qtyId(offer.variantId)}
-											type="number"
-											inputmode="numeric"
-											min="0"
-											max={MAX_CART_QTY}
-											step="1"
-											disabled={busy || !purchasable}
-											value={qty}
-											aria-label="Quantity for {offerQtyContext(group, offer)}{aspectHint(details)}"
-											oninput={(e) =>
-												setQty(offer.variantId, e.currentTarget.valueAsNumber, purchasable)}
-										/>
-										<button
-											class="shop-panel__step"
-											type="button"
-											disabled={busy || !purchasable || qty >= MAX_CART_QTY}
-											aria-label="Increase quantity of {offerQtyContext(group, offer)}{aspectHint(
-												details
-											)}"
-											onclick={() => bumpQty(offer.variantId, 1, purchasable)}
-										>
-											+
-										</button>
-									</div>
-									{#if (showCrop || showLowRes) && details && imageWidth && imageHeight}
-										<div
-											class="shop-panel__fit"
-											id={panelId}
-											hidden={!fitOpen}
-											role="region"
-											aria-label="Crop and resolution for {listing.title}"
-										>
-											<div
-												class="shop-panel__photo"
-												style:--photo-ar="{imageWidth} / {imageHeight}"
-												style:--crop-x={details.crop.offsetX}
-												style:--crop-y={details.crop.offsetY}
-												style:--crop-w={details.crop.visibleWidth}
-												style:--crop-h={details.crop.visibleHeight}
-												aria-hidden="true"
-											>
-												{#if imageSrc}
-													<img
-														class="shop-panel__photo-img"
-														src={imageSrc}
-														alt=""
-														width={imageWidth}
-														height={imageHeight}
-														decoding="async"
-													/>
-												{/if}
-												<div class="shop-panel__crop-window"></div>
-											</div>
-											<div class="shop-panel__fit-copy">
-												<p>{printCropCopy(details)}</p>
-												<p>{printDpiCopy(details)}</p>
-											</div>
-										</div>
-									{/if}
-								</li>
+									</li>
+								{/each}
+							</ul>
+						</div>
+					</section>
+				{/snippet}
+
+				{#each groups as group (group.id)}
+					{@render offerGroup(group)}
+				{/each}
+				{#if glossary.length > 0}
+					<aside class="shop-panel__guide">
+						<h3 class="shop-panel__guide-title">How to read these listings</h3>
+						<dl class="shop-panel__glossary">
+							{#each glossary as entry (entry.term)}
+								<div class="shop-panel__glossary-item">
+									<dt>{entry.term}</dt>
+									<dd>
+										{#if entry.meaning}
+											{entry.meaning}
+										{/if}
+										{#if entry.items && entry.items.length > 0}
+											<ul>
+												{#each entry.items as item (item.term)}
+													<li>
+														{#if item.chipKind}
+															<span
+																class="shop-panel__chip"
+																class:shop-panel__chip--paper={item.chipKind === 'paper'}
+																class:shop-panel__chip--low={item.chipKind === 'low'}
+															>
+																{item.term}
+															</span>
+														{:else}
+															<span class="shop-panel__glossary-sub">{item.term}</span>
+														{/if}
+														{item.meaning}
+													</li>
+												{/each}
+											</ul>
+										{/if}
+									</dd>
+								</div>
 							{/each}
-						</ul>
-					</div>
-				</section>
-			{/snippet}
-
-			{#each groups as group (group.id)}
-				{@render offerGroup(group)}
-			{/each}
-			{#if glossary.length > 0}
-				<aside class="shop-panel__guide">
-					<h3 class="shop-panel__guide-title">How to read these listings</h3>
-					<dl class="shop-panel__glossary">
-						{#each glossary as entry (entry.term)}
-							<div class="shop-panel__glossary-item">
-								<dt>{entry.term}</dt>
-								<dd>
-									{#if entry.meaning}
-										{entry.meaning}
-									{/if}
-									{#if entry.items && entry.items.length > 0}
-										<ul>
-											{#each entry.items as item (item.term)}
-												<li>
-													{#if item.chipKind}
-														<span
-															class="shop-panel__chip"
-															class:shop-panel__chip--paper={item.chipKind === 'paper'}
-															class:shop-panel__chip--low={item.chipKind === 'low'}
-														>
-															{item.term}
-														</span>
-													{:else}
-														<span class="shop-panel__glossary-sub">{item.term}</span>
-													{/if}
-													{item.meaning}
-												</li>
-											{/each}
-										</ul>
-									{/if}
-								</dd>
-							</div>
-						{/each}
-					</dl>
-				</aside>
-			{/if}
-		</div>
-
-		<div class="shop-panel__footer">
-			<button class="shop-panel__add" type="submit" disabled={busy || selectedCount === 0}>
-				{#if busy}
-					Adding…
-				{:else if justAdded && selectedCount === 0}
-					Added to cart
-				{:else if selectedCount === 0}
-					Add to cart
-				{:else if selectedTotal != null}
-					Add {selectedCount}
-					{selectedCount === 1 ? 'item' : 'items'} · {formatUsd(selectedTotal)}
-				{:else}
-					Add {selectedCount}
-					{selectedCount === 1 ? 'item' : 'items'}
+						</dl>
+					</aside>
 				{/if}
-			</button>
-			{#if cartUi.itemCount > 0 && cartUi.cartUrl}
-				<a
-					class="shop-panel__cart"
-					href={cartUi.cartUrl}
-					target={SHOP_CART_WINDOW}
-					rel="noreferrer"
-				>
-					View cart · {cartUi.itemCount}
-					{cartUi.itemCount === 1 ? 'item' : 'items'}
-				</a>
-			{/if}
-			{#if errorMsg}
-				<p class="shop-panel__error" role="alert">{errorMsg}</p>
-			{/if}
-		</div>
-	</form>
+			</div>
+
+			<div class="shop-panel__footer">
+				<button class="shop-panel__add" type="submit" disabled={busy || selectedCount === 0}>
+					{#if busy}
+						Adding…
+					{:else if justAdded && selectedCount === 0}
+						Added to cart
+					{:else if selectedCount === 0}
+						Add to cart
+					{:else if selectedTotal != null}
+						Add {selectedCount}
+						{selectedCount === 1 ? 'item' : 'items'} · {formatUsd(selectedTotal)}
+					{:else}
+						Add {selectedCount}
+						{selectedCount === 1 ? 'item' : 'items'}
+					{/if}
+				</button>
+				{#if cartUi.itemCount > 0 && cartUi.cartUrl}
+					<a
+						class="shop-panel__cart"
+						href={cartUi.cartUrl}
+						target={SHOP_CART_WINDOW}
+						rel="noreferrer"
+					>
+						View cart · {cartUi.itemCount}
+						{cartUi.itemCount === 1 ? 'item' : 'items'}
+					</a>
+				{/if}
+				{#if errorMsg}
+					<p class="shop-panel__error" role="alert">{errorMsg}</p>
+				{/if}
+			</div>
+		</form>
 	{/if}
 </div>
 
@@ -695,8 +701,14 @@
 		z-index: 0;
 		background-image:
 			url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E"),
-			repeating-radial-gradient(circle at 1px 1px, rgba(60, 22, 0, 0.22) 0 0.55px, transparent 0.7px 2.6px);
-		background-size: 140px 140px, 3px 3px;
+			repeating-radial-gradient(
+				circle at 1px 1px,
+				rgba(60, 22, 0, 0.22) 0 0.55px,
+				transparent 0.7px 2.6px
+			);
+		background-size:
+			140px 140px,
+			3px 3px;
 		opacity: 0.55;
 		mix-blend-mode: multiply;
 		pointer-events: none;

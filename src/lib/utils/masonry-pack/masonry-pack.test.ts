@@ -12,7 +12,9 @@ describe('masonryRowSpan', () => {
 
 describe('nativeMasonrySupported', () => {
 	it('is true when grid-lanes is implemented', () => {
-		vi.stubGlobal('CSS', { supports: (prop: string, value: string) => prop === 'display' && value === 'grid-lanes' });
+		vi.stubGlobal('CSS', {
+			supports: (prop: string, value: string) => prop === 'display' && value === 'grid-lanes'
+		});
 		expect(nativeMasonrySupported()).toBe(true);
 		vi.unstubAllGlobals();
 	});

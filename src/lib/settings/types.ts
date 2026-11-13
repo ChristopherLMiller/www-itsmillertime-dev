@@ -23,4 +23,3 @@ export type SiteSettingsPatch = {
 	lastfm?: SiteSettingsView['lastfm'];
 	email?: SiteSettingsView['email'];
 };
-

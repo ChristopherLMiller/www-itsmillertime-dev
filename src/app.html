@@ -39,8 +39,16 @@
 						localStorage.setItem(flag, '1');
 						if (!regs.length && !keys.length) return;
 						return Promise.all([
-							Promise.all(regs.map(function (reg) { return reg.unregister(); })),
-							Promise.all(keys.map(function (key) { return caches.delete(key); }))
+							Promise.all(
+								regs.map(function (reg) {
+									return reg.unregister();
+								})
+							),
+							Promise.all(
+								keys.map(function (key) {
+									return caches.delete(key);
+								})
+							)
 						]).then(function () {
 							location.reload();
 						});

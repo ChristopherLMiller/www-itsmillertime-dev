@@ -394,7 +394,7 @@ export function imageZoomPan(node: HTMLElement, options: ImageZoomPanOptions = {
 
 	node.style.touchAction = 'none';
 	node.style.userSelect = 'none';
-	;(node.style as CSSStyleDeclaration & { webkitUserDrag?: string }).webkitUserDrag = 'none';
+	(node.style as CSSStyleDeclaration & { webkitUserDrag?: string }).webkitUserDrag = 'none';
 	bindHandle();
 	apply();
 

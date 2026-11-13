@@ -171,9 +171,7 @@
 		return extra ? [extra] : galleryImages;
 	});
 	const totalImageCount = $derived(
-		typeof gallery.images?.totalDocs === 'number'
-			? gallery.images.totalDocs
-			: galleryImages.length
+		typeof gallery.images?.totalDocs === 'number' ? gallery.images.totalDocs : galleryImages.length
 	);
 
 	function openLightboxForItem(item: GalleryGridMedia, opts?: { shop?: boolean }) {

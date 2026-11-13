@@ -7,16 +7,12 @@ import type { CmsContentEvent } from '$lib/cms-events/types';
 export function queryKeysForCmsEvent(event: CmsContentEvent): readonly (readonly unknown[])[] {
 	switch (event.collection) {
 		case 'posts':
-			return event.slug
-				? [['articles'], ['article', event.slug]]
-				: [['articles'], ['article']];
+			return event.slug ? [['articles'], ['article', event.slug]] : [['articles'], ['article']];
 		case 'posts-categories':
 		case 'posts-tags':
 			return [['articles'], ['article']];
 		case 'models':
-			return event.slug
-				? [['models'], ['model', event.slug]]
-				: [['models'], ['model']];
+			return event.slug ? [['models'], ['model', event.slug]] : [['models'], ['model']];
 		case 'manufacturers':
 		case 'scales':
 		case 'models-tags':
@@ -29,13 +25,9 @@ export function queryKeysForCmsEvent(event: CmsContentEvent): readonly (readonly
 		case 'pages':
 			return event.slug ? [['page', event.slug]] : [['page']];
 		case 'gardens':
-			return event.slug
-				? [['gardens'], ['garden', event.slug]]
-				: [['gardens'], ['garden']];
+			return event.slug ? [['gardens'], ['garden', event.slug]] : [['gardens'], ['garden']];
 		case 'gallery-albums':
-			return event.slug
-				? [['galleries'], ['gallery', event.slug]]
-				: [['galleries'], ['gallery']];
+			return event.slug ? [['galleries'], ['gallery', event.slug]] : [['galleries'], ['gallery']];
 		case 'gallery-images':
 		case 'gallery-tags':
 		case 'gallery-categories':

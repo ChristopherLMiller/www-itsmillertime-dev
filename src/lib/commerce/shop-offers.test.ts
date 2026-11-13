@@ -388,15 +388,19 @@ describe('shopGlossary', () => {
 		]);
 		const glossary = shopGlossary(groups);
 		expect(glossary.map((entry) => entry.term)).toEqual(['Finish', 'gsm', 'Chips']);
-		expect(glossary.find((entry) => entry.term === 'Finish')?.items?.map((item) => item.term)).toEqual(
-			['Gloss']
-		);
-		expect(glossary.find((entry) => entry.term === 'gsm')?.meaning).toMatch(/grams per square metre/i);
 		expect(
-			glossary.find((entry) => entry.term === 'Chips')?.items?.map((item) => ({
-				term: item.term,
-				chipKind: item.chipKind
-			}))
+			glossary.find((entry) => entry.term === 'Finish')?.items?.map((item) => item.term)
+		).toEqual(['Gloss']);
+		expect(glossary.find((entry) => entry.term === 'gsm')?.meaning).toMatch(
+			/grams per square metre/i
+		);
+		expect(
+			glossary
+				.find((entry) => entry.term === 'Chips')
+				?.items?.map((item) => ({
+					term: item.term,
+					chipKind: item.chipKind
+				}))
 		).toEqual([
 			{ term: 'LPP', chipKind: 'paper' },
 			{ term: 'Crop', chipKind: 'crop' },

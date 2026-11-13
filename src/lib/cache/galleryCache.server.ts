@@ -8,10 +8,7 @@ import {
 } from '$lib/cache/galleryCache';
 import { getPayloadSDK } from '$lib/payload/sdk.server';
 import type { GalleryAlbum, GalleryCategory, GalleryTag } from '$lib/types/payload-types';
-import {
-	canAccessGallerySettings,
-	type GalleryAccessUser
-} from '$lib/utils/gallery-access';
+import { canAccessGallerySettings, type GalleryAccessUser } from '$lib/utils/gallery-access';
 
 export const GALLERY_ALBUM_IMAGE_BATCH_SIZE = 30;
 

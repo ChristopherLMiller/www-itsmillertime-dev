@@ -3,7 +3,10 @@
 	import { untrack } from 'svelte';
 	import type { Media } from '$lib/types/payload-types';
 	import { getMediaUrl, getLightboxPaintUrl, isVideoMedia } from '$lib/utils/media-url';
-	import { touchStartedInNoSwipe, unzoomedPointerIntent } from '$lib/utils/lightbox-swipe/lightbox-swipe';
+	import {
+		touchStartedInNoSwipe,
+		unzoomedPointerIntent
+	} from '$lib/utils/lightbox-swipe/lightbox-swipe';
 
 	export type LightboxContentArgs = {
 		image: Media | undefined;

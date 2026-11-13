@@ -29,8 +29,7 @@ export function parseEcommerceEnvironment(payload: unknown): EcommerceEnvironmen
 	const prodigiEnvironment = readEnvironment(payload.prodigi.environment);
 	const stripeEnvironment = readEnvironment(payload.stripe.environment);
 	if (!prodigiEnvironment || !stripeEnvironment) return null;
-	const apiUrl =
-		typeof payload.prodigi.api_url === 'string' ? payload.prodigi.api_url.trim() : '';
+	const apiUrl = typeof payload.prodigi.api_url === 'string' ? payload.prodigi.api_url.trim() : '';
 
 	return {
 		environment,

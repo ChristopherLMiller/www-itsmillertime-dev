@@ -44,8 +44,7 @@ export const queryKeys = {
 	layout: ['layout'] as const,
 	articlesList: (query: ArticlesListQuery, includeDrafts = false) =>
 		['articles', 'list', query, { includeDrafts }] as const,
-	article: (slug: string, includeDrafts = false) =>
-		['article', slug, { includeDrafts }] as const,
+	article: (slug: string, includeDrafts = false) => ['article', slug, { includeDrafts }] as const,
 	projects: (page: number, limit: number) => ['projects', page, limit] as const,
 	modelsList: (query: ModelsListQuery, includeNotStarted = false) =>
 		['models', 'list', query, { includeNotStarted }] as const,

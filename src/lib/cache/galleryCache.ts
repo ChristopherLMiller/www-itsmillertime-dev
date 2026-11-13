@@ -104,9 +104,7 @@ export function galleriesListQueryFromUrl(url: URL): GalleriesListQuery {
 }
 
 export function galleriesListQueriesMatch(a: GalleriesListQuery, b: GalleriesListQuery): boolean {
-	return (
-		a.page === b.page && a.limit === b.limit && a.category === b.category && a.tag === b.tag
-	);
+	return a.page === b.page && a.limit === b.limit && a.category === b.category && a.tag === b.tag;
 }
 
 export function buildGalleriesDataUrl(query: GalleriesListQuery): string {

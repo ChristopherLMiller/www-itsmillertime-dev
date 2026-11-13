@@ -17,11 +17,7 @@ export function toPublicCmsEvent(value: unknown): CmsContentEvent | null {
 	if (!isWebhookPayload(value)) return null;
 	if (value.type === 'connected') return null;
 	if (value.action === 'read') return null;
-	if (
-		value.action !== 'create' &&
-		value.action !== 'update' &&
-		value.action !== 'delete'
-	) {
+	if (value.action !== 'create' && value.action !== 'update' && value.action !== 'delete') {
 		return null;
 	}
 	if (!value.collection) return null;
@@ -39,9 +35,7 @@ export function toPublicCmsEvent(value: unknown): CmsContentEvent | null {
 		collection: value.collection,
 		id: value.id,
 		slug:
-			slugFromUnknown(value) ??
-			slugFromUnknown(value.data) ??
-			slugFromUnknown(value.previousData),
+			slugFromUnknown(value) ?? slugFromUnknown(value.data) ?? slugFromUnknown(value.previousData),
 		timestamp: value.timestamp || new Date().toISOString()
 	};
 }
