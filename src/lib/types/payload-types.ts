@@ -13,239 +13,241 @@
  * via the `definition` "supportedTimezones".
  */
 export type SupportedTimezones =
-  | 'Pacific/Midway'
-  | 'Pacific/Niue'
-  | 'Pacific/Honolulu'
-  | 'Pacific/Rarotonga'
-  | 'America/Anchorage'
-  | 'Pacific/Gambier'
-  | 'America/Los_Angeles'
-  | 'America/Tijuana'
-  | 'America/Denver'
-  | 'America/Phoenix'
-  | 'America/Chicago'
-  | 'America/Guatemala'
-  | 'America/New_York'
-  | 'America/Bogota'
-  | 'America/Caracas'
-  | 'America/Santiago'
-  | 'America/Buenos_Aires'
-  | 'America/Sao_Paulo'
-  | 'Atlantic/South_Georgia'
-  | 'Atlantic/Azores'
-  | 'Atlantic/Cape_Verde'
-  | 'Europe/London'
-  | 'Europe/Berlin'
-  | 'Africa/Lagos'
-  | 'Europe/Athens'
-  | 'Africa/Cairo'
-  | 'Europe/Moscow'
-  | 'Asia/Riyadh'
-  | 'Asia/Dubai'
-  | 'Asia/Baku'
-  | 'Asia/Karachi'
-  | 'Asia/Tashkent'
-  | 'Asia/Calcutta'
-  | 'Asia/Dhaka'
-  | 'Asia/Almaty'
-  | 'Asia/Jakarta'
-  | 'Asia/Bangkok'
-  | 'Asia/Shanghai'
-  | 'Asia/Singapore'
-  | 'Asia/Tokyo'
-  | 'Asia/Seoul'
-  | 'Australia/Brisbane'
-  | 'Australia/Sydney'
-  | 'Pacific/Guam'
-  | 'Pacific/Noumea'
-  | 'Pacific/Auckland'
-  | 'Pacific/Fiji';
+	| 'Pacific/Midway'
+	| 'Pacific/Niue'
+	| 'Pacific/Honolulu'
+	| 'Pacific/Rarotonga'
+	| 'America/Anchorage'
+	| 'Pacific/Gambier'
+	| 'America/Los_Angeles'
+	| 'America/Tijuana'
+	| 'America/Denver'
+	| 'America/Phoenix'
+	| 'America/Chicago'
+	| 'America/Guatemala'
+	| 'America/New_York'
+	| 'America/Bogota'
+	| 'America/Caracas'
+	| 'America/Santiago'
+	| 'America/Buenos_Aires'
+	| 'America/Sao_Paulo'
+	| 'Atlantic/South_Georgia'
+	| 'Atlantic/Azores'
+	| 'Atlantic/Cape_Verde'
+	| 'Europe/London'
+	| 'Europe/Berlin'
+	| 'Africa/Lagos'
+	| 'Europe/Athens'
+	| 'Africa/Cairo'
+	| 'Europe/Moscow'
+	| 'Asia/Riyadh'
+	| 'Asia/Dubai'
+	| 'Asia/Baku'
+	| 'Asia/Karachi'
+	| 'Asia/Tashkent'
+	| 'Asia/Calcutta'
+	| 'Asia/Dhaka'
+	| 'Asia/Almaty'
+	| 'Asia/Jakarta'
+	| 'Asia/Bangkok'
+	| 'Asia/Shanghai'
+	| 'Asia/Singapore'
+	| 'Asia/Tokyo'
+	| 'Asia/Seoul'
+	| 'Australia/Brisbane'
+	| 'Australia/Sydney'
+	| 'Pacific/Guam'
+	| 'Pacific/Noumea'
+	| 'Pacific/Auckland'
+	| 'Pacific/Fiji';
 
 export interface Config {
-  auth: {
-    users: UserAuthOperations;
-    'payload-mcp-api-keys': PayloadMcpApiKeyAuthOperations;
-  };
-  blocks: {};
-  collections: {
-    'map-markers': MapMarker;
-    users: User;
-    media: Media;
-    posts: Post;
-    'posts-categories': PostsCategory;
-    'posts-tags': PostsTag;
-    pages: Page;
-    'gallery-albums': GalleryAlbum;
-    'gallery-images': GalleryImage;
-    'gallery-masters': GalleryMaster;
-    'gallery-product-requests': GalleryProductRequest;
-    'gallery-tags': GalleryTag;
-    'gallery-categories': GalleryCategory;
-    gardens: Garden;
-    kits: Kit;
-    scales: Scale;
-    manufacturers: Manufacturer;
-    'models-tags': ModelsTag;
-    models: Model;
-    projects: Project;
-    'projects-categories': ProjectsCategory;
-    'projects-technologies': ProjectsTechnology;
-    sessions: Session;
-    accounts: Account;
-    verifications: Verification;
-    twoFactors: TwoFactor;
-    passkeys: Passkey;
-    apikeys: Apikey;
-    search: Search;
-    'payload-mcp-api-keys': PayloadMcpApiKey;
-    'payload-jobs': PayloadJob;
-    'payload-folders': FolderInterface;
-    'payload-locked-documents': PayloadLockedDocument;
-    'payload-preferences': PayloadPreference;
-    'payload-migrations': PayloadMigration;
-    'payload-query-presets': PayloadQueryPreset;
-  };
-  collectionsJoins: {
-    users: {
-      albums: 'gallery-albums';
-    };
-    media: {
-      relatedPosts: 'posts';
-    };
-    'gallery-albums': {
-      relatedPosts: 'posts';
-      images: 'gallery-images';
-    };
-    'gallery-images': {
-      productRequests: 'gallery-product-requests';
-    };
-    kits: {
-      models: 'models';
-    };
-    'payload-folders': {
-      documentsAndFolders: 'payload-folders' | 'media';
-    };
-  };
-  collectionsSelect: {
-    'map-markers': MapMarkersSelect<false> | MapMarkersSelect<true>;
-    users: UsersSelect<false> | UsersSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
-    posts: PostsSelect<false> | PostsSelect<true>;
-    'posts-categories': PostsCategoriesSelect<false> | PostsCategoriesSelect<true>;
-    'posts-tags': PostsTagsSelect<false> | PostsTagsSelect<true>;
-    pages: PagesSelect<false> | PagesSelect<true>;
-    'gallery-albums': GalleryAlbumsSelect<false> | GalleryAlbumsSelect<true>;
-    'gallery-images': GalleryImagesSelect<false> | GalleryImagesSelect<true>;
-    'gallery-masters': GalleryMastersSelect<false> | GalleryMastersSelect<true>;
-    'gallery-product-requests': GalleryProductRequestsSelect<false> | GalleryProductRequestsSelect<true>;
-    'gallery-tags': GalleryTagsSelect<false> | GalleryTagsSelect<true>;
-    'gallery-categories': GalleryCategoriesSelect<false> | GalleryCategoriesSelect<true>;
-    gardens: GardensSelect<false> | GardensSelect<true>;
-    kits: KitsSelect<false> | KitsSelect<true>;
-    scales: ScalesSelect<false> | ScalesSelect<true>;
-    manufacturers: ManufacturersSelect<false> | ManufacturersSelect<true>;
-    'models-tags': ModelsTagsSelect<false> | ModelsTagsSelect<true>;
-    models: ModelsSelect<false> | ModelsSelect<true>;
-    projects: ProjectsSelect<false> | ProjectsSelect<true>;
-    'projects-categories': ProjectsCategoriesSelect<false> | ProjectsCategoriesSelect<true>;
-    'projects-technologies': ProjectsTechnologiesSelect<false> | ProjectsTechnologiesSelect<true>;
-    sessions: SessionsSelect<false> | SessionsSelect<true>;
-    accounts: AccountsSelect<false> | AccountsSelect<true>;
-    verifications: VerificationsSelect<false> | VerificationsSelect<true>;
-    twoFactors: TwoFactorsSelect<false> | TwoFactorsSelect<true>;
-    passkeys: PasskeysSelect<false> | PasskeysSelect<true>;
-    apikeys: ApikeysSelect<false> | ApikeysSelect<true>;
-    search: SearchSelect<false> | SearchSelect<true>;
-    'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
-    'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
-    'payload-folders': PayloadFoldersSelect<false> | PayloadFoldersSelect<true>;
-    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
-    'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
-    'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
-    'payload-query-presets': PayloadQueryPresetsSelect<false> | PayloadQueryPresetsSelect<true>;
-  };
-  db: {
-    defaultIDType: number;
-  };
-  fallbackLocale: null;
-  globals: {
-    'site-meta': SiteMeta;
-    'site-navigation': SiteNavigation;
-    'site-settings': SiteSetting;
-    'social-destinations': SocialDestination;
-    webhooks: Webhook;
-    'payload-jobs-stats': PayloadJobsStat;
-  };
-  globalsSelect: {
-    'site-meta': SiteMetaSelect<false> | SiteMetaSelect<true>;
-    'site-navigation': SiteNavigationSelect<false> | SiteNavigationSelect<true>;
-    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
-    'social-destinations': SocialDestinationsSelect<false> | SocialDestinationsSelect<true>;
-    webhooks: WebhooksSelect<false> | WebhooksSelect<true>;
-    'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
-  };
-  locale: null;
-  widgets: {
-    'site-analytics': SiteAnalyticsWidget;
-    'recent-content': RecentContentWidget;
-    'deploy-version': DeployVersionWidget;
-    collections: CollectionsWidget;
-  };
-  user: User | PayloadMcpApiKey;
-  jobs: {
-    tasks: {
-      generateImageEXIF: TaskGenerateImageEXIF;
-      queueMissingEXIF: TaskQueueMissingEXIF;
-      sendResetPasswordEmail: TaskSendResetPasswordEmail;
-      sendVerificationEmail: TaskSendVerificationEmail;
-      sendContactFormEmail: TaskSendContactFormEmail;
-      sendProductRequestAdminEmail: TaskSendProductRequestAdminEmail;
-      sendProductRequestAvailableEmail: TaskSendProductRequestAvailableEmail;
-      sendPublishAnnounce: TaskSendPublishAnnounce;
-      schedulePublish: TaskSchedulePublish;
-      inline: {
-        input: unknown;
-        output: unknown;
-      };
-    };
-    workflows: unknown;
-  };
+	auth: {
+		users: UserAuthOperations;
+		'payload-mcp-api-keys': PayloadMcpApiKeyAuthOperations;
+	};
+	blocks: {};
+	collections: {
+		'map-markers': MapMarker;
+		users: User;
+		media: Media;
+		posts: Post;
+		'posts-categories': PostsCategory;
+		'posts-tags': PostsTag;
+		pages: Page;
+		'gallery-albums': GalleryAlbum;
+		'gallery-images': GalleryImage;
+		'gallery-masters': GalleryMaster;
+		'gallery-product-requests': GalleryProductRequest;
+		'gallery-tags': GalleryTag;
+		'gallery-categories': GalleryCategory;
+		gardens: Garden;
+		kits: Kit;
+		scales: Scale;
+		manufacturers: Manufacturer;
+		'models-tags': ModelsTag;
+		models: Model;
+		projects: Project;
+		'projects-categories': ProjectsCategory;
+		'projects-technologies': ProjectsTechnology;
+		sessions: Session;
+		accounts: Account;
+		verifications: Verification;
+		twoFactors: TwoFactor;
+		passkeys: Passkey;
+		apikeys: Apikey;
+		search: Search;
+		'payload-mcp-api-keys': PayloadMcpApiKey;
+		'payload-jobs': PayloadJob;
+		'payload-folders': FolderInterface;
+		'payload-locked-documents': PayloadLockedDocument;
+		'payload-preferences': PayloadPreference;
+		'payload-migrations': PayloadMigration;
+		'payload-query-presets': PayloadQueryPreset;
+	};
+	collectionsJoins: {
+		users: {
+			albums: 'gallery-albums';
+		};
+		media: {
+			relatedPosts: 'posts';
+		};
+		'gallery-albums': {
+			relatedPosts: 'posts';
+			images: 'gallery-images';
+		};
+		'gallery-images': {
+			productRequests: 'gallery-product-requests';
+		};
+		kits: {
+			models: 'models';
+		};
+		'payload-folders': {
+			documentsAndFolders: 'payload-folders' | 'media';
+		};
+	};
+	collectionsSelect: {
+		'map-markers': MapMarkersSelect<false> | MapMarkersSelect<true>;
+		users: UsersSelect<false> | UsersSelect<true>;
+		media: MediaSelect<false> | MediaSelect<true>;
+		posts: PostsSelect<false> | PostsSelect<true>;
+		'posts-categories': PostsCategoriesSelect<false> | PostsCategoriesSelect<true>;
+		'posts-tags': PostsTagsSelect<false> | PostsTagsSelect<true>;
+		pages: PagesSelect<false> | PagesSelect<true>;
+		'gallery-albums': GalleryAlbumsSelect<false> | GalleryAlbumsSelect<true>;
+		'gallery-images': GalleryImagesSelect<false> | GalleryImagesSelect<true>;
+		'gallery-masters': GalleryMastersSelect<false> | GalleryMastersSelect<true>;
+		'gallery-product-requests':
+			GalleryProductRequestsSelect<false> | GalleryProductRequestsSelect<true>;
+		'gallery-tags': GalleryTagsSelect<false> | GalleryTagsSelect<true>;
+		'gallery-categories': GalleryCategoriesSelect<false> | GalleryCategoriesSelect<true>;
+		gardens: GardensSelect<false> | GardensSelect<true>;
+		kits: KitsSelect<false> | KitsSelect<true>;
+		scales: ScalesSelect<false> | ScalesSelect<true>;
+		manufacturers: ManufacturersSelect<false> | ManufacturersSelect<true>;
+		'models-tags': ModelsTagsSelect<false> | ModelsTagsSelect<true>;
+		models: ModelsSelect<false> | ModelsSelect<true>;
+		projects: ProjectsSelect<false> | ProjectsSelect<true>;
+		'projects-categories': ProjectsCategoriesSelect<false> | ProjectsCategoriesSelect<true>;
+		'projects-technologies': ProjectsTechnologiesSelect<false> | ProjectsTechnologiesSelect<true>;
+		sessions: SessionsSelect<false> | SessionsSelect<true>;
+		accounts: AccountsSelect<false> | AccountsSelect<true>;
+		verifications: VerificationsSelect<false> | VerificationsSelect<true>;
+		twoFactors: TwoFactorsSelect<false> | TwoFactorsSelect<true>;
+		passkeys: PasskeysSelect<false> | PasskeysSelect<true>;
+		apikeys: ApikeysSelect<false> | ApikeysSelect<true>;
+		search: SearchSelect<false> | SearchSelect<true>;
+		'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
+		'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
+		'payload-folders': PayloadFoldersSelect<false> | PayloadFoldersSelect<true>;
+		'payload-locked-documents':
+			PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
+		'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
+		'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
+		'payload-query-presets': PayloadQueryPresetsSelect<false> | PayloadQueryPresetsSelect<true>;
+	};
+	db: {
+		defaultIDType: number;
+	};
+	fallbackLocale: null;
+	globals: {
+		'site-meta': SiteMeta;
+		'site-navigation': SiteNavigation;
+		'site-settings': SiteSetting;
+		'social-destinations': SocialDestination;
+		webhooks: Webhook;
+		'payload-jobs-stats': PayloadJobsStat;
+	};
+	globalsSelect: {
+		'site-meta': SiteMetaSelect<false> | SiteMetaSelect<true>;
+		'site-navigation': SiteNavigationSelect<false> | SiteNavigationSelect<true>;
+		'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+		'social-destinations': SocialDestinationsSelect<false> | SocialDestinationsSelect<true>;
+		webhooks: WebhooksSelect<false> | WebhooksSelect<true>;
+		'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
+	};
+	locale: null;
+	widgets: {
+		'site-analytics': SiteAnalyticsWidget;
+		'recent-content': RecentContentWidget;
+		'deploy-version': DeployVersionWidget;
+		collections: CollectionsWidget;
+	};
+	user: User | PayloadMcpApiKey;
+	jobs: {
+		tasks: {
+			generateImageEXIF: TaskGenerateImageEXIF;
+			queueMissingEXIF: TaskQueueMissingEXIF;
+			sendResetPasswordEmail: TaskSendResetPasswordEmail;
+			sendVerificationEmail: TaskSendVerificationEmail;
+			sendContactFormEmail: TaskSendContactFormEmail;
+			sendProductRequestAdminEmail: TaskSendProductRequestAdminEmail;
+			sendProductRequestAvailableEmail: TaskSendProductRequestAvailableEmail;
+			sendPublishAnnounce: TaskSendPublishAnnounce;
+			schedulePublish: TaskSchedulePublish;
+			inline: {
+				input: unknown;
+				output: unknown;
+			};
+		};
+		workflows: unknown;
+	};
 }
 export interface UserAuthOperations {
-  forgotPassword: {
-    email: string;
-    password: string;
-  };
-  login: {
-    email: string;
-    password: string;
-  };
-  registerFirstUser: {
-    email: string;
-    password: string;
-  };
-  unlock: {
-    email: string;
-    password: string;
-  };
+	forgotPassword: {
+		email: string;
+		password: string;
+	};
+	login: {
+		email: string;
+		password: string;
+	};
+	registerFirstUser: {
+		email: string;
+		password: string;
+	};
+	unlock: {
+		email: string;
+		password: string;
+	};
 }
 export interface PayloadMcpApiKeyAuthOperations {
-  forgotPassword: {
-    email: string;
-    password: string;
-  };
-  login: {
-    email: string;
-    password: string;
-  };
-  registerFirstUser: {
-    email: string;
-    password: string;
-  };
-  unlock: {
-    email: string;
-    password: string;
-  };
+	forgotPassword: {
+		email: string;
+		password: string;
+	};
+	login: {
+		email: string;
+		password: string;
+	};
+	registerFirstUser: {
+		email: string;
+		password: string;
+	};
+	unlock: {
+		email: string;
+		password: string;
+	};
 }
 /**
  * Map markers, used for plotting points of interest
@@ -254,28 +256,28 @@ export interface PayloadMcpApiKeyAuthOperations {
  * via the `definition` "map-markers".
  */
 export interface MapMarker {
-  id: number;
-  title: string;
-  /**
-   * @minItems 2
-   * @maxItems 2
-   */
-  location: [number, number];
-  visits?: number | null;
-  rating?: number | null;
-  links?:
-    | {
-        title: string;
-        album?: {
-          relationTo: 'gallery-albums';
-          value: number | GalleryAlbum;
-        } | null;
-        url?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	/**
+	 * @minItems 2
+	 * @maxItems 2
+	 */
+	location: [number, number];
+	visits?: number | null;
+	rating?: number | null;
+	links?:
+		| {
+				title: string;
+				album?: {
+					relationTo: 'gallery-albums';
+					value: number | GalleryAlbum;
+				} | null;
+				url?: string | null;
+				id?: string | null;
+		  }[]
+		| null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Listing of all photo albums
@@ -284,82 +286,82 @@ export interface MapMarker {
  * via the `definition` "gallery-albums".
  */
 export interface GalleryAlbum {
-  id: number;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  /**
-   * Tracks whether this document was announced to social destinations. Use the Announce button to post.
-   */
-  announce?: {
-    /**
-     * Set automatically after a successful announce.
-     */
-    notifiedAt?: string | null;
-    /**
-     * Set when announce was skipped so it will not prompt again.
-     */
-    skippedAt?: string | null;
-  };
-  settings: {
-    isNsfw?: boolean | null;
-    /**
-     * Default order for images in this album. Frontends can override per request.
-     */
-    defaultSort: '-createdAt' | 'createdAt' | 'filename' | '-filename';
-    category?: (number | null) | GalleryCategory;
-    tags?: (number | GalleryTag)[] | null;
-    visibility: 'ALL' | 'AUTHENTICATED' | 'PRIVILEGED';
-    permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
-    allowedUsers?: (number | User)[] | null;
-  };
-  tracking?: {
-    views?: number | null;
-    downloads?: number | null;
-    likes?: number | null;
-    dislikes?: number | null;
-    comments?: number | null;
-    shares?: number | null;
-    totalImages?: number | null;
-  };
-  /**
-   * Articles that link to this photo gallery. Add or remove links from the article sidebar.
-   */
-  relatedPosts?: {
-    docs?: (number | Post)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  title: string;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  images?: {
-    docs?: (number | GalleryImage)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    /**
-     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
-     */
-    image?: (number | null) | GalleryImage;
-  };
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	/**
+	 * Tracks whether this document was announced to social destinations. Use the Announce button to post.
+	 */
+	announce?: {
+		/**
+		 * Set automatically after a successful announce.
+		 */
+		notifiedAt?: string | null;
+		/**
+		 * Set when announce was skipped so it will not prompt again.
+		 */
+		skippedAt?: string | null;
+	};
+	settings: {
+		isNsfw?: boolean | null;
+		/**
+		 * Default order for images in this album. Frontends can override per request.
+		 */
+		defaultSort: '-createdAt' | 'createdAt' | 'filename' | '-filename';
+		category?: (number | null) | GalleryCategory;
+		tags?: (number | GalleryTag)[] | null;
+		visibility: 'ALL' | 'AUTHENTICATED' | 'PRIVILEGED';
+		permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
+		allowedUsers?: (number | User)[] | null;
+	};
+	tracking?: {
+		views?: number | null;
+		downloads?: number | null;
+		likes?: number | null;
+		dislikes?: number | null;
+		comments?: number | null;
+		shares?: number | null;
+		totalImages?: number | null;
+	};
+	/**
+	 * Articles that link to this photo gallery. Add or remove links from the article sidebar.
+	 */
+	relatedPosts?: {
+		docs?: (number | Post)[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	title: string;
+	content?: {
+		root: {
+			type: string;
+			children: {
+				type: any;
+				version: number;
+				[k: string]: unknown;
+			}[];
+			direction: ('ltr' | 'rtl') | null;
+			format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+			indent: number;
+			version: number;
+		};
+		[k: string]: unknown;
+	} | null;
+	images?: {
+		docs?: (number | GalleryImage)[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	meta?: {
+		title?: string | null;
+		description?: string | null;
+		/**
+		 * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+		 */
+		image?: (number | null) | GalleryImage;
+	};
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Gallery categories.  Primary method of filtering galleries.
@@ -368,12 +370,12 @@ export interface GalleryAlbum {
  * via the `definition` "gallery-categories".
  */
 export interface GalleryCategory {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Gallery tags.  Used for more focused classification of gallery images.
@@ -382,12 +384,12 @@ export interface GalleryCategory {
  * via the `definition` "gallery-tags".
  */
 export interface GalleryTag {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * User accounts
@@ -396,63 +398,63 @@ export interface GalleryTag {
  * via the `definition` "users".
  */
 export interface User {
-  id: number;
-  email: string;
-  emailVerified?: boolean | null;
-  /**
-   * Managed by Authentik group membership on sign-in. Sign in again via Authentik to refresh.
-   */
-  role: ('family' | 'friend' | 'client' | 'user' | 'admin')[];
-  displayName?: string | null;
-  /**
-   * Albums this user has access to (when visibility is By User or Role)
-   */
-  albums?: {
-    docs?: (number | GalleryAlbum)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  /**
-   * Should NSFW content be hidden, blurred initially, or just shown?
-   */
-  nsfwFiltering?: ('hide' | 'blur' | 'show') | null;
-  /**
-   * Linked shop customer id (set by account linking).
-   */
-  medusaCustomerId?: string | null;
-  /**
-   * Shop account email at the time of linking (may differ from this user email).
-   */
-  medusaCustomerEmail?: string | null;
-  accountLinkedAt?: string | null;
-  bggUsername?: string | null;
-  /**
-   * Auto-added by Better Auth (name)
-   */
-  name: string;
-  /**
-   * Auto-added by Better Auth (image)
-   */
-  image?: string | null;
-  /**
-   * Auto-added by Better Auth (banned)
-   */
-  banned?: boolean | null;
-  /**
-   * Auto-added by Better Auth (banReason)
-   */
-  banReason?: string | null;
-  /**
-   * Auto-added by Better Auth (banExpires)
-   */
-  banExpires?: string | null;
-  /**
-   * Auto-added by Better Auth (twoFactorEnabled)
-   */
-  twoFactorEnabled?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-  collection: 'users';
+	id: number;
+	email: string;
+	emailVerified?: boolean | null;
+	/**
+	 * Managed by Authentik group membership on sign-in. Sign in again via Authentik to refresh.
+	 */
+	role: ('family' | 'friend' | 'client' | 'user' | 'admin')[];
+	displayName?: string | null;
+	/**
+	 * Albums this user has access to (when visibility is By User or Role)
+	 */
+	albums?: {
+		docs?: (number | GalleryAlbum)[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	/**
+	 * Should NSFW content be hidden, blurred initially, or just shown?
+	 */
+	nsfwFiltering?: ('hide' | 'blur' | 'show') | null;
+	/**
+	 * Linked shop customer id (set by account linking).
+	 */
+	medusaCustomerId?: string | null;
+	/**
+	 * Shop account email at the time of linking (may differ from this user email).
+	 */
+	medusaCustomerEmail?: string | null;
+	accountLinkedAt?: string | null;
+	bggUsername?: string | null;
+	/**
+	 * Auto-added by Better Auth (name)
+	 */
+	name: string;
+	/**
+	 * Auto-added by Better Auth (image)
+	 */
+	image?: string | null;
+	/**
+	 * Auto-added by Better Auth (banned)
+	 */
+	banned?: boolean | null;
+	/**
+	 * Auto-added by Better Auth (banReason)
+	 */
+	banReason?: string | null;
+	/**
+	 * Auto-added by Better Auth (banExpires)
+	 */
+	banExpires?: string | null;
+	/**
+	 * Auto-added by Better Auth (twoFactorEnabled)
+	 */
+	twoFactorEnabled?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
+	collection: 'users';
 }
 /**
  * Blog Posts
@@ -461,65 +463,65 @@ export interface User {
  * via the `definition` "posts".
  */
 export interface Post {
-  id: number;
-  /**
-   * Set once on first publish. Later publishes do not change this.
-   */
-  originalPublicationDate?: string | null;
-  /**
-   * Tracks whether this document was announced to social destinations. Use the Announce button to post.
-   */
-  announce?: {
-    /**
-     * Set automatically after a successful announce.
-     */
-    notifiedAt?: string | null;
-    /**
-     * Set when announce was skipped so it will not prompt again.
-     */
-    skippedAt?: string | null;
-  };
-  slug?: string | null;
-  slugLock?: boolean | null;
-  word_count?: number | null;
-  category?: (number | null) | PostsCategory;
-  tags?: (number | PostsTag)[] | null;
-  relatedPosts?: (number | Post)[] | null;
-  /**
-   * Link models from this article. Also editable from the model.
-   */
-  relatedModels?: (number | Model)[] | null;
-  /**
-   * Link photo gallery albums to this article. Shown on the album as Related Articles.
-   */
-  relatedAlbums?: (number | GalleryAlbum)[] | null;
-  title: string;
-  subheading?: string | null;
-  featuredImage?: (number | null) | Media;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    image?: (number | null) | Media;
-  };
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+	id: number;
+	/**
+	 * Set once on first publish. Later publishes do not change this.
+	 */
+	originalPublicationDate?: string | null;
+	/**
+	 * Tracks whether this document was announced to social destinations. Use the Announce button to post.
+	 */
+	announce?: {
+		/**
+		 * Set automatically after a successful announce.
+		 */
+		notifiedAt?: string | null;
+		/**
+		 * Set when announce was skipped so it will not prompt again.
+		 */
+		skippedAt?: string | null;
+	};
+	slug?: string | null;
+	slugLock?: boolean | null;
+	word_count?: number | null;
+	category?: (number | null) | PostsCategory;
+	tags?: (number | PostsTag)[] | null;
+	relatedPosts?: (number | Post)[] | null;
+	/**
+	 * Link models from this article. Also editable from the model.
+	 */
+	relatedModels?: (number | Model)[] | null;
+	/**
+	 * Link photo gallery albums to this article. Shown on the album as Related Articles.
+	 */
+	relatedAlbums?: (number | GalleryAlbum)[] | null;
+	title: string;
+	subheading?: string | null;
+	featuredImage?: (number | null) | Media;
+	content?: {
+		root: {
+			type: string;
+			children: {
+				type: any;
+				version: number;
+				[k: string]: unknown;
+			}[];
+			direction: ('ltr' | 'rtl') | null;
+			format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+			indent: number;
+			version: number;
+		};
+		[k: string]: unknown;
+	} | null;
+	meta?: {
+		title?: string | null;
+		description?: string | null;
+		image?: (number | null) | Media;
+	};
+	updatedAt: string;
+	createdAt: string;
+	deletedAt?: string | null;
+	_status?: ('draft' | 'published') | null;
 }
 /**
  * Blog categories.  Used for general classification of blog posts.
@@ -528,12 +530,12 @@ export interface Post {
  * via the `definition` "posts-categories".
  */
 export interface PostsCategory {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Blog tags.  Used for more focused classification of blog posts.
@@ -542,12 +544,12 @@ export interface PostsCategory {
  * via the `definition` "posts-tags".
  */
 export interface PostsTag {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * A built model, not to be confused with a kit
@@ -556,78 +558,78 @@ export interface PostsTag {
  * via the `definition` "models".
  */
 export interface Model {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  /**
-   * Tracks whether this document was announced to social destinations. Use the Announce button to post.
-   */
-  announce?: {
-    /**
-     * Set automatically after a successful announce.
-     */
-    notifiedAt?: string | null;
-    /**
-     * Set when announce was skipped so it will not prompt again.
-     */
-    skippedAt?: string | null;
-  };
-  /**
-   * Select a Clockify Project from your workspace
-   */
-  clockify_project?: string | null;
-  model_meta: {
-    featuredImage: number | Media;
-    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-    completionDate?: string | null;
-    kit: number | Kit;
-    tags?: (number | ModelsTag)[] | null;
-    videos?:
-      | {
-          title: string;
-          url?: string | null;
-          id?: string | null;
-        }[]
-      | null;
-  };
-  /**
-   * Link articles from this model. Also editable from the article.
-   */
-  relatedPosts?: (number | Post)[] | null;
-  relatedResources?: {
-    relatedModels?: (number | Model)[] | null;
-  };
-  buildLog?:
-    | {
-        title: string;
-        content?: {
-          root: {
-            type: string;
-            children: {
-              type: any;
-              version: number;
-              [k: string]: unknown;
-            }[];
-            direction: ('ltr' | 'rtl') | null;
-            format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-            indent: number;
-            version: number;
-          };
-          [k: string]: unknown;
-        } | null;
-        id?: string | null;
-      }[]
-    | null;
-  image?: (number | Media)[] | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    image?: (number | null) | Media;
-  };
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	/**
+	 * Tracks whether this document was announced to social destinations. Use the Announce button to post.
+	 */
+	announce?: {
+		/**
+		 * Set automatically after a successful announce.
+		 */
+		notifiedAt?: string | null;
+		/**
+		 * Set when announce was skipped so it will not prompt again.
+		 */
+		skippedAt?: string | null;
+	};
+	/**
+	 * Select a Clockify Project from your workspace
+	 */
+	clockify_project?: string | null;
+	model_meta: {
+		featuredImage: number | Media;
+		status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+		completionDate?: string | null;
+		kit: number | Kit;
+		tags?: (number | ModelsTag)[] | null;
+		videos?:
+			| {
+					title: string;
+					url?: string | null;
+					id?: string | null;
+			  }[]
+			| null;
+	};
+	/**
+	 * Link articles from this model. Also editable from the article.
+	 */
+	relatedPosts?: (number | Post)[] | null;
+	relatedResources?: {
+		relatedModels?: (number | Model)[] | null;
+	};
+	buildLog?:
+		| {
+				title: string;
+				content?: {
+					root: {
+						type: string;
+						children: {
+							type: any;
+							version: number;
+							[k: string]: unknown;
+						}[];
+						direction: ('ltr' | 'rtl') | null;
+						format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+						indent: number;
+						version: number;
+					};
+					[k: string]: unknown;
+				} | null;
+				id?: string | null;
+		  }[]
+		| null;
+	image?: (number | Media)[] | null;
+	meta?: {
+		title?: string | null;
+		description?: string | null;
+		image?: (number | null) | Media;
+	};
+	updatedAt: string;
+	createdAt: string;
+	deletedAt?: string | null;
 }
 /**
  * Media Items, images and otherwise
@@ -636,138 +638,138 @@ export interface Model {
  * via the `definition` "media".
  */
 export interface Media {
-  id: number;
-  prefix?: string | null;
-  exif?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  blurhash?: string | null;
-  alt: string;
-  caption?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  relatedPosts?: {
-    docs?: {
-      relationTo?: 'posts';
-      value: number | Post;
-    }[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  folder?: (number | null) | FolderInterface;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-  sizes?: {
-    thumbnail?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    square?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    small?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    medium?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    large?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    xlarge?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    og?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
+	id: number;
+	prefix?: string | null;
+	exif?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	blurhash?: string | null;
+	alt: string;
+	caption?: {
+		root: {
+			type: string;
+			children: {
+				type: any;
+				version: number;
+				[k: string]: unknown;
+			}[];
+			direction: ('ltr' | 'rtl') | null;
+			format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+			indent: number;
+			version: number;
+		};
+		[k: string]: unknown;
+	} | null;
+	relatedPosts?: {
+		docs?: {
+			relationTo?: 'posts';
+			value: number | Post;
+		}[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	folder?: (number | null) | FolderInterface;
+	updatedAt: string;
+	createdAt: string;
+	url?: string | null;
+	thumbnailURL?: string | null;
+	filename?: string | null;
+	mimeType?: string | null;
+	filesize?: number | null;
+	width?: number | null;
+	height?: number | null;
+	focalX?: number | null;
+	focalY?: number | null;
+	sizes?: {
+		thumbnail?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		square?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		small?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		medium?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		large?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		xlarge?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		og?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+	};
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-folders".
  */
 export interface FolderInterface {
-  id: number;
-  name: string;
-  folder?: (number | null) | FolderInterface;
-  documentsAndFolders?: {
-    docs?: (
-      | {
-          relationTo?: 'payload-folders';
-          value: number | FolderInterface;
-        }
-      | {
-          relationTo?: 'media';
-          value: number | Media;
-        }
-    )[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  folderType?: 'media'[] | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	name: string;
+	folder?: (number | null) | FolderInterface;
+	documentsAndFolders?: {
+		docs?: (
+			| {
+					relationTo?: 'payload-folders';
+					value: number | FolderInterface;
+			  }
+			| {
+					relationTo?: 'media';
+					value: number | Media;
+			  }
+		)[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	folderType?: 'media'[] | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Model Kits
@@ -776,22 +778,22 @@ export interface FolderInterface {
  * via the `definition` "kits".
  */
 export interface Kit {
-  id: number;
-  full_title: string;
-  title: string;
-  kit_number: string;
-  year_released: number;
-  scalemates?: string | null;
-  models?: {
-    docs?: (number | Model)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  manufacturer: number | Manufacturer;
-  scale: number | Scale;
-  boxart?: (number | null) | Media;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	full_title: string;
+	title: string;
+	kit_number: string;
+	year_released: number;
+	scalemates?: string | null;
+	models?: {
+		docs?: (number | Model)[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	manufacturer: number | Manufacturer;
+	scale: number | Scale;
+	boxart?: (number | null) | Media;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Model kit manufacturers
@@ -800,12 +802,12 @@ export interface Kit {
  * via the `definition` "manufacturers".
  */
 export interface Manufacturer {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Model kit scales
@@ -814,12 +816,12 @@ export interface Manufacturer {
  * via the `definition` "scales".
  */
 export interface Scale {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Models tags.  Used for more focused classification of models.
@@ -828,12 +830,12 @@ export interface Scale {
  * via the `definition` "models-tags".
  */
 export interface ModelsTag {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Image
@@ -842,140 +844,140 @@ export interface ModelsTag {
  * via the `definition` "gallery-images".
  */
 export interface GalleryImage {
-  id: number;
-  prefix?: string | null;
-  settings: {
-    isNsfw?: boolean | null;
-    'gallery-tags'?: (number | GalleryTag)[] | null;
-    visibility: 'ALL' | 'AUTHENTICATED' | 'PRIVILEGED';
-    permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
-    allowedUsers?: (number | User)[] | null;
-  };
-  /**
-   * Pointer to the Medusa product. Managed by the Store tab.
-   */
-  medusaProductId?: string | null;
-  /**
-   * Private full-resolution original (no watermark). Used for store downloads and prints. Not publicly accessible.
-   */
-  master?: (number | null) | GalleryMaster;
-  exif?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  blurhash?: string | null;
-  tracking?: {
-    views?: number | null;
-    downloads?: number | null;
-    likes?: number | null;
-    dislikes?: number | null;
-    comments?: number | null;
-    shares?: number | null;
-  };
-  alt: string;
-  caption?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  albums?: (number | GalleryAlbum)[] | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    /**
-     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
-     */
-    image?: (number | null) | GalleryImage;
-  };
-  productRequests?: {
-    docs?: (number | GalleryProductRequest)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-  sizes?: {
-    thumbnail?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    square?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    small?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    medium?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    large?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    xlarge?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    og?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
+	id: number;
+	prefix?: string | null;
+	settings: {
+		isNsfw?: boolean | null;
+		'gallery-tags'?: (number | GalleryTag)[] | null;
+		visibility: 'ALL' | 'AUTHENTICATED' | 'PRIVILEGED';
+		permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
+		allowedUsers?: (number | User)[] | null;
+	};
+	/**
+	 * Pointer to the Medusa product. Managed by the Store tab.
+	 */
+	medusaProductId?: string | null;
+	/**
+	 * Private full-resolution original (no watermark). Used for store downloads and prints. Not publicly accessible.
+	 */
+	master?: (number | null) | GalleryMaster;
+	exif?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	blurhash?: string | null;
+	tracking?: {
+		views?: number | null;
+		downloads?: number | null;
+		likes?: number | null;
+		dislikes?: number | null;
+		comments?: number | null;
+		shares?: number | null;
+	};
+	alt: string;
+	caption?: {
+		root: {
+			type: string;
+			children: {
+				type: any;
+				version: number;
+				[k: string]: unknown;
+			}[];
+			direction: ('ltr' | 'rtl') | null;
+			format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+			indent: number;
+			version: number;
+		};
+		[k: string]: unknown;
+	} | null;
+	albums?: (number | GalleryAlbum)[] | null;
+	meta?: {
+		title?: string | null;
+		description?: string | null;
+		/**
+		 * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+		 */
+		image?: (number | null) | GalleryImage;
+	};
+	productRequests?: {
+		docs?: (number | GalleryProductRequest)[];
+		hasNextPage?: boolean;
+		totalDocs?: number;
+	};
+	updatedAt: string;
+	createdAt: string;
+	url?: string | null;
+	thumbnailURL?: string | null;
+	filename?: string | null;
+	mimeType?: string | null;
+	filesize?: number | null;
+	width?: number | null;
+	height?: number | null;
+	focalX?: number | null;
+	focalY?: number | null;
+	sizes?: {
+		thumbnail?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		square?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		small?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		medium?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		large?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		xlarge?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+		og?: {
+			url?: string | null;
+			width?: number | null;
+			height?: number | null;
+			mimeType?: string | null;
+			filesize?: number | null;
+			filename?: string | null;
+		};
+	};
 }
 /**
  * Private full-resolution originals. Not publicly readable.
@@ -984,22 +986,22 @@ export interface GalleryImage {
  * via the `definition` "gallery-masters".
  */
 export interface GalleryMaster {
-  id: number;
-  prefix?: string | null;
-  alt: string;
-  /**
-   * Local filename stem from ingest (piu).
-   */
-  sourceStem?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
+	id: number;
+	prefix?: string | null;
+	alt: string;
+	/**
+	 * Local filename stem from ingest (piu).
+	 */
+	sourceStem?: string | null;
+	updatedAt: string;
+	createdAt: string;
+	url?: string | null;
+	thumbnailURL?: string | null;
+	filename?: string | null;
+	mimeType?: string | null;
+	filesize?: number | null;
+	width?: number | null;
+	height?: number | null;
 }
 /**
  * People waiting to buy a gallery image. Listing the image on the Store tab emails them.
@@ -1008,36 +1010,36 @@ export interface GalleryMaster {
  * via the `definition` "gallery-product-requests".
  */
 export interface GalleryProductRequest {
-  id: number;
-  name: string;
-  email: string;
-  /**
-   * Flips to Notified automatically after the waitlist email is sent. Use Cancelled only if you will not list this photo.
-   */
-  status: 'pending' | 'notified' | 'cancelled';
-  notifiedAt?: string | null;
-  /**
-   * The gallery image they want listed.
-   */
-  galleryImage: number | GalleryImage;
-  /**
-   * Snapshot of the image alt/title for emails.
-   */
-  imageTitle?: string | null;
-  /**
-   * Public thumbnail used in emails.
-   */
-  imageUrl?: string | null;
-  /**
-   * Album slug at request time, used to deep-link the lightbox.
-   */
-  albumSlug?: string | null;
-  /**
-   * Set when the requester was logged in.
-   */
-  user?: (number | null) | User;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	name: string;
+	email: string;
+	/**
+	 * Flips to Notified automatically after the waitlist email is sent. Use Cancelled only if you will not list this photo.
+	 */
+	status: 'pending' | 'notified' | 'cancelled';
+	notifiedAt?: string | null;
+	/**
+	 * The gallery image they want listed.
+	 */
+	galleryImage: number | GalleryImage;
+	/**
+	 * Snapshot of the image alt/title for emails.
+	 */
+	imageTitle?: string | null;
+	/**
+	 * Public thumbnail used in emails.
+	 */
+	imageUrl?: string | null;
+	/**
+	 * Album slug at request time, used to deep-link the lightbox.
+	 */
+	albumSlug?: string | null;
+	/**
+	 * Set when the requester was logged in.
+	 */
+	user?: (number | null) | User;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Singular dynamic page of the front end
@@ -1046,44 +1048,44 @@ export interface GalleryProductRequest {
  * via the `definition` "pages".
  */
 export interface Page {
-  id: number;
-  title: string;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  visibility?: ('ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED') | null;
-  permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
-  blocks?:
-    | {
-        block?: {
-          root: {
-            type: string;
-            children: {
-              type: any;
-              version: number;
-              [k: string]: unknown;
-            }[];
-            direction: ('ltr' | 'rtl') | null;
-            format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-            indent: number;
-            version: number;
-          };
-          [k: string]: unknown;
-        } | null;
-        id?: string | null;
-      }[]
-    | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    /**
-     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
-     */
-    image?: (number | null) | Media;
-  };
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+	id: number;
+	title: string;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	visibility?: ('ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED') | null;
+	permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
+	blocks?:
+		| {
+				block?: {
+					root: {
+						type: string;
+						children: {
+							type: any;
+							version: number;
+							[k: string]: unknown;
+						}[];
+						direction: ('ltr' | 'rtl') | null;
+						format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+						indent: number;
+						version: number;
+					};
+					[k: string]: unknown;
+				} | null;
+				id?: string | null;
+		  }[]
+		| null;
+	meta?: {
+		title?: string | null;
+		description?: string | null;
+		/**
+		 * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+		 */
+		image?: (number | null) | Media;
+	};
+	updatedAt: string;
+	createdAt: string;
+	deletedAt?: string | null;
+	_status?: ('draft' | 'published') | null;
 }
 /**
  * Other things that don't have a spcecific home
@@ -1092,34 +1094,34 @@ export interface Page {
  * via the `definition` "gardens".
  */
 export interface Garden {
-  id: number;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  name: string;
-  featuredImage?: (number | null) | Media;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  meta?: {
-    title?: string | null;
-    description?: string | null;
-    image?: (number | null) | Media;
-  };
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
+	id: number;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	name: string;
+	featuredImage?: (number | null) | Media;
+	content?: {
+		root: {
+			type: string;
+			children: {
+				type: any;
+				version: number;
+				[k: string]: unknown;
+			}[];
+			direction: ('ltr' | 'rtl') | null;
+			format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+			indent: number;
+			version: number;
+		};
+		[k: string]: unknown;
+	} | null;
+	meta?: {
+		title?: string | null;
+		description?: string | null;
+		image?: (number | null) | Media;
+	};
+	updatedAt: string;
+	createdAt: string;
+	deletedAt?: string | null;
 }
 /**
  * Coding projects and portfolio items
@@ -1128,75 +1130,86 @@ export interface Garden {
  * via the `definition` "projects".
  */
 export interface Project {
-  id: number;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  projectStatus: 'inProgress' | 'active' | 'completed' | 'archived' | 'experimental';
-  /**
-   * Highlight this project on the homepage
-   */
-  featured?: boolean | null;
-  category?: (number | null) | ProjectsCategory;
-  technologies?: (number | ProjectsTechnology)[] | null;
-  /**
-   * Current version (e.g., 1.2.0, v2.0.0-beta)
-   */
-  version?: string | null;
-  license?: ('MIT' | 'Apache-2.0' | 'GPL-3.0' | 'BSD-3-Clause' | 'ISC' | 'Proprietary' | 'Unlicensed' | 'Other') | null;
-  role?: ('creator' | 'maintainer' | 'contributor' | 'collaborator') | null;
-  relatedResources?: {
-    relatedPosts?: (number | Post)[] | null;
-    relatedProjects?: (number | Project)[] | null;
-  };
-  title: string;
-  /**
-   * A brief one-liner description for cards and listings
-   */
-  shortDescription: string;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  /**
-   * External links related to this project
-   */
-  links?:
-    | {
-        type: 'github' | 'live' | 'npm' | 'docs' | 'custom';
-        /**
-         * Full URL including https://
-         */
-        url: string;
-        /**
-         * Custom label for this link
-         */
-        label?: string | null;
-        /**
-         * Hex color for this link (e.g., #ff5500)
-         */
-        color?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Screenshots and images showcasing the project
-   */
-  screenshots?: (number | Media)[] | null;
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+	id: number;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	projectStatus: 'inProgress' | 'active' | 'completed' | 'archived' | 'experimental';
+	/**
+	 * Highlight this project on the homepage
+	 */
+	featured?: boolean | null;
+	category?: (number | null) | ProjectsCategory;
+	technologies?: (number | ProjectsTechnology)[] | null;
+	/**
+	 * Current version (e.g., 1.2.0, v2.0.0-beta)
+	 */
+	version?: string | null;
+	license?:
+		| (
+				| 'MIT'
+				| 'Apache-2.0'
+				| 'GPL-3.0'
+				| 'BSD-3-Clause'
+				| 'ISC'
+				| 'Proprietary'
+				| 'Unlicensed'
+				| 'Other'
+		  )
+		| null;
+	role?: ('creator' | 'maintainer' | 'contributor' | 'collaborator') | null;
+	relatedResources?: {
+		relatedPosts?: (number | Post)[] | null;
+		relatedProjects?: (number | Project)[] | null;
+	};
+	title: string;
+	/**
+	 * A brief one-liner description for cards and listings
+	 */
+	shortDescription: string;
+	content?: {
+		root: {
+			type: string;
+			children: {
+				type: any;
+				version: number;
+				[k: string]: unknown;
+			}[];
+			direction: ('ltr' | 'rtl') | null;
+			format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+			indent: number;
+			version: number;
+		};
+		[k: string]: unknown;
+	} | null;
+	/**
+	 * External links related to this project
+	 */
+	links?:
+		| {
+				type: 'github' | 'live' | 'npm' | 'docs' | 'custom';
+				/**
+				 * Full URL including https://
+				 */
+				url: string;
+				/**
+				 * Custom label for this link
+				 */
+				label?: string | null;
+				/**
+				 * Hex color for this link (e.g., #ff5500)
+				 */
+				color?: string | null;
+				id?: string | null;
+		  }[]
+		| null;
+	/**
+	 * Screenshots and images showcasing the project
+	 */
+	screenshots?: (number | Media)[] | null;
+	updatedAt: string;
+	createdAt: string;
+	deletedAt?: string | null;
+	_status?: ('draft' | 'published') | null;
 }
 /**
  * Project categories. Used for classifying project types (Web App, CLI, Library, etc.).
@@ -1205,16 +1218,16 @@ export interface Project {
  * via the `definition` "projects-categories".
  */
 export interface ProjectsCategory {
-  id: number;
-  title: string;
-  /**
-   * Optional description of this category
-   */
-  description?: string | null;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	/**
+	 * Optional description of this category
+	 */
+	description?: string | null;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Technologies and frameworks used in projects (React, Node.js, TypeScript, etc.).
@@ -1223,24 +1236,24 @@ export interface ProjectsCategory {
  * via the `definition` "projects-technologies".
  */
 export interface ProjectsTechnology {
-  id: number;
-  title: string;
-  /**
-   * Hex color for this technology (e.g., #61dafb for React)
-   */
-  color?: string | null;
-  /**
-   * Optional icon/logo for this technology
-   */
-  icon?: (number | null) | Media;
-  /**
-   * Link to official site or documentation
-   */
-  url?: string | null;
-  slug?: string | null;
-  slugLock?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	/**
+	 * Hex color for this technology (e.g., #61dafb for React)
+	 */
+	color?: string | null;
+	/**
+	 * Optional icon/logo for this technology
+	 */
+	icon?: (number | null) | Media;
+	/**
+	 * Link to official site or documentation
+	 */
+	url?: string | null;
+	slug?: string | null;
+	slugLock?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (session)
@@ -1249,15 +1262,15 @@ export interface ProjectsTechnology {
  * via the `definition` "sessions".
  */
 export interface Session {
-  id: number;
-  expiresAt: string;
-  token: string;
-  ipAddress?: string | null;
-  userAgent?: string | null;
-  user: number | User;
-  impersonatedBy?: string | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	expiresAt: string;
+	token: string;
+	ipAddress?: string | null;
+	userAgent?: string | null;
+	user: number | User;
+	impersonatedBy?: string | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (account)
@@ -1266,20 +1279,20 @@ export interface Session {
  * via the `definition` "accounts".
  */
 export interface Account {
-  id: number;
-  issuer: string;
-  accountId: string;
-  providerId: string;
-  user: number | User;
-  accessToken?: string | null;
-  refreshToken?: string | null;
-  idToken?: string | null;
-  accessTokenExpiresAt?: string | null;
-  refreshTokenExpiresAt?: string | null;
-  scope?: string | null;
-  password?: string | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	issuer: string;
+	accountId: string;
+	providerId: string;
+	user: number | User;
+	accessToken?: string | null;
+	refreshToken?: string | null;
+	idToken?: string | null;
+	accessTokenExpiresAt?: string | null;
+	refreshTokenExpiresAt?: string | null;
+	scope?: string | null;
+	password?: string | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (verification)
@@ -1288,12 +1301,12 @@ export interface Account {
  * via the `definition` "verifications".
  */
 export interface Verification {
-  id: number;
-  identifier: string;
-  value: string;
-  expiresAt: string;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	identifier: string;
+	value: string;
+	expiresAt: string;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (twoFactor)
@@ -1302,15 +1315,15 @@ export interface Verification {
  * via the `definition` "twoFactors".
  */
 export interface TwoFactor {
-  id: number;
-  secret: string;
-  backupCodes: string;
-  user: number | User;
-  verified?: boolean | null;
-  failedVerificationCount?: number | null;
-  lockedUntil?: string | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	secret: string;
+	backupCodes: string;
+	user: number | User;
+	verified?: boolean | null;
+	failedVerificationCount?: number | null;
+	lockedUntil?: string | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (passkey)
@@ -1319,18 +1332,18 @@ export interface TwoFactor {
  * via the `definition` "passkeys".
  */
 export interface Passkey {
-  id: number;
-  name?: string | null;
-  publicKey: string;
-  user: number | User;
-  credentialID: string;
-  counter: number;
-  deviceType: string;
-  backedUp: boolean;
-  transports?: string | null;
-  aaguid?: string | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	name?: string | null;
+	publicKey: string;
+	user: number | User;
+	credentialID: string;
+	counter: number;
+	deviceType: string;
+	backedUp: boolean;
+	transports?: string | null;
+	aaguid?: string | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * Auto-generated from Better Auth schema (apikey)
@@ -1339,28 +1352,28 @@ export interface Passkey {
  * via the `definition` "apikeys".
  */
 export interface Apikey {
-  id: number;
-  configId: string;
-  name?: string | null;
-  start?: string | null;
-  referenceId: string;
-  prefix?: string | null;
-  key: string;
-  refillInterval?: number | null;
-  refillAmount?: number | null;
-  lastRefillAt?: string | null;
-  enabled?: boolean | null;
-  rateLimitEnabled?: boolean | null;
-  rateLimitTimeWindow?: number | null;
-  rateLimitMax?: number | null;
-  requestCount?: number | null;
-  remaining?: number | null;
-  lastRequest?: string | null;
-  expiresAt?: string | null;
-  permissions?: string | null;
-  metadata?: string | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	configId: string;
+	name?: string | null;
+	start?: string | null;
+	referenceId: string;
+	prefix?: string | null;
+	key: string;
+	refillInterval?: number | null;
+	refillAmount?: number | null;
+	lastRefillAt?: string | null;
+	enabled?: boolean | null;
+	rateLimitEnabled?: boolean | null;
+	rateLimitTimeWindow?: number | null;
+	rateLimitMax?: number | null;
+	requestCount?: number | null;
+	remaining?: number | null;
+	lastRequest?: string | null;
+	expiresAt?: string | null;
+	permissions?: string | null;
+	metadata?: string | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * This is a collection of automatically created search results. These results are used by the global site search and will be updated automatically as documents in the CMS are created or updated.
@@ -1369,28 +1382,28 @@ export interface Apikey {
  * via the `definition` "search".
  */
 export interface Search {
-  id: number;
-  title?: string | null;
-  priority?: number | null;
-  doc:
-    | {
-        relationTo: 'posts';
-        value: number | Post;
-      }
-    | {
-        relationTo: 'pages';
-        value: number | Page;
-      }
-    | {
-        relationTo: 'models';
-        value: number | Model;
-      }
-    | {
-        relationTo: 'gardens';
-        value: number | Garden;
-      };
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title?: string | null;
+	priority?: number | null;
+	doc:
+		| {
+				relationTo: 'posts';
+				value: number | Post;
+		  }
+		| {
+				relationTo: 'pages';
+				value: number | Page;
+		  }
+		| {
+				relationTo: 'models';
+				value: number | Model;
+		  }
+		| {
+				relationTo: 'gardens';
+				value: number | Garden;
+		  };
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * API keys control which collections, resources, tools, and prompts MCP clients can access
@@ -1399,1764 +1412,1764 @@ export interface Search {
  * via the `definition` "payload-mcp-api-keys".
  */
 export interface PayloadMcpApiKey {
-  id: number;
-  /**
-   * The user that the API key is associated with.
-   */
-  user: number | User;
-  /**
-   * A useful label for the API key.
-   */
-  label?: string | null;
-  /**
-   * The purpose of the API key.
-   */
-  description?: string | null;
-  models?: {
-    /**
-     * Allow clients to find models.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create models.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update models.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete models.
-     */
-    delete?: boolean | null;
-  };
-  galleryAlbums?: {
-    /**
-     * Allow clients to find gallery-albums.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create gallery-albums.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update gallery-albums.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete gallery-albums.
-     */
-    delete?: boolean | null;
-  };
-  galleryImages?: {
-    /**
-     * Allow clients to find gallery-images.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create gallery-images.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update gallery-images.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete gallery-images.
-     */
-    delete?: boolean | null;
-  };
-  galleryTags?: {
-    /**
-     * Allow clients to find gallery-tags.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create gallery-tags.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update gallery-tags.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete gallery-tags.
-     */
-    delete?: boolean | null;
-  };
-  galleryProductRequests?: {
-    /**
-     * Allow clients to find gallery-product-requests.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create gallery-product-requests.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update gallery-product-requests.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete gallery-product-requests.
-     */
-    delete?: boolean | null;
-  };
-  galleryCategories?: {
-    /**
-     * Allow clients to find gallery-categories.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create gallery-categories.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update gallery-categories.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete gallery-categories.
-     */
-    delete?: boolean | null;
-  };
-  media?: {
-    /**
-     * Allow clients to find media.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create media.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update media.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete media.
-     */
-    delete?: boolean | null;
-  };
-  gardens?: {
-    /**
-     * Allow clients to find gardens.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create gardens.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update gardens.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete gardens.
-     */
-    delete?: boolean | null;
-  };
-  kits?: {
-    /**
-     * Allow clients to find kits.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create kits.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update kits.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete kits.
-     */
-    delete?: boolean | null;
-  };
-  scales?: {
-    /**
-     * Allow clients to find scales.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create scales.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update scales.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete scales.
-     */
-    delete?: boolean | null;
-  };
-  manufacturers?: {
-    /**
-     * Allow clients to find manufacturers.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create manufacturers.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update manufacturers.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete manufacturers.
-     */
-    delete?: boolean | null;
-  };
-  modelsTags?: {
-    /**
-     * Allow clients to find models-tags.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create models-tags.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update models-tags.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete models-tags.
-     */
-    delete?: boolean | null;
-  };
-  posts?: {
-    /**
-     * Allow clients to find posts.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create posts.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update posts.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete posts.
-     */
-    delete?: boolean | null;
-  };
-  postsCategories?: {
-    /**
-     * Allow clients to find posts-categories.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create posts-categories.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update posts-categories.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete posts-categories.
-     */
-    delete?: boolean | null;
-  };
-  postsTags?: {
-    /**
-     * Allow clients to find posts-tags.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create posts-tags.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update posts-tags.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete posts-tags.
-     */
-    delete?: boolean | null;
-  };
-  pages?: {
-    /**
-     * Allow clients to find pages.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create pages.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update pages.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete pages.
-     */
-    delete?: boolean | null;
-  };
-  mapMarkers?: {
-    /**
-     * Allow clients to find map-markers.
-     */
-    find?: boolean | null;
-    /**
-     * Allow clients to create map-markers.
-     */
-    create?: boolean | null;
-    /**
-     * Allow clients to update map-markers.
-     */
-    update?: boolean | null;
-    /**
-     * Allow clients to delete map-markers.
-     */
-    delete?: boolean | null;
-  };
-  updatedAt: string;
-  createdAt: string;
-  enableAPIKey?: boolean | null;
-  apiKey?: string | null;
-  apiKeyIndex?: string | null;
-  collection: 'payload-mcp-api-keys';
+	id: number;
+	/**
+	 * The user that the API key is associated with.
+	 */
+	user: number | User;
+	/**
+	 * A useful label for the API key.
+	 */
+	label?: string | null;
+	/**
+	 * The purpose of the API key.
+	 */
+	description?: string | null;
+	models?: {
+		/**
+		 * Allow clients to find models.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create models.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update models.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete models.
+		 */
+		delete?: boolean | null;
+	};
+	galleryAlbums?: {
+		/**
+		 * Allow clients to find gallery-albums.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create gallery-albums.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update gallery-albums.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete gallery-albums.
+		 */
+		delete?: boolean | null;
+	};
+	galleryImages?: {
+		/**
+		 * Allow clients to find gallery-images.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create gallery-images.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update gallery-images.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete gallery-images.
+		 */
+		delete?: boolean | null;
+	};
+	galleryTags?: {
+		/**
+		 * Allow clients to find gallery-tags.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create gallery-tags.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update gallery-tags.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete gallery-tags.
+		 */
+		delete?: boolean | null;
+	};
+	galleryProductRequests?: {
+		/**
+		 * Allow clients to find gallery-product-requests.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create gallery-product-requests.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update gallery-product-requests.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete gallery-product-requests.
+		 */
+		delete?: boolean | null;
+	};
+	galleryCategories?: {
+		/**
+		 * Allow clients to find gallery-categories.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create gallery-categories.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update gallery-categories.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete gallery-categories.
+		 */
+		delete?: boolean | null;
+	};
+	media?: {
+		/**
+		 * Allow clients to find media.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create media.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update media.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete media.
+		 */
+		delete?: boolean | null;
+	};
+	gardens?: {
+		/**
+		 * Allow clients to find gardens.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create gardens.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update gardens.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete gardens.
+		 */
+		delete?: boolean | null;
+	};
+	kits?: {
+		/**
+		 * Allow clients to find kits.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create kits.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update kits.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete kits.
+		 */
+		delete?: boolean | null;
+	};
+	scales?: {
+		/**
+		 * Allow clients to find scales.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create scales.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update scales.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete scales.
+		 */
+		delete?: boolean | null;
+	};
+	manufacturers?: {
+		/**
+		 * Allow clients to find manufacturers.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create manufacturers.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update manufacturers.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete manufacturers.
+		 */
+		delete?: boolean | null;
+	};
+	modelsTags?: {
+		/**
+		 * Allow clients to find models-tags.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create models-tags.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update models-tags.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete models-tags.
+		 */
+		delete?: boolean | null;
+	};
+	posts?: {
+		/**
+		 * Allow clients to find posts.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create posts.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update posts.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete posts.
+		 */
+		delete?: boolean | null;
+	};
+	postsCategories?: {
+		/**
+		 * Allow clients to find posts-categories.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create posts-categories.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update posts-categories.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete posts-categories.
+		 */
+		delete?: boolean | null;
+	};
+	postsTags?: {
+		/**
+		 * Allow clients to find posts-tags.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create posts-tags.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update posts-tags.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete posts-tags.
+		 */
+		delete?: boolean | null;
+	};
+	pages?: {
+		/**
+		 * Allow clients to find pages.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create pages.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update pages.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete pages.
+		 */
+		delete?: boolean | null;
+	};
+	mapMarkers?: {
+		/**
+		 * Allow clients to find map-markers.
+		 */
+		find?: boolean | null;
+		/**
+		 * Allow clients to create map-markers.
+		 */
+		create?: boolean | null;
+		/**
+		 * Allow clients to update map-markers.
+		 */
+		update?: boolean | null;
+		/**
+		 * Allow clients to delete map-markers.
+		 */
+		delete?: boolean | null;
+	};
+	updatedAt: string;
+	createdAt: string;
+	enableAPIKey?: boolean | null;
+	apiKey?: string | null;
+	apiKeyIndex?: string | null;
+	collection: 'payload-mcp-api-keys';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
-  id: number;
-  /**
-   * Input data provided to the job
-   */
-  input?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  taskStatus?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  completedAt?: string | null;
-  totalTried?: number | null;
-  /**
-   * If hasError is true this job will not be retried
-   */
-  hasError?: boolean | null;
-  /**
-   * If hasError is true, this is the error that caused it
-   */
-  error?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Task execution log
-   */
-  log?:
-    | {
-        executedAt: string;
-        completedAt: string;
-        taskSlug:
-          | 'inline'
-          | 'generateImageEXIF'
-          | 'queueMissingEXIF'
-          | 'sendResetPasswordEmail'
-          | 'sendVerificationEmail'
-          | 'sendContactFormEmail'
-          | 'sendProductRequestAdminEmail'
-          | 'sendProductRequestAvailableEmail'
-          | 'sendPublishAnnounce'
-          | 'schedulePublish';
-        taskID: string;
-        input?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        output?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        state: 'failed' | 'succeeded';
-        error?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        id?: string | null;
-      }[]
-    | null;
-  taskSlug?:
-    | (
-        | 'inline'
-        | 'generateImageEXIF'
-        | 'queueMissingEXIF'
-        | 'sendResetPasswordEmail'
-        | 'sendVerificationEmail'
-        | 'sendContactFormEmail'
-        | 'sendProductRequestAdminEmail'
-        | 'sendProductRequestAvailableEmail'
-        | 'sendPublishAnnounce'
-        | 'schedulePublish'
-      )
-    | null;
-  queue?: string | null;
-  waitUntil?: string | null;
-  processing?: boolean | null;
-  meta?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	/**
+	 * Input data provided to the job
+	 */
+	input?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	taskStatus?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	completedAt?: string | null;
+	totalTried?: number | null;
+	/**
+	 * If hasError is true this job will not be retried
+	 */
+	hasError?: boolean | null;
+	/**
+	 * If hasError is true, this is the error that caused it
+	 */
+	error?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	/**
+	 * Task execution log
+	 */
+	log?:
+		| {
+				executedAt: string;
+				completedAt: string;
+				taskSlug:
+					| 'inline'
+					| 'generateImageEXIF'
+					| 'queueMissingEXIF'
+					| 'sendResetPasswordEmail'
+					| 'sendVerificationEmail'
+					| 'sendContactFormEmail'
+					| 'sendProductRequestAdminEmail'
+					| 'sendProductRequestAvailableEmail'
+					| 'sendPublishAnnounce'
+					| 'schedulePublish';
+				taskID: string;
+				input?:
+					| {
+							[k: string]: unknown;
+					  }
+					| unknown[]
+					| string
+					| number
+					| boolean
+					| null;
+				output?:
+					| {
+							[k: string]: unknown;
+					  }
+					| unknown[]
+					| string
+					| number
+					| boolean
+					| null;
+				state: 'failed' | 'succeeded';
+				error?:
+					| {
+							[k: string]: unknown;
+					  }
+					| unknown[]
+					| string
+					| number
+					| boolean
+					| null;
+				id?: string | null;
+		  }[]
+		| null;
+	taskSlug?:
+		| (
+				| 'inline'
+				| 'generateImageEXIF'
+				| 'queueMissingEXIF'
+				| 'sendResetPasswordEmail'
+				| 'sendVerificationEmail'
+				| 'sendContactFormEmail'
+				| 'sendProductRequestAdminEmail'
+				| 'sendProductRequestAvailableEmail'
+				| 'sendPublishAnnounce'
+				| 'schedulePublish'
+		  )
+		| null;
+	queue?: string | null;
+	waitUntil?: string | null;
+	processing?: boolean | null;
+	meta?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: number;
-  document?:
-    | ({
-        relationTo: 'map-markers';
-        value: number | MapMarker;
-      } | null)
-    | ({
-        relationTo: 'users';
-        value: number | User;
-      } | null)
-    | ({
-        relationTo: 'media';
-        value: number | Media;
-      } | null)
-    | ({
-        relationTo: 'posts';
-        value: number | Post;
-      } | null)
-    | ({
-        relationTo: 'posts-categories';
-        value: number | PostsCategory;
-      } | null)
-    | ({
-        relationTo: 'posts-tags';
-        value: number | PostsTag;
-      } | null)
-    | ({
-        relationTo: 'pages';
-        value: number | Page;
-      } | null)
-    | ({
-        relationTo: 'gallery-albums';
-        value: number | GalleryAlbum;
-      } | null)
-    | ({
-        relationTo: 'gallery-images';
-        value: number | GalleryImage;
-      } | null)
-    | ({
-        relationTo: 'gallery-masters';
-        value: number | GalleryMaster;
-      } | null)
-    | ({
-        relationTo: 'gallery-product-requests';
-        value: number | GalleryProductRequest;
-      } | null)
-    | ({
-        relationTo: 'gallery-tags';
-        value: number | GalleryTag;
-      } | null)
-    | ({
-        relationTo: 'gallery-categories';
-        value: number | GalleryCategory;
-      } | null)
-    | ({
-        relationTo: 'gardens';
-        value: number | Garden;
-      } | null)
-    | ({
-        relationTo: 'kits';
-        value: number | Kit;
-      } | null)
-    | ({
-        relationTo: 'scales';
-        value: number | Scale;
-      } | null)
-    | ({
-        relationTo: 'manufacturers';
-        value: number | Manufacturer;
-      } | null)
-    | ({
-        relationTo: 'models-tags';
-        value: number | ModelsTag;
-      } | null)
-    | ({
-        relationTo: 'models';
-        value: number | Model;
-      } | null)
-    | ({
-        relationTo: 'projects';
-        value: number | Project;
-      } | null)
-    | ({
-        relationTo: 'projects-categories';
-        value: number | ProjectsCategory;
-      } | null)
-    | ({
-        relationTo: 'projects-technologies';
-        value: number | ProjectsTechnology;
-      } | null)
-    | ({
-        relationTo: 'sessions';
-        value: number | Session;
-      } | null)
-    | ({
-        relationTo: 'accounts';
-        value: number | Account;
-      } | null)
-    | ({
-        relationTo: 'verifications';
-        value: number | Verification;
-      } | null)
-    | ({
-        relationTo: 'twoFactors';
-        value: number | TwoFactor;
-      } | null)
-    | ({
-        relationTo: 'passkeys';
-        value: number | Passkey;
-      } | null)
-    | ({
-        relationTo: 'apikeys';
-        value: number | Apikey;
-      } | null)
-    | ({
-        relationTo: 'search';
-        value: number | Search;
-      } | null)
-    | ({
-        relationTo: 'payload-mcp-api-keys';
-        value: number | PayloadMcpApiKey;
-      } | null)
-    | ({
-        relationTo: 'payload-folders';
-        value: number | FolderInterface;
-      } | null);
-  globalSlug?: string | null;
-  user:
-    | {
-        relationTo: 'users';
-        value: number | User;
-      }
-    | {
-        relationTo: 'payload-mcp-api-keys';
-        value: number | PayloadMcpApiKey;
-      };
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	document?:
+		| ({
+				relationTo: 'map-markers';
+				value: number | MapMarker;
+		  } | null)
+		| ({
+				relationTo: 'users';
+				value: number | User;
+		  } | null)
+		| ({
+				relationTo: 'media';
+				value: number | Media;
+		  } | null)
+		| ({
+				relationTo: 'posts';
+				value: number | Post;
+		  } | null)
+		| ({
+				relationTo: 'posts-categories';
+				value: number | PostsCategory;
+		  } | null)
+		| ({
+				relationTo: 'posts-tags';
+				value: number | PostsTag;
+		  } | null)
+		| ({
+				relationTo: 'pages';
+				value: number | Page;
+		  } | null)
+		| ({
+				relationTo: 'gallery-albums';
+				value: number | GalleryAlbum;
+		  } | null)
+		| ({
+				relationTo: 'gallery-images';
+				value: number | GalleryImage;
+		  } | null)
+		| ({
+				relationTo: 'gallery-masters';
+				value: number | GalleryMaster;
+		  } | null)
+		| ({
+				relationTo: 'gallery-product-requests';
+				value: number | GalleryProductRequest;
+		  } | null)
+		| ({
+				relationTo: 'gallery-tags';
+				value: number | GalleryTag;
+		  } | null)
+		| ({
+				relationTo: 'gallery-categories';
+				value: number | GalleryCategory;
+		  } | null)
+		| ({
+				relationTo: 'gardens';
+				value: number | Garden;
+		  } | null)
+		| ({
+				relationTo: 'kits';
+				value: number | Kit;
+		  } | null)
+		| ({
+				relationTo: 'scales';
+				value: number | Scale;
+		  } | null)
+		| ({
+				relationTo: 'manufacturers';
+				value: number | Manufacturer;
+		  } | null)
+		| ({
+				relationTo: 'models-tags';
+				value: number | ModelsTag;
+		  } | null)
+		| ({
+				relationTo: 'models';
+				value: number | Model;
+		  } | null)
+		| ({
+				relationTo: 'projects';
+				value: number | Project;
+		  } | null)
+		| ({
+				relationTo: 'projects-categories';
+				value: number | ProjectsCategory;
+		  } | null)
+		| ({
+				relationTo: 'projects-technologies';
+				value: number | ProjectsTechnology;
+		  } | null)
+		| ({
+				relationTo: 'sessions';
+				value: number | Session;
+		  } | null)
+		| ({
+				relationTo: 'accounts';
+				value: number | Account;
+		  } | null)
+		| ({
+				relationTo: 'verifications';
+				value: number | Verification;
+		  } | null)
+		| ({
+				relationTo: 'twoFactors';
+				value: number | TwoFactor;
+		  } | null)
+		| ({
+				relationTo: 'passkeys';
+				value: number | Passkey;
+		  } | null)
+		| ({
+				relationTo: 'apikeys';
+				value: number | Apikey;
+		  } | null)
+		| ({
+				relationTo: 'search';
+				value: number | Search;
+		  } | null)
+		| ({
+				relationTo: 'payload-mcp-api-keys';
+				value: number | PayloadMcpApiKey;
+		  } | null)
+		| ({
+				relationTo: 'payload-folders';
+				value: number | FolderInterface;
+		  } | null);
+	globalSlug?: string | null;
+	user:
+		| {
+				relationTo: 'users';
+				value: number | User;
+		  }
+		| {
+				relationTo: 'payload-mcp-api-keys';
+				value: number | PayloadMcpApiKey;
+		  };
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: number;
-  user:
-    | {
-        relationTo: 'users';
-        value: number | User;
-      }
-    | {
-        relationTo: 'payload-mcp-api-keys';
-        value: number | PayloadMcpApiKey;
-      };
-  key?: string | null;
-  value?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	user:
+		| {
+				relationTo: 'users';
+				value: number | User;
+		  }
+		| {
+				relationTo: 'payload-mcp-api-keys';
+				value: number | PayloadMcpApiKey;
+		  };
+	key?: string | null;
+	value?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: number;
-  name?: string | null;
-  batch?: number | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	name?: string | null;
+	batch?: number | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-query-presets".
  */
 export interface PayloadQueryPreset {
-  id: number;
-  title: string;
-  isShared?: boolean | null;
-  access?: {
-    read?: {
-      constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
-      users?: (number | User)[] | null;
-    };
-    update?: {
-      constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
-      users?: (number | User)[] | null;
-    };
-    delete?: {
-      constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
-      users?: (number | User)[] | null;
-    };
-  };
-  where?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  columns?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  groupBy?: string | null;
-  relatedCollection: 'posts' | 'kits' | 'models' | 'projects';
-  /**
-   * This is a temporary field used to determine if updating the preset would remove the user's access to it. When `true`, this record will be deleted after running the preset's `validate` function.
-   */
-  isTemp?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
+	id: number;
+	title: string;
+	isShared?: boolean | null;
+	access?: {
+		read?: {
+			constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
+			users?: (number | User)[] | null;
+		};
+		update?: {
+			constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
+			users?: (number | User)[] | null;
+		};
+		delete?: {
+			constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
+			users?: (number | User)[] | null;
+		};
+	};
+	where?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	columns?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	groupBy?: string | null;
+	relatedCollection: 'posts' | 'kits' | 'models' | 'projects';
+	/**
+	 * This is a temporary field used to determine if updating the preset would remove the user's access to it. When `true`, this record will be deleted after running the preset's `validate` function.
+	 */
+	isTemp?: boolean | null;
+	updatedAt: string;
+	createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "map-markers_select".
  */
 export interface MapMarkersSelect<T extends boolean = true> {
-  title?: T;
-  location?: T;
-  visits?: T;
-  rating?: T;
-  links?:
-    | T
-    | {
-        title?: T;
-        album?: T;
-        url?: T;
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	location?: T;
+	visits?: T;
+	rating?: T;
+	links?:
+		| T
+		| {
+				title?: T;
+				album?: T;
+				url?: T;
+				id?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
-  email?: T;
-  emailVerified?: T;
-  role?: T;
-  displayName?: T;
-  albums?: T;
-  nsfwFiltering?: T;
-  medusaCustomerId?: T;
-  medusaCustomerEmail?: T;
-  accountLinkedAt?: T;
-  bggUsername?: T;
-  name?: T;
-  image?: T;
-  banned?: T;
-  banReason?: T;
-  banExpires?: T;
-  twoFactorEnabled?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	email?: T;
+	emailVerified?: T;
+	role?: T;
+	displayName?: T;
+	albums?: T;
+	nsfwFiltering?: T;
+	medusaCustomerId?: T;
+	medusaCustomerEmail?: T;
+	accountLinkedAt?: T;
+	bggUsername?: T;
+	name?: T;
+	image?: T;
+	banned?: T;
+	banReason?: T;
+	banExpires?: T;
+	twoFactorEnabled?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
-  prefix?: T;
-  exif?: T;
-  blurhash?: T;
-  alt?: T;
-  caption?: T;
-  relatedPosts?: T;
-  folder?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-  sizes?:
-    | T
-    | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        square?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        small?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        medium?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        large?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        xlarge?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        og?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-      };
+	prefix?: T;
+	exif?: T;
+	blurhash?: T;
+	alt?: T;
+	caption?: T;
+	relatedPosts?: T;
+	folder?: T;
+	updatedAt?: T;
+	createdAt?: T;
+	url?: T;
+	thumbnailURL?: T;
+	filename?: T;
+	mimeType?: T;
+	filesize?: T;
+	width?: T;
+	height?: T;
+	focalX?: T;
+	focalY?: T;
+	sizes?:
+		| T
+		| {
+				thumbnail?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				square?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				small?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				medium?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				large?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				xlarge?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				og?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+		  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "posts_select".
  */
 export interface PostsSelect<T extends boolean = true> {
-  originalPublicationDate?: T;
-  announce?:
-    | T
-    | {
-        notifiedAt?: T;
-        skippedAt?: T;
-      };
-  slug?: T;
-  slugLock?: T;
-  word_count?: T;
-  category?: T;
-  tags?: T;
-  relatedPosts?: T;
-  relatedModels?: T;
-  relatedAlbums?: T;
-  title?: T;
-  subheading?: T;
-  featuredImage?: T;
-  content?: T;
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
-  _status?: T;
+	originalPublicationDate?: T;
+	announce?:
+		| T
+		| {
+				notifiedAt?: T;
+				skippedAt?: T;
+		  };
+	slug?: T;
+	slugLock?: T;
+	word_count?: T;
+	category?: T;
+	tags?: T;
+	relatedPosts?: T;
+	relatedModels?: T;
+	relatedAlbums?: T;
+	title?: T;
+	subheading?: T;
+	featuredImage?: T;
+	content?: T;
+	meta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				image?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	deletedAt?: T;
+	_status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "posts-categories_select".
  */
 export interface PostsCategoriesSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "posts-tags_select".
  */
 export interface PostsTagsSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pages_select".
  */
 export interface PagesSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  visibility?: T;
-  permittedRoles?: T;
-  blocks?:
-    | T
-    | {
-        block?: T;
-        id?: T;
-      };
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
-  _status?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	visibility?: T;
+	permittedRoles?: T;
+	blocks?:
+		| T
+		| {
+				block?: T;
+				id?: T;
+		  };
+	meta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				image?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	deletedAt?: T;
+	_status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-albums_select".
  */
 export interface GalleryAlbumsSelect<T extends boolean = true> {
-  slug?: T;
-  slugLock?: T;
-  announce?:
-    | T
-    | {
-        notifiedAt?: T;
-        skippedAt?: T;
-      };
-  settings?:
-    | T
-    | {
-        isNsfw?: T;
-        defaultSort?: T;
-        category?: T;
-        tags?: T;
-        visibility?: T;
-        permittedRoles?: T;
-        allowedUsers?: T;
-      };
-  tracking?:
-    | T
-    | {
-        views?: T;
-        downloads?: T;
-        likes?: T;
-        dislikes?: T;
-        comments?: T;
-        shares?: T;
-        totalImages?: T;
-      };
-  relatedPosts?: T;
-  title?: T;
-  content?: T;
-  images?: T;
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
+	slug?: T;
+	slugLock?: T;
+	announce?:
+		| T
+		| {
+				notifiedAt?: T;
+				skippedAt?: T;
+		  };
+	settings?:
+		| T
+		| {
+				isNsfw?: T;
+				defaultSort?: T;
+				category?: T;
+				tags?: T;
+				visibility?: T;
+				permittedRoles?: T;
+				allowedUsers?: T;
+		  };
+	tracking?:
+		| T
+		| {
+				views?: T;
+				downloads?: T;
+				likes?: T;
+				dislikes?: T;
+				comments?: T;
+				shares?: T;
+				totalImages?: T;
+		  };
+	relatedPosts?: T;
+	title?: T;
+	content?: T;
+	images?: T;
+	meta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				image?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-images_select".
  */
 export interface GalleryImagesSelect<T extends boolean = true> {
-  prefix?: T;
-  settings?:
-    | T
-    | {
-        isNsfw?: T;
-        'gallery-tags'?: T;
-        visibility?: T;
-        permittedRoles?: T;
-        allowedUsers?: T;
-      };
-  medusaProductId?: T;
-  master?: T;
-  exif?: T;
-  blurhash?: T;
-  tracking?:
-    | T
-    | {
-        views?: T;
-        downloads?: T;
-        likes?: T;
-        dislikes?: T;
-        comments?: T;
-        shares?: T;
-      };
-  alt?: T;
-  caption?: T;
-  albums?: T;
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
-  productRequests?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-  sizes?:
-    | T
-    | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        square?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        small?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        medium?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        large?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        xlarge?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        og?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-      };
+	prefix?: T;
+	settings?:
+		| T
+		| {
+				isNsfw?: T;
+				'gallery-tags'?: T;
+				visibility?: T;
+				permittedRoles?: T;
+				allowedUsers?: T;
+		  };
+	medusaProductId?: T;
+	master?: T;
+	exif?: T;
+	blurhash?: T;
+	tracking?:
+		| T
+		| {
+				views?: T;
+				downloads?: T;
+				likes?: T;
+				dislikes?: T;
+				comments?: T;
+				shares?: T;
+		  };
+	alt?: T;
+	caption?: T;
+	albums?: T;
+	meta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				image?: T;
+		  };
+	productRequests?: T;
+	updatedAt?: T;
+	createdAt?: T;
+	url?: T;
+	thumbnailURL?: T;
+	filename?: T;
+	mimeType?: T;
+	filesize?: T;
+	width?: T;
+	height?: T;
+	focalX?: T;
+	focalY?: T;
+	sizes?:
+		| T
+		| {
+				thumbnail?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				square?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				small?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				medium?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				large?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				xlarge?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+				og?:
+					| T
+					| {
+							url?: T;
+							width?: T;
+							height?: T;
+							mimeType?: T;
+							filesize?: T;
+							filename?: T;
+					  };
+		  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-masters_select".
  */
 export interface GalleryMastersSelect<T extends boolean = true> {
-  prefix?: T;
-  alt?: T;
-  sourceStem?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
+	prefix?: T;
+	alt?: T;
+	sourceStem?: T;
+	updatedAt?: T;
+	createdAt?: T;
+	url?: T;
+	thumbnailURL?: T;
+	filename?: T;
+	mimeType?: T;
+	filesize?: T;
+	width?: T;
+	height?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-product-requests_select".
  */
 export interface GalleryProductRequestsSelect<T extends boolean = true> {
-  name?: T;
-  email?: T;
-  status?: T;
-  notifiedAt?: T;
-  galleryImage?: T;
-  imageTitle?: T;
-  imageUrl?: T;
-  albumSlug?: T;
-  user?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	name?: T;
+	email?: T;
+	status?: T;
+	notifiedAt?: T;
+	galleryImage?: T;
+	imageTitle?: T;
+	imageUrl?: T;
+	albumSlug?: T;
+	user?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-tags_select".
  */
 export interface GalleryTagsSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gallery-categories_select".
  */
 export interface GalleryCategoriesSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gardens_select".
  */
 export interface GardensSelect<T extends boolean = true> {
-  slug?: T;
-  slugLock?: T;
-  name?: T;
-  featuredImage?: T;
-  content?: T;
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
+	slug?: T;
+	slugLock?: T;
+	name?: T;
+	featuredImage?: T;
+	content?: T;
+	meta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				image?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	deletedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "kits_select".
  */
 export interface KitsSelect<T extends boolean = true> {
-  full_title?: T;
-  title?: T;
-  kit_number?: T;
-  year_released?: T;
-  scalemates?: T;
-  models?: T;
-  manufacturer?: T;
-  scale?: T;
-  boxart?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	full_title?: T;
+	title?: T;
+	kit_number?: T;
+	year_released?: T;
+	scalemates?: T;
+	models?: T;
+	manufacturer?: T;
+	scale?: T;
+	boxart?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "scales_select".
  */
 export interface ScalesSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "manufacturers_select".
  */
 export interface ManufacturersSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "models-tags_select".
  */
 export interface ModelsTagsSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "models_select".
  */
 export interface ModelsSelect<T extends boolean = true> {
-  title?: T;
-  slug?: T;
-  slugLock?: T;
-  announce?:
-    | T
-    | {
-        notifiedAt?: T;
-        skippedAt?: T;
-      };
-  clockify_project?: T;
-  model_meta?:
-    | T
-    | {
-        featuredImage?: T;
-        status?: T;
-        completionDate?: T;
-        kit?: T;
-        tags?: T;
-        videos?:
-          | T
-          | {
-              title?: T;
-              url?: T;
-              id?: T;
-            };
-      };
-  relatedPosts?: T;
-  relatedResources?:
-    | T
-    | {
-        relatedModels?: T;
-      };
-  buildLog?:
-    | T
-    | {
-        title?: T;
-        content?: T;
-        id?: T;
-      };
-  image?: T;
-  meta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        image?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
+	title?: T;
+	slug?: T;
+	slugLock?: T;
+	announce?:
+		| T
+		| {
+				notifiedAt?: T;
+				skippedAt?: T;
+		  };
+	clockify_project?: T;
+	model_meta?:
+		| T
+		| {
+				featuredImage?: T;
+				status?: T;
+				completionDate?: T;
+				kit?: T;
+				tags?: T;
+				videos?:
+					| T
+					| {
+							title?: T;
+							url?: T;
+							id?: T;
+					  };
+		  };
+	relatedPosts?: T;
+	relatedResources?:
+		| T
+		| {
+				relatedModels?: T;
+		  };
+	buildLog?:
+		| T
+		| {
+				title?: T;
+				content?: T;
+				id?: T;
+		  };
+	image?: T;
+	meta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				image?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	deletedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "projects_select".
  */
 export interface ProjectsSelect<T extends boolean = true> {
-  slug?: T;
-  slugLock?: T;
-  projectStatus?: T;
-  featured?: T;
-  category?: T;
-  technologies?: T;
-  version?: T;
-  license?: T;
-  role?: T;
-  relatedResources?:
-    | T
-    | {
-        relatedPosts?: T;
-        relatedProjects?: T;
-      };
-  title?: T;
-  shortDescription?: T;
-  content?: T;
-  links?:
-    | T
-    | {
-        type?: T;
-        url?: T;
-        label?: T;
-        color?: T;
-        id?: T;
-      };
-  screenshots?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
-  _status?: T;
+	slug?: T;
+	slugLock?: T;
+	projectStatus?: T;
+	featured?: T;
+	category?: T;
+	technologies?: T;
+	version?: T;
+	license?: T;
+	role?: T;
+	relatedResources?:
+		| T
+		| {
+				relatedPosts?: T;
+				relatedProjects?: T;
+		  };
+	title?: T;
+	shortDescription?: T;
+	content?: T;
+	links?:
+		| T
+		| {
+				type?: T;
+				url?: T;
+				label?: T;
+				color?: T;
+				id?: T;
+		  };
+	screenshots?: T;
+	updatedAt?: T;
+	createdAt?: T;
+	deletedAt?: T;
+	_status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "projects-categories_select".
  */
 export interface ProjectsCategoriesSelect<T extends boolean = true> {
-  title?: T;
-  description?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	description?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "projects-technologies_select".
  */
 export interface ProjectsTechnologiesSelect<T extends boolean = true> {
-  title?: T;
-  color?: T;
-  icon?: T;
-  url?: T;
-  slug?: T;
-  slugLock?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	color?: T;
+	icon?: T;
+	url?: T;
+	slug?: T;
+	slugLock?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "sessions_select".
  */
 export interface SessionsSelect<T extends boolean = true> {
-  expiresAt?: T;
-  token?: T;
-  ipAddress?: T;
-  userAgent?: T;
-  user?: T;
-  impersonatedBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	expiresAt?: T;
+	token?: T;
+	ipAddress?: T;
+	userAgent?: T;
+	user?: T;
+	impersonatedBy?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "accounts_select".
  */
 export interface AccountsSelect<T extends boolean = true> {
-  issuer?: T;
-  accountId?: T;
-  providerId?: T;
-  user?: T;
-  accessToken?: T;
-  refreshToken?: T;
-  idToken?: T;
-  accessTokenExpiresAt?: T;
-  refreshTokenExpiresAt?: T;
-  scope?: T;
-  password?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	issuer?: T;
+	accountId?: T;
+	providerId?: T;
+	user?: T;
+	accessToken?: T;
+	refreshToken?: T;
+	idToken?: T;
+	accessTokenExpiresAt?: T;
+	refreshTokenExpiresAt?: T;
+	scope?: T;
+	password?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "verifications_select".
  */
 export interface VerificationsSelect<T extends boolean = true> {
-  identifier?: T;
-  value?: T;
-  expiresAt?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	identifier?: T;
+	value?: T;
+	expiresAt?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "twoFactors_select".
  */
 export interface TwoFactorsSelect<T extends boolean = true> {
-  secret?: T;
-  backupCodes?: T;
-  user?: T;
-  verified?: T;
-  failedVerificationCount?: T;
-  lockedUntil?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	secret?: T;
+	backupCodes?: T;
+	user?: T;
+	verified?: T;
+	failedVerificationCount?: T;
+	lockedUntil?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "passkeys_select".
  */
 export interface PasskeysSelect<T extends boolean = true> {
-  name?: T;
-  publicKey?: T;
-  user?: T;
-  credentialID?: T;
-  counter?: T;
-  deviceType?: T;
-  backedUp?: T;
-  transports?: T;
-  aaguid?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	name?: T;
+	publicKey?: T;
+	user?: T;
+	credentialID?: T;
+	counter?: T;
+	deviceType?: T;
+	backedUp?: T;
+	transports?: T;
+	aaguid?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "apikeys_select".
  */
 export interface ApikeysSelect<T extends boolean = true> {
-  configId?: T;
-  name?: T;
-  start?: T;
-  referenceId?: T;
-  prefix?: T;
-  key?: T;
-  refillInterval?: T;
-  refillAmount?: T;
-  lastRefillAt?: T;
-  enabled?: T;
-  rateLimitEnabled?: T;
-  rateLimitTimeWindow?: T;
-  rateLimitMax?: T;
-  requestCount?: T;
-  remaining?: T;
-  lastRequest?: T;
-  expiresAt?: T;
-  permissions?: T;
-  metadata?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	configId?: T;
+	name?: T;
+	start?: T;
+	referenceId?: T;
+	prefix?: T;
+	key?: T;
+	refillInterval?: T;
+	refillAmount?: T;
+	lastRefillAt?: T;
+	enabled?: T;
+	rateLimitEnabled?: T;
+	rateLimitTimeWindow?: T;
+	rateLimitMax?: T;
+	requestCount?: T;
+	remaining?: T;
+	lastRequest?: T;
+	expiresAt?: T;
+	permissions?: T;
+	metadata?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "search_select".
  */
 export interface SearchSelect<T extends boolean = true> {
-  title?: T;
-  priority?: T;
-  doc?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	priority?: T;
+	doc?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-mcp-api-keys_select".
  */
 export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
-  user?: T;
-  label?: T;
-  description?: T;
-  models?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  galleryAlbums?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  galleryImages?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  galleryTags?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  galleryProductRequests?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  galleryCategories?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  media?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  gardens?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  kits?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  scales?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  manufacturers?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  modelsTags?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  posts?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  postsCategories?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  postsTags?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  pages?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  mapMarkers?:
-    | T
-    | {
-        find?: T;
-        create?: T;
-        update?: T;
-        delete?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  enableAPIKey?: T;
-  apiKey?: T;
-  apiKeyIndex?: T;
+	user?: T;
+	label?: T;
+	description?: T;
+	models?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	galleryAlbums?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	galleryImages?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	galleryTags?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	galleryProductRequests?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	galleryCategories?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	media?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	gardens?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	kits?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	scales?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	manufacturers?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	modelsTags?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	posts?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	postsCategories?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	postsTags?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	pages?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	mapMarkers?:
+		| T
+		| {
+				find?: T;
+				create?: T;
+				update?: T;
+				delete?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	enableAPIKey?: T;
+	apiKey?: T;
+	apiKeyIndex?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs_select".
  */
 export interface PayloadJobsSelect<T extends boolean = true> {
-  input?: T;
-  taskStatus?: T;
-  completedAt?: T;
-  totalTried?: T;
-  hasError?: T;
-  error?: T;
-  log?:
-    | T
-    | {
-        executedAt?: T;
-        completedAt?: T;
-        taskSlug?: T;
-        taskID?: T;
-        input?: T;
-        output?: T;
-        state?: T;
-        error?: T;
-        id?: T;
-      };
-  taskSlug?: T;
-  queue?: T;
-  waitUntil?: T;
-  processing?: T;
-  meta?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	input?: T;
+	taskStatus?: T;
+	completedAt?: T;
+	totalTried?: T;
+	hasError?: T;
+	error?: T;
+	log?:
+		| T
+		| {
+				executedAt?: T;
+				completedAt?: T;
+				taskSlug?: T;
+				taskID?: T;
+				input?: T;
+				output?: T;
+				state?: T;
+				error?: T;
+				id?: T;
+		  };
+	taskSlug?: T;
+	queue?: T;
+	waitUntil?: T;
+	processing?: T;
+	meta?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-folders_select".
  */
 export interface PayloadFoldersSelect<T extends boolean = true> {
-  name?: T;
-  folder?: T;
-  documentsAndFolders?: T;
-  folderType?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	name?: T;
+	folder?: T;
+	documentsAndFolders?: T;
+	folderType?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents_select".
  */
 export interface PayloadLockedDocumentsSelect<T extends boolean = true> {
-  document?: T;
-  globalSlug?: T;
-  user?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	document?: T;
+	globalSlug?: T;
+	user?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-preferences_select".
  */
 export interface PayloadPreferencesSelect<T extends boolean = true> {
-  user?: T;
-  key?: T;
-  value?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	user?: T;
+	key?: T;
+	value?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-migrations_select".
  */
 export interface PayloadMigrationsSelect<T extends boolean = true> {
-  name?: T;
-  batch?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	name?: T;
+	batch?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-query-presets_select".
  */
 export interface PayloadQueryPresetsSelect<T extends boolean = true> {
-  title?: T;
-  isShared?: T;
-  access?:
-    | T
-    | {
-        read?:
-          | T
-          | {
-              constraint?: T;
-              users?: T;
-            };
-        update?:
-          | T
-          | {
-              constraint?: T;
-              users?: T;
-            };
-        delete?:
-          | T
-          | {
-              constraint?: T;
-              users?: T;
-            };
-      };
-  where?: T;
-  columns?: T;
-  groupBy?: T;
-  relatedCollection?: T;
-  isTemp?: T;
-  updatedAt?: T;
-  createdAt?: T;
+	title?: T;
+	isShared?: T;
+	access?:
+		| T
+		| {
+				read?:
+					| T
+					| {
+							constraint?: T;
+							users?: T;
+					  };
+				update?:
+					| T
+					| {
+							constraint?: T;
+							users?: T;
+					  };
+				delete?:
+					| T
+					| {
+							constraint?: T;
+							users?: T;
+					  };
+		  };
+	where?: T;
+	columns?: T;
+	groupBy?: T;
+	relatedCollection?: T;
+	isTemp?: T;
+	updatedAt?: T;
+	createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-meta".
  */
 export interface SiteMeta {
-  id: number;
-  siteMeta?:
-    | {
-        title: string;
-        description: string;
-        path: string;
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
+	id: number;
+	siteMeta?:
+		| {
+				title: string;
+				description: string;
+				path: string;
+				id?: string | null;
+		  }[]
+		| null;
+	updatedAt?: string | null;
+	createdAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-navigation".
  */
 export interface SiteNavigation {
-  id: number;
-  navItems?:
-    | {
-        title: string;
-        link: string;
-        childNodes?:
-          | {
-              title: string;
-              link: string;
-              order: number;
-              icon?: (number | null) | Media;
-              visibility: 'ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED';
-              permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
-              allowedUsers?: (number | User)[] | null;
-              id?: string | null;
-            }[]
-          | null;
-        order: number;
-        icon?: (number | null) | Media;
-        visibility: 'ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED';
-        permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
-        allowedUsers?: (number | User)[] | null;
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
+	id: number;
+	navItems?:
+		| {
+				title: string;
+				link: string;
+				childNodes?:
+					| {
+							title: string;
+							link: string;
+							order: number;
+							icon?: (number | null) | Media;
+							visibility: 'ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED';
+							permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
+							allowedUsers?: (number | User)[] | null;
+							id?: string | null;
+					  }[]
+					| null;
+				order: number;
+				icon?: (number | null) | Media;
+				visibility: 'ALL' | 'AUTHENTICATED' | 'ANONYMOUS' | 'PRIVILEGED';
+				permittedRoles?: ('family' | 'friend' | 'client' | 'user' | 'admin')[] | null;
+				allowedUsers?: (number | User)[] | null;
+				id?: string | null;
+		  }[]
+		| null;
+	updatedAt?: string | null;
+	createdAt?: string | null;
 }
 /**
  * Integration keys and prompts. API keys are encrypted at rest. Prefer the www /admin editors to view plaintext keys.
@@ -3165,49 +3178,49 @@ export interface SiteNavigation {
  * via the `definition` "site-settings".
  */
 export interface SiteSetting {
-  id: number;
-  ai?: {
-    provider?: ('anthropic' | 'openai') | null;
-    /**
-     * Provider model id. Leave blank to use the frontend default for that provider.
-     */
-    model?: string | null;
-    /**
-     * Encrypted at rest. After save this field shows ciphertext here. Use www /admin to view the plaintext key.
-     */
-    apiKey?: string | null;
-    /**
-     * Looked up by slug (e.g. image-alt). Add rows for new AI tasks without a schema change.
-     */
-    prompts?:
-      | {
-          /**
-           * Stable id used in code, e.g. image-alt
-           */
-          slug: string;
-          label: string;
-          body: string;
-          id?: string | null;
-        }[]
-      | null;
-  };
-  lastfm?: {
-    username?: string | null;
-    /**
-     * Encrypted at rest. Env LASTFM_API_KEY is used until this is set.
-     */
-    apiKey?: string | null;
-  };
-  email?: {
-    /**
-     * Encrypted at rest. Env RESEND_API_KEY is used until this is set.
-     */
-    resendApiKey?: string | null;
-    fromAddress?: string | null;
-    fromName?: string | null;
-  };
-  updatedAt?: string | null;
-  createdAt?: string | null;
+	id: number;
+	ai?: {
+		provider?: ('anthropic' | 'openai') | null;
+		/**
+		 * Provider model id. Leave blank to use the frontend default for that provider.
+		 */
+		model?: string | null;
+		/**
+		 * Encrypted at rest. After save this field shows ciphertext here. Use www /admin to view the plaintext key.
+		 */
+		apiKey?: string | null;
+		/**
+		 * Looked up by slug (e.g. image-alt). Add rows for new AI tasks without a schema change.
+		 */
+		prompts?:
+			| {
+					/**
+					 * Stable id used in code, e.g. image-alt
+					 */
+					slug: string;
+					label: string;
+					body: string;
+					id?: string | null;
+			  }[]
+			| null;
+	};
+	lastfm?: {
+		username?: string | null;
+		/**
+		 * Encrypted at rest. Env LASTFM_API_KEY is used until this is set.
+		 */
+		apiKey?: string | null;
+	};
+	email?: {
+		/**
+		 * Encrypted at rest. Env RESEND_API_KEY is used until this is set.
+		 */
+		resendApiKey?: string | null;
+		fromAddress?: string | null;
+		fromName?: string | null;
+	};
+	updatedAt?: string | null;
+	createdAt?: string | null;
 }
 /**
  * Configure social platforms for first-publish announcements. Multiple rows of the same type are allowed (e.g. several Discords or Reddit subs). Secrets are encrypted at rest.
@@ -3216,92 +3229,92 @@ export interface SiteSetting {
  * via the `definition` "social-destinations".
  */
 export interface SocialDestination {
-  id: number;
-  destinations?:
-    | {
-        /**
-         * Shown in the announce dialog, e.g. “Discord – #blog”.
-         */
-        label: string;
-        type:
-          | 'discord'
-          | 'slack'
-          | 'reddit'
-          | 'x'
-          | 'bluesky'
-          | 'mastodon'
-          | 'facebook'
-          | 'instagram'
-          | 'linkedin'
-          | 'threads'
-          | 'telegram'
-          | 'tumblr'
-          | 'pinterest'
-          | 'custom_webhook';
-        enabled?: boolean | null;
-        /**
-         * Pre-check this destination in the announce dialog.
-         */
-        defaultSelected?: boolean | null;
-        /**
-         * Encrypted at rest. Incoming webhook URL.
-         */
-        webhookUrl?: string | null;
-        /**
-         * Subreddit name without r/
-         */
-        subreddit?: string | null;
-        /**
-         * e.g. https://mastodon.social
-         */
-        instanceUrl?: string | null;
-        handle?: string | null;
-        pageId?: string | null;
-        boardId?: string | null;
-        chatId?: string | null;
-        blogName?: string | null;
-        clientId?: string | null;
-        /**
-         * Encrypted at rest.
-         */
-        clientSecret?: string | null;
-        /**
-         * Encrypted at rest.
-         */
-        accessToken?: string | null;
-        /**
-         * Encrypted at rest.
-         */
-        refreshToken?: string | null;
-        /**
-         * Encrypted at rest.
-         */
-        apiKey?: string | null;
-        /**
-         * Encrypted at rest.
-         */
-        apiSecret?: string | null;
-        /**
-         * Encrypted at rest. Bluesky app password.
-         */
-        appPassword?: string | null;
-        /**
-         * Encrypted at rest.
-         */
-        botToken?: string | null;
-        /**
-         * Encrypted at rest. Optional auth for custom webhooks.
-         */
-        bearerToken?: string | null;
-        /**
-         * Private notes about this destination (not posted).
-         */
-        notes?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
+	id: number;
+	destinations?:
+		| {
+				/**
+				 * Shown in the announce dialog, e.g. “Discord – #blog”.
+				 */
+				label: string;
+				type:
+					| 'discord'
+					| 'slack'
+					| 'reddit'
+					| 'x'
+					| 'bluesky'
+					| 'mastodon'
+					| 'facebook'
+					| 'instagram'
+					| 'linkedin'
+					| 'threads'
+					| 'telegram'
+					| 'tumblr'
+					| 'pinterest'
+					| 'custom_webhook';
+				enabled?: boolean | null;
+				/**
+				 * Pre-check this destination in the announce dialog.
+				 */
+				defaultSelected?: boolean | null;
+				/**
+				 * Encrypted at rest. Incoming webhook URL.
+				 */
+				webhookUrl?: string | null;
+				/**
+				 * Subreddit name without r/
+				 */
+				subreddit?: string | null;
+				/**
+				 * e.g. https://mastodon.social
+				 */
+				instanceUrl?: string | null;
+				handle?: string | null;
+				pageId?: string | null;
+				boardId?: string | null;
+				chatId?: string | null;
+				blogName?: string | null;
+				clientId?: string | null;
+				/**
+				 * Encrypted at rest.
+				 */
+				clientSecret?: string | null;
+				/**
+				 * Encrypted at rest.
+				 */
+				accessToken?: string | null;
+				/**
+				 * Encrypted at rest.
+				 */
+				refreshToken?: string | null;
+				/**
+				 * Encrypted at rest.
+				 */
+				apiKey?: string | null;
+				/**
+				 * Encrypted at rest.
+				 */
+				apiSecret?: string | null;
+				/**
+				 * Encrypted at rest. Bluesky app password.
+				 */
+				appPassword?: string | null;
+				/**
+				 * Encrypted at rest.
+				 */
+				botToken?: string | null;
+				/**
+				 * Encrypted at rest. Optional auth for custom webhooks.
+				 */
+				bearerToken?: string | null;
+				/**
+				 * Private notes about this destination (not posted).
+				 */
+				notes?: string | null;
+				id?: string | null;
+		  }[]
+		| null;
+	updatedAt?: string | null;
+	createdAt?: string | null;
 }
 /**
  * Configure which collections and CRUD operations should emit webhook events.
@@ -3310,423 +3323,423 @@ export interface SocialDestination {
  * via the `definition` "webhooks".
  */
 export interface Webhook {
-  id: number;
-  /**
-   * Configure webhook events for each collection.
-   */
-  collections?:
-    | {
-        /**
-         * Select a collection
-         */
-        collection:
-          | 'map-markers'
-          | 'media'
-          | 'posts'
-          | 'posts-categories'
-          | 'posts-tags'
-          | 'pages'
-          | 'gallery-albums'
-          | 'gallery-images'
-          | 'gallery-masters'
-          | 'gallery-product-requests'
-          | 'gallery-tags'
-          | 'gallery-categories'
-          | 'gardens'
-          | 'kits'
-          | 'scales'
-          | 'manufacturers'
-          | 'models-tags'
-          | 'models'
-          | 'projects'
-          | 'projects-categories'
-          | 'projects-technologies'
-          | 'sessions'
-          | 'accounts'
-          | 'verifications'
-          | 'twoFactors'
-          | 'passkeys'
-          | 'apikeys'
-          | 'search';
-        enabled?: boolean | null;
-        /**
-         * Select which CRUD operations should emit webhook events.
-         */
-        operations?: {
-          create?: boolean | null;
-          read?: boolean | null;
-          update?: boolean | null;
-          delete?: boolean | null;
-        };
-        id?: string | null;
-      }[]
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
+	id: number;
+	/**
+	 * Configure webhook events for each collection.
+	 */
+	collections?:
+		| {
+				/**
+				 * Select a collection
+				 */
+				collection:
+					| 'map-markers'
+					| 'media'
+					| 'posts'
+					| 'posts-categories'
+					| 'posts-tags'
+					| 'pages'
+					| 'gallery-albums'
+					| 'gallery-images'
+					| 'gallery-masters'
+					| 'gallery-product-requests'
+					| 'gallery-tags'
+					| 'gallery-categories'
+					| 'gardens'
+					| 'kits'
+					| 'scales'
+					| 'manufacturers'
+					| 'models-tags'
+					| 'models'
+					| 'projects'
+					| 'projects-categories'
+					| 'projects-technologies'
+					| 'sessions'
+					| 'accounts'
+					| 'verifications'
+					| 'twoFactors'
+					| 'passkeys'
+					| 'apikeys'
+					| 'search';
+				enabled?: boolean | null;
+				/**
+				 * Select which CRUD operations should emit webhook events.
+				 */
+				operations?: {
+					create?: boolean | null;
+					read?: boolean | null;
+					update?: boolean | null;
+					delete?: boolean | null;
+				};
+				id?: string | null;
+		  }[]
+		| null;
+	updatedAt?: string | null;
+	createdAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
-  id: number;
-  stats?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
+	id: number;
+	stats?:
+		| {
+				[k: string]: unknown;
+		  }
+		| unknown[]
+		| string
+		| number
+		| boolean
+		| null;
+	updatedAt?: string | null;
+	createdAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-meta_select".
  */
 export interface SiteMetaSelect<T extends boolean = true> {
-  siteMeta?:
-    | T
-    | {
-        title?: T;
-        description?: T;
-        path?: T;
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
+	siteMeta?:
+		| T
+		| {
+				title?: T;
+				description?: T;
+				path?: T;
+				id?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-navigation_select".
  */
 export interface SiteNavigationSelect<T extends boolean = true> {
-  navItems?:
-    | T
-    | {
-        title?: T;
-        link?: T;
-        childNodes?:
-          | T
-          | {
-              title?: T;
-              link?: T;
-              order?: T;
-              icon?: T;
-              visibility?: T;
-              permittedRoles?: T;
-              allowedUsers?: T;
-              id?: T;
-            };
-        order?: T;
-        icon?: T;
-        visibility?: T;
-        permittedRoles?: T;
-        allowedUsers?: T;
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
+	navItems?:
+		| T
+		| {
+				title?: T;
+				link?: T;
+				childNodes?:
+					| T
+					| {
+							title?: T;
+							link?: T;
+							order?: T;
+							icon?: T;
+							visibility?: T;
+							permittedRoles?: T;
+							allowedUsers?: T;
+							id?: T;
+					  };
+				order?: T;
+				icon?: T;
+				visibility?: T;
+				permittedRoles?: T;
+				allowedUsers?: T;
+				id?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
-  ai?:
-    | T
-    | {
-        provider?: T;
-        model?: T;
-        apiKey?: T;
-        prompts?:
-          | T
-          | {
-              slug?: T;
-              label?: T;
-              body?: T;
-              id?: T;
-            };
-      };
-  lastfm?:
-    | T
-    | {
-        username?: T;
-        apiKey?: T;
-      };
-  email?:
-    | T
-    | {
-        resendApiKey?: T;
-        fromAddress?: T;
-        fromName?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
+	ai?:
+		| T
+		| {
+				provider?: T;
+				model?: T;
+				apiKey?: T;
+				prompts?:
+					| T
+					| {
+							slug?: T;
+							label?: T;
+							body?: T;
+							id?: T;
+					  };
+		  };
+	lastfm?:
+		| T
+		| {
+				username?: T;
+				apiKey?: T;
+		  };
+	email?:
+		| T
+		| {
+				resendApiKey?: T;
+				fromAddress?: T;
+				fromName?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "social-destinations_select".
  */
 export interface SocialDestinationsSelect<T extends boolean = true> {
-  destinations?:
-    | T
-    | {
-        label?: T;
-        type?: T;
-        enabled?: T;
-        defaultSelected?: T;
-        webhookUrl?: T;
-        subreddit?: T;
-        instanceUrl?: T;
-        handle?: T;
-        pageId?: T;
-        boardId?: T;
-        chatId?: T;
-        blogName?: T;
-        clientId?: T;
-        clientSecret?: T;
-        accessToken?: T;
-        refreshToken?: T;
-        apiKey?: T;
-        apiSecret?: T;
-        appPassword?: T;
-        botToken?: T;
-        bearerToken?: T;
-        notes?: T;
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
+	destinations?:
+		| T
+		| {
+				label?: T;
+				type?: T;
+				enabled?: T;
+				defaultSelected?: T;
+				webhookUrl?: T;
+				subreddit?: T;
+				instanceUrl?: T;
+				handle?: T;
+				pageId?: T;
+				boardId?: T;
+				chatId?: T;
+				blogName?: T;
+				clientId?: T;
+				clientSecret?: T;
+				accessToken?: T;
+				refreshToken?: T;
+				apiKey?: T;
+				apiSecret?: T;
+				appPassword?: T;
+				botToken?: T;
+				bearerToken?: T;
+				notes?: T;
+				id?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "webhooks_select".
  */
 export interface WebhooksSelect<T extends boolean = true> {
-  collections?:
-    | T
-    | {
-        collection?: T;
-        enabled?: T;
-        operations?:
-          | T
-          | {
-              create?: T;
-              read?: T;
-              update?: T;
-              delete?: T;
-            };
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
+	collections?:
+		| T
+		| {
+				collection?: T;
+				enabled?: T;
+				operations?:
+					| T
+					| {
+							create?: T;
+							read?: T;
+							update?: T;
+							delete?: T;
+					  };
+				id?: T;
+		  };
+	updatedAt?: T;
+	createdAt?: T;
+	globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats_select".
  */
 export interface PayloadJobsStatsSelect<T extends boolean = true> {
-  stats?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
+	stats?: T;
+	updatedAt?: T;
+	createdAt?: T;
+	globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-analytics_widget".
  */
 export interface SiteAnalyticsWidget {
-  data?: {
-    [k: string]: unknown;
-  };
-  width: 'medium' | 'large' | 'x-large' | 'full';
+	data?: {
+		[k: string]: unknown;
+	};
+	width: 'medium' | 'large' | 'x-large' | 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "recent-content_widget".
  */
 export interface RecentContentWidget {
-  data?: {
-    title: string;
-    collection: 'posts' | 'models' | 'gallery-albums' | 'media';
-    icon: string;
-  };
-  width: 'small' | 'medium';
+	data?: {
+		title: string;
+		collection: 'posts' | 'models' | 'gallery-albums' | 'media';
+		icon: string;
+	};
+	width: 'small' | 'medium';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "deploy-version_widget".
  */
 export interface DeployVersionWidget {
-  data?: {
-    [k: string]: unknown;
-  };
-  width: 'small' | 'medium' | 'large' | 'x-large' | 'full';
+	data?: {
+		[k: string]: unknown;
+	};
+	width: 'small' | 'medium' | 'large' | 'x-large' | 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "collections_widget".
  */
 export interface CollectionsWidget {
-  data?: {
-    [k: string]: unknown;
-  };
-  width: 'full';
+	data?: {
+		[k: string]: unknown;
+	};
+	width: 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskGenerateImageEXIF".
  */
 export interface TaskGenerateImageEXIF {
-  input: {
-    id: number;
-    collection: string;
-  };
-  output?: unknown;
+	input: {
+		id: number;
+		collection: string;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskQueueMissingEXIF".
  */
 export interface TaskQueueMissingEXIF {
-  input?: unknown;
-  output?: unknown;
+	input?: unknown;
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSendResetPasswordEmail".
  */
 export interface TaskSendResetPasswordEmail {
-  input: {
-    user:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
-    url: string;
-  };
-  output?: unknown;
+	input: {
+		user:
+			| {
+					[k: string]: unknown;
+			  }
+			| unknown[]
+			| string
+			| number
+			| boolean
+			| null;
+		url: string;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSendVerificationEmail".
  */
 export interface TaskSendVerificationEmail {
-  input: {
-    user:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
-    url: string;
-  };
-  output?: unknown;
+	input: {
+		user:
+			| {
+					[k: string]: unknown;
+			  }
+			| unknown[]
+			| string
+			| number
+			| boolean
+			| null;
+		url: string;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSendContactFormEmail".
  */
 export interface TaskSendContactFormEmail {
-  input: {
-    senderName: string;
-    senderEmail: string;
-    message: string;
-  };
-  output?: unknown;
+	input: {
+		senderName: string;
+		senderEmail: string;
+		message: string;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSendProductRequestAdminEmail".
  */
 export interface TaskSendProductRequestAdminEmail {
-  input: {
-    requesterName: string;
-    requesterEmail: string;
-    imageTitle: string;
-    imageId: number;
-    imageUrl?: string | null;
-    galleryUrl?: string | null;
-    cmsUrl: string;
-  };
-  output?: unknown;
+	input: {
+		requesterName: string;
+		requesterEmail: string;
+		imageTitle: string;
+		imageId: number;
+		imageUrl?: string | null;
+		galleryUrl?: string | null;
+		cmsUrl: string;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSendProductRequestAvailableEmail".
  */
 export interface TaskSendProductRequestAvailableEmail {
-  input: {
-    requestId: number;
-    requesterName: string;
-    requesterEmail: string;
-    imageTitle: string;
-    galleryUrl: string;
-  };
-  output?: unknown;
+	input: {
+		requestId: number;
+		requesterName: string;
+		requesterEmail: string;
+		imageTitle: string;
+		galleryUrl: string;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSendPublishAnnounce".
  */
 export interface TaskSendPublishAnnounce {
-  input: {
-    destinationId: string;
-    destinationLabel?: string | null;
-    destinationType: string;
-    message: string;
-    url: string;
-    title: string;
-    collection: string;
-    documentId: number;
-  };
-  output?: unknown;
+	input: {
+		destinationId: string;
+		destinationLabel?: string | null;
+		destinationType: string;
+		message: string;
+		url: string;
+		title: string;
+		collection: string;
+		documentId: number;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskSchedulePublish".
  */
 export interface TaskSchedulePublish {
-  input: {
-    type?: ('publish' | 'unpublish') | null;
-    locale?: string | null;
-    doc?:
-      | ({
-          relationTo: 'posts';
-          value: number | Post;
-        } | null)
-      | ({
-          relationTo: 'pages';
-          value: number | Page;
-        } | null)
-      | ({
-          relationTo: 'projects';
-          value: number | Project;
-        } | null);
-    global?: string | null;
-    user?: (number | null) | User;
-  };
-  output?: unknown;
+	input: {
+		type?: ('publish' | 'unpublish') | null;
+		locale?: string | null;
+		doc?:
+			| ({
+					relationTo: 'posts';
+					value: number | Post;
+			  } | null)
+			| ({
+					relationTo: 'pages';
+					value: number | Page;
+			  } | null)
+			| ({
+					relationTo: 'projects';
+					value: number | Project;
+			  } | null);
+		global?: string | null;
+		user?: (number | null) | User;
+	};
+	output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "auth".
  */
 export interface Auth {
-  [k: string]: unknown;
+	[k: string]: unknown;
 }

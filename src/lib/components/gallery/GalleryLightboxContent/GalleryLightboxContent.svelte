@@ -155,9 +155,7 @@
 	/** Paint `large` first; on error walk medium → small → thumbnail → original. */
 	const paintUrls = $derived(getLightboxPaintUrls(image, useProxy ?? false));
 	const resolvedImageSrc = $derived(
-		paintUrls[0] ??
-			imageSrc ??
-			(image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
+		paintUrls[0] ?? imageSrc ?? (image?.url ? getMediaUrl(image.url, useProxy ?? false) : null)
 	);
 	/** Full original for sharp zoom bitmap. */
 	const zoomSourceSrc = $derived(getLightboxZoomUrl(image, useProxy ?? false) ?? resolvedImageSrc);
@@ -249,7 +247,11 @@
 		if (imageZoomed) return;
 		if (e.pointerType === 'mouse' && e.button !== 0) return;
 		if (!(e.target instanceof Element)) return;
-		if (e.target.closest('.gallery-lightbox__image-frame--zoomable:not(.gallery-lightbox__image-frame--zoom-off)')) {
+		if (
+			e.target.closest(
+				'.gallery-lightbox__image-frame--zoomable:not(.gallery-lightbox__image-frame--zoom-off)'
+			)
+		) {
 			return;
 		}
 		if (

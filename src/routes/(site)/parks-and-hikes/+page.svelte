@@ -20,14 +20,12 @@
 	});
 
 	const mapMarkers = $derived(
-		(query.isPlaceholderData ? data.initialParks : (query.data ?? data.initialParks))
-			?.mapMarkers ?? []
+		(query.isPlaceholderData ? data.initialParks : (query.data ?? data.initialParks))?.mapMarkers ??
+			[]
 	);
 
 	const placeCount = $derived(mapMarkers.length);
-	const totalVisits = $derived(
-		mapMarkers.reduce((sum, m) => sum + (m.visits ?? 0), 0)
-	);
+	const totalVisits = $derived(mapMarkers.reduce((sum, m) => sum + (m.visits ?? 0), 0));
 	const ratedMarkers = $derived(
 		mapMarkers.filter((m) => m.rating != null && !Number.isNaN(m.rating))
 	);
@@ -165,8 +163,7 @@
 
 			const resizeMap = () => map?.resize();
 			requestAnimationFrame(resizeMap);
-			ro =
-				typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeMap) : null;
+			ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resizeMap) : null;
 			ro?.observe(mapContainer);
 
 			for (const marker of mapMarkers) {
@@ -231,9 +228,7 @@
 			<div class="field-map__plate-rule" aria-hidden="true"></div>
 			<h1 class="field-map__title">Parks &amp; Hikes</h1>
 			<div class="field-map__plate-rule" aria-hidden="true"></div>
-			<p class="field-map__lede">
-				Pinned stops from the road atlas — visited, rated, and linked.
-			</p>
+			<p class="field-map__lede">Pinned stops from the road atlas — visited, rated, and linked.</p>
 
 			{#if placeCount > 0}
 				<ul class="field-map__stats">
@@ -328,11 +323,7 @@
 		height: 1px;
 		margin: 0.65rem auto;
 		max-width: 14rem;
-		background: repeating-linear-gradient(
-			90deg,
-			#6b4423 0 5px,
-			transparent 5px 9px
-		);
+		background: repeating-linear-gradient(90deg, #6b4423 0 5px, transparent 5px 9px);
 		opacity: 0.55;
 	}
 
@@ -567,8 +558,7 @@
 
 	:global(.trail-popup-shell .maplibregl-popup-content) {
 		padding: 0.85rem 0.95rem 0.95rem;
-		background:
-			linear-gradient(180deg, #f7f0e2 0%, var(--trail-paper, #efe6d4) 100%);
+		background: linear-gradient(180deg, #f7f0e2 0%, var(--trail-paper, #efe6d4) 100%);
 		border: 1px solid color-mix(in oklab, var(--trail-rule, #8a7355) 70%, #3a3228);
 		border-radius: 2px;
 		box-shadow:

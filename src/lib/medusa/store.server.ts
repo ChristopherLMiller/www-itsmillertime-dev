@@ -32,9 +32,7 @@ export function getStoreConfig(): StoreConfig {
 	const publishableKey = env.MEDUSA_PUBLISHABLE_KEY;
 
 	if (!backendUrl || !publishableKey) {
-		throw new Error(
-			'Medusa is not configured. Set MEDUSA_BACKEND_URL and MEDUSA_PUBLISHABLE_KEY.'
-		);
+		throw new Error('Medusa is not configured. Set MEDUSA_BACKEND_URL and MEDUSA_PUBLISHABLE_KEY.');
 	}
 
 	return {

@@ -30,9 +30,7 @@ export const TRACKING_EVENT_TO_FIELD: Record<
 
 export function normalizeGalleryImageTracking(
 	tracking:
-		| Partial<Record<keyof GalleryImageTrackingCounts, number | null | undefined>>
-		| null
-		| undefined
+		Partial<Record<keyof GalleryImageTrackingCounts, number | null | undefined>> | null | undefined
 ): GalleryImageTrackingCounts {
 	return {
 		views: tracking?.views ?? 0,

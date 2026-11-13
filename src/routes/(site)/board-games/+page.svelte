@@ -22,12 +22,7 @@
 	};
 
 	type SortOption =
-		| 'name-asc'
-		| 'name-desc'
-		| 'plays-asc'
-		| 'plays-desc'
-		| 'rating-asc'
-		| 'rating-desc';
+		'name-asc' | 'name-desc' | 'plays-asc' | 'plays-desc' | 'rating-asc' | 'rating-desc';
 
 	const { data } = $props();
 

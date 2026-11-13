@@ -25,8 +25,7 @@
 
 	$effect(() => {
 		pageMetaOverride.set(
-			(query.isPlaceholderData ? data.initialPage : (query.data ?? data.initialPage))?.meta ??
-				null
+			(query.isPlaceholderData ? data.initialPage : (query.data ?? data.initialPage))?.meta ?? null
 		);
 		return () => pageMetaOverride.set(null);
 	});

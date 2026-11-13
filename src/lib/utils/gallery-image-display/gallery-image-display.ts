@@ -229,7 +229,9 @@ function positivePixelSize(value: unknown): { width: number; height: number } | 
 }
 
 /** Master-file pixels for print DPI. Does not expose the master URL. */
-export function printPixelSizeFromGalleryDoc(doc: unknown): { width: number; height: number } | null {
+export function printPixelSizeFromGalleryDoc(
+	doc: unknown
+): { width: number; height: number } | null {
 	if (!isRecord(doc)) return null;
 	return (
 		positivePixelSize({ width: doc.printWidth, height: doc.printHeight }) ??

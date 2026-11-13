@@ -28,9 +28,7 @@ async function fetchModelsListFromCMS(
 	const forceEmpty = !includeNotStarted && status === 'NOT_STARTED';
 
 	const andFilters = [
-		...(manufacturer
-			? [{ 'model_meta.kit.manufacturer.slug': { equals: manufacturer } }]
-			: []),
+		...(manufacturer ? [{ 'model_meta.kit.manufacturer.slug': { equals: manufacturer } }] : []),
 		...(scale ? [{ 'model_meta.kit.scale.slug': { equals: scale } }] : []),
 		...(effectiveStatus
 			? [{ 'model_meta.status': { equals: effectiveStatus } }]

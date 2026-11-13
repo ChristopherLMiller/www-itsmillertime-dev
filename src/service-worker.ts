@@ -10,10 +10,7 @@ const sw = self as unknown as ServiceWorkerGlobalScope;
 const CACHE = `articles-offline-${version}`;
 
 /** OG / server-only assets in `static/` — do not precache (multi‑MB). */
-const PRECACHE_EXCLUDE = new Set([
-	'/logo-new.png',
-	'/ImpactLabel-lVYZ.ttf'
-]);
+const PRECACHE_EXCLUDE = new Set(['/logo-new.png', '/ImpactLabel-lVYZ.ttf']);
 
 const ASSETS = [...build, ...files].filter((path) => !PRECACHE_EXCLUDE.has(path));
 

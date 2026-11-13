@@ -125,13 +125,13 @@ describe('ensurePromptSlugs', () => {
 	});
 
 	it('fills a slug from the body, then a prompt-n fallback', () => {
-		expect(ensurePromptSlugs([{ slug: '', label: '', body: 'Name the aircraft type.' }])[0]).toEqual(
-			{
-				slug: 'name-the-aircraft-type',
-				label: 'name-the-aircraft-type',
-				body: 'Name the aircraft type.'
-			}
-		);
+		expect(
+			ensurePromptSlugs([{ slug: '', label: '', body: 'Name the aircraft type.' }])[0]
+		).toEqual({
+			slug: 'name-the-aircraft-type',
+			label: 'name-the-aircraft-type',
+			body: 'Name the aircraft type.'
+		});
 		expect(ensurePromptSlugs([{ slug: '', label: '', body: '' }])[0].slug).toBe('prompt-1');
 	});
 });

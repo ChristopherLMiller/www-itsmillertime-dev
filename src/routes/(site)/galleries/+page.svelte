@@ -17,18 +17,12 @@
 	const { data } = $props();
 	const queryClient = useQueryClient();
 
-	const listQuery = createQuery(() =>
-		galleriesListQueryOptions(data.query, data.initialGalleries)
-	);
+	const listQuery = createQuery(() => galleriesListQueryOptions(data.query, data.initialGalleries));
 
 	$effect(() => {
 		if (!browser) return;
 		void $queryPersistRestored;
-		seedServerQueryData(
-			queryClient,
-			queryKeys.galleriesList(data.query),
-			data.initialGalleries
-		);
+		seedServerQueryData(queryClient, queryKeys.galleriesList(data.query), data.initialGalleries);
 	});
 
 	const list = $derived.by(() => {
@@ -269,11 +263,7 @@
 
 {#if categories.length > 0}
 	<div class="film-strip-wrapper">
-		<FilmStrip
-			categories={categories}
-			selectedSlug={selectedCategory}
-			getHref={getCategoryHref}
-		/>
+		<FilmStrip {categories} selectedSlug={selectedCategory} getHref={getCategoryHref} />
 	</div>
 {/if}
 
@@ -358,8 +348,8 @@
 		</div>
 		{#if listMeta}
 			<span class="page-info">
-				Page {page.url.searchParams.get('page') || '1'} of {listMeta.totalPages} ({listMeta
-					.totalDocs} total)
+				Page {page.url.searchParams.get('page') || '1'} of {listMeta.totalPages} ({listMeta.totalDocs}
+				total)
 			</span>
 		{/if}
 	</div>

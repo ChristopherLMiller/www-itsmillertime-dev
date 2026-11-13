@@ -63,8 +63,8 @@
 	--font-special-elite: 'Special Elite', 'Courier New', Courier, monospace;
 	--font-permanent-marker: 'Permanent Marker', 'Comic Sans MS', cursive;
 	--font-oswald: 'Oswald', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
-	--font-source-code-pro: 'Source Code Pro', ui-monospace, 'Cascadia Code', Menlo, Consolas,
-		'DejaVu Sans Mono', monospace;
+	--font-source-code-pro:
+		'Source Code Pro', ui-monospace, 'Cascadia Code', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 	--font-roboto: 'Roboto', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
 	--font-vt323: 'VT323', ui-monospace, Menlo, Consolas, monospace;
 

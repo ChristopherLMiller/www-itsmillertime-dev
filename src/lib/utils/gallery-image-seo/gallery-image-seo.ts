@@ -74,10 +74,7 @@ export function buildGalleryImagePageMeta(options: {
 	selectedId: number;
 }): GalleryAlbumPageMeta {
 	const { image, albumMeta, origin, slug, selectedId } = options;
-	const imageTitle = firstText(
-		image.meta?.title,
-		displayableImageTitle(image.alt, image.filename)
-	);
+	const imageTitle = firstText(image.meta?.title, displayableImageTitle(image.alt, image.filename));
 	const imageDescription = firstText(image.meta?.description, captionPlainText(image.caption));
 
 	// Missing alt/caption (including filename-like alts) inherit the album SEO text.

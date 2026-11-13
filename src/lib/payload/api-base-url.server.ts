@@ -8,9 +8,7 @@ export function getPayloadApiBaseUrl(): string {
 	const raw = PAYLOAD_INTERNAL_URL.trim();
 	const match = /^https?:\/\/[^\s"']+/i.exec(raw);
 	if (!match) {
-		throw new Error(
-			`Invalid PAYLOAD_INTERNAL_URL (expected https://…/api): ${raw.slice(0, 120)}`
-		);
+		throw new Error(`Invalid PAYLOAD_INTERNAL_URL (expected https://…/api): ${raw.slice(0, 120)}`);
 	}
 	return match[0].replace(/\/$/, '');
 }

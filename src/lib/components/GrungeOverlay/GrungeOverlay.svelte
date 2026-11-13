@@ -407,9 +407,8 @@
 
 		return () => {
 			cancelled = true;
-			const cancelIdle = (
-				window as Window & { cancelIdleCallback?: (id: number) => void }
-			).cancelIdleCallback;
+			const cancelIdle = (window as Window & { cancelIdleCallback?: (id: number) => void })
+				.cancelIdleCallback;
 			if (idleId !== undefined && typeof cancelIdle === 'function') cancelIdle(idleId);
 			if (idleTimeoutId !== undefined) clearTimeout(idleTimeoutId);
 			disposeGl?.();
