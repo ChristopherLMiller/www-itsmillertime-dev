@@ -28,9 +28,7 @@ async function fetchModelsListFromCMS(
 	const forceEmpty = !includeNotStarted && status === 'NOT_STARTED';
 
 	const andFilters = [
-		...(manufacturer
-			? [{ 'model_meta.kit.manufacturer.slug': { equals: manufacturer } }]
-			: []),
+		...(manufacturer ? [{ 'model_meta.kit.manufacturer.slug': { equals: manufacturer } }] : []),
 		...(scale ? [{ 'model_meta.kit.scale.slug': { equals: scale } }] : []),
 		...(effectiveStatus
 			? [{ 'model_meta.status': { equals: effectiveStatus } }]
@@ -68,7 +66,7 @@ async function fetchModelsListFromCMS(
 						updatedAt: true,
 						slug: true,
 						model_meta: true,
-						clockify_project: true
+						timeTracking: true
 					},
 					...(andFilters.length > 0
 						? {
@@ -144,7 +142,7 @@ async function fetchModelBySlugFromCMS(
 			updatedAt: true,
 			slug: true,
 			model_meta: true,
-			clockify_project: true,
+			timeTracking: true,
 			buildLog: true,
 			image: true,
 			meta: true,
