@@ -1,41 +1,46 @@
+<script module lang="ts">
+	import type { Model } from '$lib/types/payload-types';
+
+	export type ModelStatus = Model['model_meta']['status'];
+	export type ModelTimerChange = { totalSeconds: number; status: ModelStatus | null };
+</script>
+
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon';
 	import { onMount } from 'svelte';
 	import { createSubscriber } from 'svelte/reactivity';
 
-	type ClockifyTimerEntry = {
-		id?: string;
-		description?: string | null;
-		projectId?: string | null;
-		timeInterval?: {
-			start?: string | null;
-			end?: string | null;
-			duration?: string | null;
-		} | null;
+	/** Running entry as returned by the CMS `GET /api/model-time/timer` endpoint. */
+	type RunningEntry = {
+		id: number;
+		modelId: number | string | null;
+		modelTitle: string | null;
+		startedAt: string | null;
 	};
 
-	type ClockifyTimerStatus = {
+	type TimerStatusResponse = {
 		isRunning: boolean;
-		timer: ClockifyTimerEntry | null;
-		timers?: ClockifyTimerEntry[];
+		entry: RunningEntry | null;
+		model?: { id: number; totalSeconds: number; status: ModelStatus | null };
 	};
 
-	type ClockifyTimerProps = {
-		projectId: string;
-		description?: string;
-		/** Called after a successful start/stop so parents can refresh totals. */
-		onChange?: () => void;
+	type ModelTimerProps = {
+		modelId: number;
+		/** Called after a successful start/stop with the model's fresh total and status. */
+		onChange?: (change: ModelTimerChange) => void;
 	};
 
-	const { projectId, description, onChange }: ClockifyTimerProps = $props();
+	const { modelId, onChange }: ModelTimerProps = $props();
+
+	const TIMER_URL = '/api/model-time/timer';
 
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
 			(page.data.session?.user?.role as string[] | undefined)?.includes('admin')
 	);
 
-	let status = $state<ClockifyTimerStatus | null>(null);
+	let status = $state<TimerStatusResponse | null>(null);
 	let loading = $state(true);
 	let busy = $state(false);
 	let errorMessage = $state<string | null>(null);
@@ -45,14 +50,13 @@
 		return () => clearInterval(id);
 	});
 
-	const activeTimer = $derived(status?.timer ?? status?.timers?.[0] ?? null);
-	const isRunning = $derived(Boolean(status?.isRunning && activeTimer));
-	const isRunningOnThisProject = $derived(
-		isRunning && activeTimer?.projectId != null && activeTimer.projectId === projectId
+	const activeEntry = $derived(status?.isRunning ? status.entry : null);
+	const isRunningOnThisModel = $derived(
+		activeEntry != null && Number(activeEntry.modelId) === modelId
 	);
 	const elapsedLabel = $derived.by(() => {
-		const start = activeTimer?.timeInterval?.start;
-		if (!isRunning || !start) return null;
+		const start = activeEntry?.startedAt;
+		if (!isRunningOnThisModel || !start) return null;
 		subscribeToSecond();
 		const startMs = Date.parse(start);
 		if (Number.isNaN(startMs)) return null;
@@ -79,57 +83,37 @@
 		}
 	}
 
-	async function refreshStatus() {
-		errorMessage = null;
-		const response = await fetch('/api/clockify/timer');
+	async function refreshStatus(): Promise<TimerStatusResponse | null> {
+		const response = await fetch(`${TIMER_URL}?modelId=${modelId}`);
 		if (!response.ok) {
 			errorMessage = await readError(response);
 			status = null;
-			return;
+			return null;
 		}
-		status = (await response.json()) as ClockifyTimerStatus;
+		status = (await response.json()) as TimerStatusResponse;
+		return status;
 	}
 
-	async function startTimer() {
+	async function send(path: 'start' | 'stop') {
 		if (busy) return;
 		busy = true;
 		errorMessage = null;
 		try {
-			const response = await fetch('/api/clockify/timer/start', {
+			const response = await fetch(`${TIMER_URL}/${path}`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					projectId,
-					...(description ? { description } : {})
-				})
+				body: JSON.stringify(path === 'start' ? { modelId } : {})
 			});
 			if (!response.ok) {
 				errorMessage = await readError(response);
 				return;
 			}
-			await refreshStatus();
-			onChange?.();
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function stopTimer() {
-		if (busy) return;
-		busy = true;
-		errorMessage = null;
-		try {
-			const response = await fetch('/api/clockify/timer/stop', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({})
-			});
-			if (!response.ok) {
-				errorMessage = await readError(response);
-				return;
+			const fresh = await refreshStatus();
+			if (fresh?.model) {
+				onChange?.({ totalSeconds: fresh.model.totalSeconds, status: fresh.model.status });
 			}
-			await refreshStatus();
-			onChange?.();
+		} catch {
+			errorMessage = 'Could not reach the server. Try again.';
 		} finally {
 			busy = false;
 		}
@@ -144,6 +128,8 @@
 			loading = true;
 			try {
 				await refreshStatus();
+			} catch {
+				if (!cancelled) errorMessage = 'Could not load the timer.';
 			} finally {
 				if (!cancelled) loading = false;
 			}
@@ -156,47 +142,55 @@
 </script>
 
 {#if isAdmin}
-	<div class="clockify-timer">
+	<div class="model-timer">
 		{#if loading}
 			<span class="timer-status" aria-live="polite">Checking timer…</span>
-		{:else if isRunningOnThisProject}
+		{:else if isRunningOnThisModel}
 			<span class="timer-status running-status" aria-live="polite">
 				<span class="pulse" aria-hidden="true"></span>
-				{#if elapsedLabel}
-					<span>{elapsedLabel}</span>
-				{:else}
-					<span>Running</span>
-				{/if}
+				<span>{elapsedLabel ?? 'Running'}</span>
 			</span>
 			<button
 				type="button"
 				class="timer-button stop"
-				onclick={stopTimer}
+				onclick={() => send('stop')}
 				disabled={busy}
-				aria-label="Stop Clockify timer"
+				aria-label="Stop the timer for this model"
 			>
 				<Icon name="square" size={14} />
 				<span>{busy ? 'Stopping…' : 'Stop'}</span>
 			</button>
-		{:else if isRunning}
-			<span class="timer-status other-status" aria-live="polite">Timer on another project</span>
+		{:else if activeEntry}
+			<span class="timer-status other-status" aria-live="polite">
+				Running on {activeEntry.modelTitle ?? 'another model'}
+			</span>
 			<button
 				type="button"
 				class="timer-button stop"
-				onclick={stopTimer}
+				onclick={() => send('stop')}
 				disabled={busy}
-				aria-label="Stop Clockify timer on another project"
+				aria-label={`Stop the timer running on ${activeEntry.modelTitle ?? 'another model'}`}
 			>
 				<Icon name="square" size={14} />
 				<span>{busy ? 'Stopping…' : 'Stop'}</span>
+			</button>
+			<button
+				type="button"
+				class="timer-button start"
+				onclick={() => send('start')}
+				disabled={busy}
+				aria-label="Stop the other timer and start one for this model"
+			>
+				<Icon name="play" size={14} />
+				<span>{busy ? 'Switching…' : 'Switch here'}</span>
 			</button>
 		{:else}
 			<button
 				type="button"
 				class="timer-button start"
-				onclick={startTimer}
+				onclick={() => send('start')}
 				disabled={busy}
-				aria-label="Start Clockify timer for this model"
+				aria-label="Start a timer for this model"
 			>
 				<Icon name="play" size={14} />
 				<span>{busy ? 'Starting…' : 'Start timer'}</span>
@@ -210,7 +204,7 @@
 {/if}
 
 <style lang="postcss">
-	.clockify-timer {
+	.model-timer {
 		display: inline-flex;
 		align-items: center;
 		flex-wrap: wrap;

@@ -3,15 +3,15 @@
 	import { page } from '$app/state';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { PUBLIC_PAYLOAD_URL } from '$env/static/public';
-	import ClockifyTimer from '$lib/components/ClockifyTimer';
 	import Image from '$lib/components/Image';
 	import Icon from '$lib/components/Icon';
+	import ModelTimer, { type ModelTimerChange } from '$lib/components/ModelTimer';
 	import Panel from '$lib/components/Panel';
 	import StickyNote from '$lib/components/StickyNote';
 	import TimelineCard from '$lib/components/TimelineCard';
 	import { type Kit, type Media } from '$lib/types/payload-types.js';
 	import { convertDate } from '$lib/utils/convertDate';
-	import { makeClockifyDurationFriendly } from '$lib/utils/makeClockifyDurationFriendly';
+	import { formatBuildTime } from '$lib/utils/formatBuildTime';
 	import { toRelatedLinks } from '$lib/utils/relatedResources';
 	import Disqus from '$lib/components/Disqus';
 	import ShareButtons from '$lib/components/ShareButtons';
@@ -21,9 +21,6 @@
 	import { pageMetaOverride } from '$lib/stores/pageMeta';
 	import type { PageProps } from './$types';
 
-	type ClockifyProject = { duration: string };
-
-	let clockifyProject = $state<ClockifyProject | null>(null);
 	const { data }: PageProps = $props();
 	const queryClient = useQueryClient();
 
@@ -66,14 +63,20 @@
 	const modelGalleryImages = $derived(
 		(model?.image ?? []).filter((img): img is Media => typeof img === 'object' && img !== null)
 	);
-	const status = $derived(model?.model_meta.status ?? 'NOT_STARTED');
+	/** Fresh total/status from the timer, shown until the cached model catches up. */
+	let timerOverride = $state<{ modelId: number; change: ModelTimerChange } | null>(null);
+	const liveTimer = $derived(
+		timerOverride && model && timerOverride.modelId === model.id ? timerOverride.change : null
+	);
+
+	const status = $derived(liveTimer?.status ?? model?.model_meta.status ?? 'NOT_STARTED');
 	const statusDisplay = $derived(status.replace('_', ' ').toLowerCase());
 	const statusClass = $derived(status.toLowerCase());
 	const completionDate = $derived(
 		model?.model_meta.completionDate ? convertDate(model.model_meta.completionDate) : null
 	);
-	const clockifyDuration = $derived(
-		clockifyProject ? makeClockifyDurationFriendly(clockifyProject.duration, false, true) : null
+	const buildTime = $derived(
+		formatBuildTime(liveTimer ? liveTimer.totalSeconds : model?.timeTracking?.totalSeconds)
 	);
 	const isAdmin = $derived(
 		!!page.data.session?.user &&
@@ -88,193 +91,183 @@
 	const relatedModels = $derived(toRelatedLinks(model?.relatedResources?.relatedModels));
 	const hasRelatedResources = $derived(relatedPosts.length > 0 || relatedModels.length > 0);
 
-	async function refreshClockifyProject() {
-		if (!model?.clockify_project) return;
-		const response = await fetch(`/api/clockify/projects/${model.clockify_project}`);
-		if (response.ok) {
-			clockifyProject = await response.json();
-		}
+	function handleTimerChange(change: ModelTimerChange) {
+		if (!model) return;
+		timerOverride = { modelId: model.id, change };
+		void queryClient.invalidateQueries({ queryKey: ['model', data.slug] });
+		void queryClient.invalidateQueries({ queryKey: ['models'] });
 	}
 
 	$effect(() => {
 		pageMetaOverride.set(modelData?.meta ?? null);
 		return () => pageMetaOverride.set(null);
 	});
-
-	$effect(() => {
-		if (!model?.clockify_project) return;
-		refreshClockifyProject();
-	});
 </script>
 
 {#if model}
-<article style:view-transition-name={`model-${model.slug}`}>
-	<Panel hasBorder hasTexture={false}>
-		<!-- Hero Section -->
-		<div class="hero">
-			<div class="hero-image-container">
-				<Image image={model.model_meta.featuredImage as Media} />
-				<div class="hero-fade"></div>
-			</div>
-			<div class="hero-content">
-				<h1>{model.title}</h1>
-				<div class="hero-meta">
-					<div class="meta-left">
-						<span class="status-badge {statusClass}">{statusDisplay}</span>
-						{#if completionDate}
-							<span class="meta-item">
-								<Icon name="calendar" size={18} />
-								<span>{completionDate}</span>
-							</span>
-						{/if}
-						{#if clockifyDuration}
-							<span class="meta-item">
-								<Icon name="clock" size={18} />
-								<span>{clockifyDuration}</span>
-							</span>
-						{/if}
-						{#if model.clockify_project}
-							<ClockifyTimer
-								projectId={model.clockify_project}
-								description={model.title}
-								onChange={refreshClockifyProject}
-							/>
-						{/if}
-						{#if cmsEditHref}
-							<a
-								href={cmsEditHref}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="cms-edit-link"
-								aria-label="Edit this model in the CMS (opens in a new tab)"
-							>
-								Edit in CMS
-							</a>
-						{/if}
-					</div>
-					<div class="hero-share-wrapper">
-						<ShareButtons url={page.url.href} title={model.title} className="hero-share" />
-					</div>
+	<article style:view-transition-name={`model-${model.slug}`}>
+		<Panel hasBorder hasTexture={false}>
+			<!-- Hero Section -->
+			<div class="hero">
+				<div class="hero-image-container">
+					<Image image={model.model_meta.featuredImage as Media} />
+					<div class="hero-fade"></div>
 				</div>
-			</div>
-		</div>
-
-		<!-- Two-Column Content -->
-		<div class="content-grid">
-			<!-- Left Column: Build Log Timeline -->
-			<div class="main-column">
-				{#if model.buildLog && model.buildLog.length > 0}
-					<section class="build-log-wrapper">
-						<div class="build-log">
-							<h2 class="build-log-title">Build Log</h2>
-							<hr class="build-log-divider" />
-							{#each model.buildLog as entry, i}
-								<TimelineCard
-									title={entry.title}
-									content={entry.content}
-									isLast={i === model.buildLog.length - 1}
-								/>
-							{/each}
-						</div>
-					</section>
-				{/if}
-			</div>
-
-			<!-- Right Column: Sidebar -->
-			<aside class="sidebar-column">
-				<!-- Kit Info -->
-				<div class="kit-note">
-					<StickyNote title="About the Kit">
-						<div>
-							<strong>Manufacturer:</strong>
-							{kit && typeof kit.manufacturer === 'object' && kit.manufacturer !== null
-								? kit.manufacturer.title
-								: ''}
-						</div>
-						<div>
-							<strong>Scale:</strong>
-							{kit && typeof kit.scale === 'object' && kit.scale !== null ? kit.scale.title : ''}
-						</div>
-						<div><strong>Year Released:</strong> {kit?.year_released}</div>
-						<div><strong>Kit Number:</strong> {kit?.kit_number}</div>
-						{#if kit?.scalemates}
-							<div>
+				<div class="hero-content">
+					<h1>{model.title}</h1>
+					<div class="hero-meta">
+						<div class="meta-left">
+							<span class="status-badge {statusClass}">{statusDisplay}</span>
+							{#if completionDate}
+								<span class="meta-item">
+									<Icon name="calendar" size={18} />
+									<span>{completionDate}</span>
+								</span>
+							{/if}
+							{#if buildTime}
+								<span class="meta-item">
+									<Icon name="clock" size={18} />
+									<span>{buildTime}</span>
+								</span>
+							{/if}
+							{#if status !== 'COMPLETED'}
+								<ModelTimer modelId={model.id} onChange={handleTimerChange} />
+							{/if}
+							{#if cmsEditHref}
 								<a
-									class="scalemates-link"
-									href={kit.scalemates}
+									href={cmsEditHref}
 									target="_blank"
 									rel="noopener noreferrer"
+									class="cms-edit-link"
+									aria-label="Edit this model in the CMS (opens in a new tab)"
 								>
-									Scalemates Link
-									<Icon name="external-link" size={12} />
+									Edit in CMS
 								</a>
-							</div>
-						{/if}
-						{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
-							<div>
-								<strong>Tags:</strong>
-								{#each model.model_meta.tags as tag, i}
-									{#if typeof tag === 'object' && tag !== null}
-										{tag.title}{i < model.model_meta.tags.length - 1 ? ', ' : ''}
-									{/if}
+							{/if}
+						</div>
+						<div class="hero-share-wrapper">
+							<ShareButtons url={page.url.href} title={model.title} className="hero-share" />
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Two-Column Content -->
+			<div class="content-grid">
+				<!-- Left Column: Build Log Timeline -->
+				<div class="main-column">
+					{#if model.buildLog && model.buildLog.length > 0}
+						<section class="build-log-wrapper">
+							<div class="build-log">
+								<h2 class="build-log-title">Build Log</h2>
+								<hr class="build-log-divider" />
+								{#each model.buildLog as entry, i}
+									<TimelineCard
+										title={entry.title}
+										content={entry.content}
+										isLast={i === model.buildLog.length - 1}
+									/>
 								{/each}
 							</div>
-						{/if}
-					</StickyNote>
+						</section>
+					{/if}
 				</div>
 
-				{#if hasRelatedResources}
-					<section class="related-section" aria-labelledby="model-related-heading">
-						<h2 id="model-related-heading" class="related-heading">Related</h2>
-						<ul class="related-list">
-							{#each relatedPosts as post (post.id)}
-								<li>
-									<a href={`/articles/${post.slug}`} class="related-link">
-										<span class="related-link-title">{post.title}</span>
-										<span class="related-link-meta">Article</span>
+				<!-- Right Column: Sidebar -->
+				<aside class="sidebar-column">
+					<!-- Kit Info -->
+					<div class="kit-note">
+						<StickyNote title="About the Kit">
+							<div>
+								<strong>Manufacturer:</strong>
+								{kit && typeof kit.manufacturer === 'object' && kit.manufacturer !== null
+									? kit.manufacturer.title
+									: ''}
+							</div>
+							<div>
+								<strong>Scale:</strong>
+								{kit && typeof kit.scale === 'object' && kit.scale !== null ? kit.scale.title : ''}
+							</div>
+							<div><strong>Year Released:</strong> {kit?.year_released}</div>
+							<div><strong>Kit Number:</strong> {kit?.kit_number}</div>
+							{#if kit?.scalemates}
+								<div>
+									<a
+										class="scalemates-link"
+										href={kit.scalemates}
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Scalemates Link
+										<Icon name="external-link" size={12} />
 									</a>
-								</li>
-							{/each}
-							{#each relatedModels as related (related.id)}
-								<li>
-									<a href={`/models/${related.slug}`} class="related-link">
-										<span class="related-link-title">{related.title}</span>
-										<span class="related-link-meta">Model</span>
-									</a>
-								</li>
-							{/each}
-						</ul>
-					</section>
-				{/if}
-
-				<!-- Videos -->
-				{#if model.model_meta?.videos && model.model_meta.videos.length > 0}
-					<div class="videos-section">
-						{#each model.model_meta.videos as video}
-							{#if video.url}
-								<VideoPlayer title={video.title} url={video.url} />
+								</div>
 							{/if}
-						{/each}
+							{#if model.model_meta?.tags && model.model_meta?.tags.length > 0}
+								<div>
+									<strong>Tags:</strong>
+									{#each model.model_meta.tags as tag, i}
+										{#if typeof tag === 'object' && tag !== null}
+											{tag.title}{i < model.model_meta.tags.length - 1 ? ', ' : ''}
+										{/if}
+									{/each}
+								</div>
+							{/if}
+						</StickyNote>
 					</div>
-				{/if}
 
-				<!-- Photos -->
-				{#if modelGalleryImages.length > 0}
-					<div class="photo-grid">
-						{#each modelGalleryImages as image, index}
-							<Image {image} hasLightbox gallery={modelGalleryImages} galleryIndex={index} />
-						{/each}
-					</div>
-				{/if}
-			</aside>
-		</div>
+					{#if hasRelatedResources}
+						<section class="related-section" aria-labelledby="model-related-heading">
+							<h2 id="model-related-heading" class="related-heading">Related</h2>
+							<ul class="related-list">
+								{#each relatedPosts as post (post.id)}
+									<li>
+										<a href={`/articles/${post.slug}`} class="related-link">
+											<span class="related-link-title">{post.title}</span>
+											<span class="related-link-meta">Article</span>
+										</a>
+									</li>
+								{/each}
+								{#each relatedModels as related (related.id)}
+									<li>
+										<a href={`/models/${related.slug}`} class="related-link">
+											<span class="related-link-title">{related.title}</span>
+											<span class="related-link-meta">Model</span>
+										</a>
+									</li>
+								{/each}
+							</ul>
+						</section>
+					{/if}
 
-		<!-- Comments Section -->
-		<section class="comments-section">
-			<Disqus identifier={`model-${model.slug}`} title={model.title} url={page.url.href} />
-		</section>
-	</Panel>
-</article>
+					<!-- Videos -->
+					{#if model.model_meta?.videos && model.model_meta.videos.length > 0}
+						<div class="videos-section">
+							{#each model.model_meta.videos as video}
+								{#if video.url}
+									<VideoPlayer title={video.title} url={video.url} />
+								{/if}
+							{/each}
+						</div>
+					{/if}
+
+					<!-- Photos -->
+					{#if modelGalleryImages.length > 0}
+						<div class="photo-grid">
+							{#each modelGalleryImages as image, index}
+								<Image {image} hasLightbox gallery={modelGalleryImages} galleryIndex={index} />
+							{/each}
+						</div>
+					{/if}
+				</aside>
+			</div>
+
+			<!-- Comments Section -->
+			<section class="comments-section">
+				<Disqus identifier={`model-${model.slug}`} title={model.title} url={page.url.href} />
+			</section>
+		</Panel>
+	</article>
 {/if}
 
 <style lang="postcss">
